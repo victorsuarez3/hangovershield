@@ -100,14 +100,15 @@ export default function RecoveryGuide() {
               {/* Content card */}
               <motion.div
                 variants={itemVariants}
-                className="glass rounded-3xl shadow-glass mb-12"
+                className="glass rounded-3xl shadow-glass"
                 style={{
                   padding: '3rem',
                   backgroundColor: 'rgba(255, 255, 255, 0.45)',
                   backdropFilter: 'blur(24px)',
                   WebkitBackdropFilter: 'blur(24px)',
                   border: '1px solid rgba(255, 255, 255, 0.4)',
-                  boxShadow: '0 18px 45px rgba(15, 63, 70, 0.15), 0 8px 16px rgba(15, 63, 70, 0.08)'
+                  boxShadow: '0 18px 45px rgba(15, 63, 70, 0.15), 0 8px 16px rgba(15, 63, 70, 0.08)',
+                  marginBottom: '6rem'
                 }}
               >
                 <article className="space-y-6" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -153,18 +154,19 @@ export default function RecoveryGuide() {
               </motion.div>
 
               {/* FAQ Section */}
-              <motion.section variants={itemVariants}>
+              <motion.section variants={itemVariants} style={{ marginTop: '0', marginBottom: '4rem' }}>
                 <h2 
-                  className="text-3xl sm:text-4xl font-bold text-text-dark font-display mb-8"
+                  className="text-3xl sm:text-4xl font-bold text-text-dark font-display"
                   style={{ 
                     letterSpacing: '-0.03em',
-                    fontWeight: '700'
+                    fontWeight: '700',
+                    marginBottom: '3rem'
                   }}
                 >
                   Frequently Asked Questions
                 </h2>
                 
-                <div className="space-y-4">
+                <div className="space-y-5" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   {faqs.map((faq, index) => (
                     <motion.div
                       key={index}
@@ -179,7 +181,13 @@ export default function RecoveryGuide() {
                     >
                       <button
                         onClick={() => setOpenFAQ(openFAQ === index ? null : index)}
-                        className="w-full px-6 py-4 flex items-center justify-between text-left group focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2 rounded-t-2xl"
+                        className="w-full flex items-center justify-between text-left group focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2 rounded-t-2xl"
+                        style={{
+                          paddingTop: '1.5rem',
+                          paddingBottom: '1.5rem',
+                          paddingLeft: '2rem',
+                          paddingRight: '2rem'
+                        }}
                         aria-expanded={openFAQ === index}
                         aria-controls={`faq-answer-${index}`}
                       >
@@ -209,11 +217,15 @@ export default function RecoveryGuide() {
                           className="overflow-hidden"
                         >
                           <div 
-                            className="px-6 pb-4 text-text-body"
+                            className="text-text-body"
                             style={{ 
                               fontSize: '0.9375rem',
                               lineHeight: '1.7',
-                              color: 'rgb(106 106 109)'
+                              color: 'rgb(106 106 109)',
+                              paddingTop: '0',
+                              paddingBottom: '1.5rem',
+                              paddingLeft: '2rem',
+                              paddingRight: '2rem'
                             }}
                           >
                             {faq.answer}

@@ -13,14 +13,8 @@ import Footer from "@/components/Footer";
 export default function Home() {
   return (
     <>
-      <a href="#main-content" className="skip-to-main">
-        Skip to main content
-      </a>
-      <header role="banner">
-        <Navbar />
-      </header>
-      
-      <main id="main-content" role="main" className="min-h-screen bg-gradient-hero">
+      <Navbar />
+      <main className="min-h-screen bg-gradient-hero">
         <section id="hero" aria-label="Hero section">
           <Hero />
         </section>
@@ -57,10 +51,7 @@ export default function Home() {
           <DownloadSection />
         </section>
       </main>
-      
-      <footer role="contentinfo">
-        <Footer />
-      </footer>
+      <Footer />
     </>
   );
 }
