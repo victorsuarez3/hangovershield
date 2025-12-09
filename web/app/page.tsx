@@ -8,7 +8,6 @@ import WhyItWorks from "@/components/WhyItWorks";
 import HowHangoverShieldWorks from "@/components/HowHangoverShieldWorks";
 import Testimonials from "@/components/Testimonials";
 import DownloadSection from "@/components/DownloadSection";
-import SEOContent from "@/components/SEOContent";
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -56,10 +55,6 @@ export default function Home() {
         
         <section id="download" aria-label="Download section">
           <DownloadSection />
-        </section>
-        
-        <section id="seo-content" aria-label="SEO content and FAQ section">
-          <SEOContent />
         </section>
       </main>
       
