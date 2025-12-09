@@ -26,6 +26,8 @@ export default function Navbar() {
 
   return (
     <motion.nav
+      role="navigation"
+      aria-label="Main navigation"
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
@@ -42,6 +44,7 @@ export default function Navbar() {
             href="/"
             className="flex items-center group transition-all duration-300"
             style={{ marginRight: '3rem' }}
+            aria-label="Hangover Shield - Home"
           >
             <span className="text-xl font-bold text-deep-teal font-display tracking-tight group-hover:text-deep-teal/80 transition-colors duration-200 leading-tight">
               Hangover Shield
@@ -59,13 +62,14 @@ export default function Navbar() {
                 href={link.href}
                 onMouseEnter={() => setActiveLink(link.href)}
                 onMouseLeave={() => setActiveLink("")}
-                className="relative text-text-body hover:text-deep-teal transition-all duration-300 font-medium text-[15px] rounded-xl group"
+                className="relative text-text-body hover:text-deep-teal transition-all duration-300 font-medium text-[15px] rounded-xl group focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2"
                 style={{ 
                   paddingLeft: '1.5rem', 
                   paddingRight: '1.5rem', 
                   paddingTop: '0.875rem', 
                   paddingBottom: '0.875rem' 
                 }}
+                aria-label={`Navigate to ${link.label}`}
               >
                 {link.label}
                 {activeLink === link.href && (
@@ -89,10 +93,11 @@ export default function Navbar() {
           {/* CTA Button */}
           <a
             href="#download"
-            className="btn btn-primary text-sm md:text-[15px] group shadow-glass-lg hover:shadow-xl"
+            className="btn btn-primary text-sm md:text-[15px] group shadow-glass-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2"
             style={{ marginLeft: '2rem' }}
+            aria-label="Download Hangover Shield app"
           >
-            <Download size={18} className="group-hover:translate-y-0.5 transition-transform duration-300" />
+            <Download size={18} className="group-hover:translate-y-0.5 transition-transform duration-300" aria-hidden="true" />
             <span className="hidden sm:inline font-semibold">Download App</span>
             <span className="sm:hidden font-semibold">Download</span>
           </a>

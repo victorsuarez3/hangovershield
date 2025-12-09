@@ -164,11 +164,12 @@ export default function Testimonials() {
                         >
                           <Image
                             src={testimonial.photo}
-                            alt={testimonial.name}
+                            alt={`${testimonial.name}, ${testimonial.meta} - Hangover Shield user testimonial`}
                             width={72}
                             height={72}
                             className="w-full h-full object-cover"
                             unoptimized
+                            loading="lazy"
                           />
                         </div>
                         

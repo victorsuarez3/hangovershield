@@ -1,0 +1,35 @@
+# humanstxt.org/
+# The humans responsible & technology colophon
+
+# TEAM
+
+    Hangover Shield Team -- Development & Design
+    Contact: support@hangovershield.co
+    Twitter: @hangovershield
+
+# THANKS
+
+    Next.js Team
+    Framer Motion
+    Tailwind CSS
+    Lucide Icons
+
+# TECHNOLOGY COLOPHON
+
+    HTML5
+    CSS3
+    JavaScript (ES6+)
+    TypeScript
+    Next.js 16
+    React 19
+    Tailwind CSS v4
+    Framer Motion
+    Node.js
+
+# SITE
+
+    Last update: 2025/01/27
+    Language: English
+    Doctype: HTML5
+    IDE: Cursor / VS Code
+

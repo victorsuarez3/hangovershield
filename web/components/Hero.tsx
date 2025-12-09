@@ -101,18 +101,20 @@ export default function Hero() {
               <span className="text-text-body">After</span>
             </motion.div>
 
-            <motion.h1
-              variants={itemVariants}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold text-text-dark leading-[1.08]"
-              style={{ 
-                marginBottom: '2rem',
-                letterSpacing: '-0.03em',
-                fontWeight: '700'
-              }}
-            >
-              Feel Yourself Again.{" "}
-              <span className="text-gradient" style={{ letterSpacing: '-0.03em' }}>Faster. Calmer.</span>
-            </motion.h1>
+            <h1>
+              <motion.span
+                variants={itemVariants}
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold text-text-dark leading-[1.08] block"
+                style={{ 
+                  marginBottom: '2rem',
+                  letterSpacing: '-0.03em',
+                  fontWeight: '700'
+                }}
+              >
+                Cure Hangover Fast:{" "}
+                <span className="text-gradient" style={{ letterSpacing: '-0.03em' }}>Recovery App That Works</span>
+              </motion.span>
+            </h1>
 
             <motion.p
               variants={itemVariants}
@@ -139,7 +141,7 @@ export default function Hero() {
             >
               <motion.a 
                 href="#download" 
-                className="btn btn-primary text-base group relative overflow-hidden w-full sm:w-auto"
+                className="btn btn-primary text-base group relative overflow-hidden w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2"
                 style={{ 
                   paddingTop: '1.125rem',
                   paddingBottom: '1.125rem',
@@ -151,13 +153,14 @@ export default function Hero() {
                 whileHover={{ scale: 1.02, y: -3 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                aria-label="Download Hangover Shield app - cure hangover fast"
               >
-                <Download size={20} className="group-hover:translate-y-0.5 transition-transform duration-300 relative z-10" />
+                <Download size={20} className="group-hover:translate-y-0.5 transition-transform duration-300 relative z-10" aria-hidden="true" />
                 <span className="relative z-10">Download Hangover Shield</span>
               </motion.a>
               <motion.a 
                 href="#how-it-works" 
-                className="btn btn-secondary text-base group w-full sm:w-auto"
+                className="btn btn-secondary text-base group w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2"
                 style={{ 
                   paddingTop: '1.125rem',
                   paddingBottom: '1.125rem',
@@ -169,6 +172,7 @@ export default function Hero() {
                 whileHover={{ scale: 1.02, y: -3 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                aria-label="Learn how Hangover Shield works"
               >
                 See How It Works
               </motion.a>
@@ -235,11 +239,12 @@ export default function Hero() {
                 >
                   <Image
                     src="https://plus.unsplash.com/premium_photo-1676550906503-396d6c2ace5b?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                    alt="Person feeling relaxed and happy in the morning"
+                    alt="Happy person feeling refreshed after using Hangover Shield recovery app - morning recovery success"
                     fill
                     className="object-cover"
                     sizes="(max-width: 768px) 0vw, 336px"
                     priority
+                    fetchPriority="high"
                   />
                   {/* More subtle overlay */}
                   <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-deep-teal/8" />
@@ -366,25 +371,26 @@ export default function Hero() {
                 >
                   <Image
                     src="https://plus.unsplash.com/premium_photo-1676550906503-396d6c2ace5b?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                    alt="Person feeling relaxed and happy in the morning"
+                    alt="Happy person feeling refreshed after using Hangover Shield recovery app - morning recovery success"
                     fill
                     className="object-cover"
                     sizes="(max-width: 768px) 256px, 0vw"
                     priority
+                    fetchPriority="high"
                   />
                   <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-deep-teal/8" />
                 </div>
               </motion.div>
 
-              {/* iPhone frame mockup */}
-              <motion.div
-                variants={floatingVariants}
-                initial="initial"
-                animate="animate"
+            {/* iPhone frame mockup */}
+            <motion.div
+              variants={floatingVariants}
+              initial="initial"
+              animate="animate"
                 className="relative"
                 style={{ width: '14rem' }}
-              >
-                <div className="relative bg-white-pure rounded-[2.5rem] shadow-glass-lg overflow-hidden border-[10px] border-text-dark">
+            >
+              <div className="relative bg-white-pure rounded-[2.5rem] shadow-glass-lg overflow-hidden border-[10px] border-text-dark">
                   {/* Phone screen with Today's Recovery Plan UI */}
                   <div className="w-full aspect-[9/19] bg-gradient-to-b from-soft-sky-blue/25 to-serenity-mint/25 p-4 relative overflow-hidden">
                     {/* Subtle background pattern */}
@@ -462,7 +468,7 @@ export default function Hero() {
                   </div>
                 </div>
               </motion.div>
-            </div>
+              </div>
           </motion.div>
         </div>
       </div>

@@ -96,7 +96,7 @@ export default function DownloadSection() {
               whileHover={{ scale: 1.02, y: -3 }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="rounded-2xl font-bold text-white-pure hover:shadow-glass-lg transition-all duration-300 flex items-center justify-center shadow-lg group relative overflow-hidden w-full sm:w-auto"
+              className="rounded-2xl font-bold text-white-pure hover:shadow-glass-lg transition-all duration-300 flex items-center justify-center shadow-lg group relative overflow-hidden w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2"
               style={{
                 paddingTop: '1.125rem',
                 paddingBottom: '1.125rem',
@@ -107,9 +107,10 @@ export default function DownloadSection() {
                 boxShadow: '0 8px 24px rgba(15, 63, 70, 0.25), 0 4px 8px rgba(15, 63, 70, 0.15)',
                 color: 'rgb(255, 255, 255)'
               }}
+              aria-label="Download Hangover Shield from App Store - iOS"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <Apple size={24} className="relative z-10 text-white" strokeWidth={2.5} />
+              <Apple size={24} className="relative z-10 text-white" strokeWidth={2.5} aria-hidden="true" />
               <span className="font-display text-lg relative z-10 text-white" style={{ marginLeft: '0.875rem', letterSpacing: '-0.01em', color: 'rgb(255, 255, 255)' }}>App Store</span>
             </motion.a>
 
@@ -119,7 +120,7 @@ export default function DownloadSection() {
               whileHover={{ scale: 1.02, y: -3 }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="glass rounded-2xl font-bold text-text-dark hover:shadow-glass-lg transition-all duration-300 flex items-center justify-center border-2 border-white/60 shadow-glass group relative overflow-hidden w-full sm:w-auto"
+              className="glass rounded-2xl font-bold text-text-dark hover:shadow-glass-lg transition-all duration-300 flex items-center justify-center border-2 border-white/60 shadow-glass group relative overflow-hidden w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2"
               style={{
                 paddingTop: '1.125rem',
                 paddingBottom: '1.125rem',
@@ -129,9 +130,10 @@ export default function DownloadSection() {
                 backgroundColor: 'rgba(255, 255, 255, 0.4)',
                 backdropFilter: 'blur(16px)'
               }}
+              aria-label="Download Hangover Shield from Google Play - Android"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-deep-teal/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <Smartphone size={24} className="text-deep-teal group-hover:scale-110 transition-transform duration-300 relative z-10" strokeWidth={2.5} />
+              <Smartphone size={24} className="text-deep-teal group-hover:scale-110 transition-transform duration-300 relative z-10" strokeWidth={2.5} aria-hidden="true" />
               <span className="font-display text-lg relative z-10" style={{ marginLeft: '0.875rem', letterSpacing: '-0.01em' }}>Google Play</span>
             </motion.a>
           </motion.div>

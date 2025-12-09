@@ -89,7 +89,7 @@ export default function Footer() {
                   <li>
                     <a
                       href="#how-it-works"
-                      className="text-text-body transition-all duration-200 inline-flex items-center group"
+                      className="text-text-body transition-all duration-200 inline-flex items-center group focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2 rounded"
                       style={{ 
                         fontSize: '0.875rem',
                         letterSpacing: '-0.01em',
@@ -107,14 +107,15 @@ export default function Footer() {
                         e.currentTarget.style.color = 'rgb(106 106 109)';
                         e.currentTarget.style.textDecoration = 'none';
                       }}
+                      aria-label="Navigate to How It Works section"
                     >
                       How It Works
                     </a>
                   </li>
                   <li>
                     <a
-                      href="#plan"
-                      className="text-text-body transition-all duration-200 inline-flex items-center group"
+                      href="#smart-plan"
+                      className="text-text-body transition-all duration-200 inline-flex items-center group focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2 rounded"
                       style={{ 
                         fontSize: '0.875rem',
                         letterSpacing: '-0.01em',
@@ -132,6 +133,7 @@ export default function Footer() {
                         e.currentTarget.style.color = 'rgb(106 106 109)';
                         e.currentTarget.style.textDecoration = 'none';
                       }}
+                      aria-label="Navigate to Smart Plan section"
                     >
                       Smart Plan
                     </a>
@@ -139,7 +141,7 @@ export default function Footer() {
                   <li>
                     <Link
                       href="/contact"
-                      className="text-text-body transition-all duration-200 inline-flex items-center group"
+                      className="text-text-body transition-all duration-200 inline-flex items-center group focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2 rounded"
                       style={{ 
                         fontSize: '0.875rem',
                         letterSpacing: '-0.01em',
@@ -157,6 +159,7 @@ export default function Footer() {
                         e.currentTarget.style.color = 'rgb(106 106 109)';
                         e.currentTarget.style.textDecoration = 'none';
                       }}
+                      aria-label="Navigate to Contact page"
                     >
                       Contact
                     </Link>
@@ -180,7 +183,7 @@ export default function Footer() {
                   <li>
                     <button
                       onClick={() => setActiveModal("privacy")}
-                      className="text-text-body transition-all duration-200 inline-flex items-center group text-left w-full"
+                      className="text-text-body transition-all duration-200 inline-flex items-center group text-left w-full focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2 rounded"
                       style={{ 
                         fontSize: '0.875rem',
                         letterSpacing: '-0.01em',
@@ -198,15 +201,16 @@ export default function Footer() {
                         e.currentTarget.style.color = 'rgb(106 106 109)';
                         e.currentTarget.style.textDecoration = 'none';
                       }}
+                      aria-label="Open Privacy Policy modal"
                     >
-                      <Shield size={14} className="mr-2 opacity-60 group-hover:opacity-80 transition-opacity duration-200" strokeWidth={2} />
+                      <Shield size={14} className="mr-2 opacity-60 group-hover:opacity-80 transition-opacity duration-200" strokeWidth={2} aria-hidden="true" />
                       Privacy Policy
                     </button>
                   </li>
                   <li>
                     <button
                       onClick={() => setActiveModal("terms")}
-                      className="text-text-body transition-all duration-200 inline-flex items-center group text-left w-full"
+                      className="text-text-body transition-all duration-200 inline-flex items-center group text-left w-full focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2 rounded"
                       style={{ 
                         fontSize: '0.875rem',
                         letterSpacing: '-0.01em',
@@ -224,15 +228,16 @@ export default function Footer() {
                         e.currentTarget.style.color = 'rgb(106 106 109)';
                         e.currentTarget.style.textDecoration = 'none';
                       }}
+                      aria-label="Open Terms & Conditions modal"
                     >
-                      <FileText size={14} className="mr-2 opacity-60 group-hover:opacity-80 transition-opacity duration-200" strokeWidth={2} />
+                      <FileText size={14} className="mr-2 opacity-60 group-hover:opacity-80 transition-opacity duration-200" strokeWidth={2} aria-hidden="true" />
                       Terms & Conditions
                     </button>
                   </li>
                   <li>
                     <button
                       onClick={() => setActiveModal("support")}
-                      className="text-text-body transition-all duration-200 inline-flex items-center group text-left w-full"
+                      className="text-text-body transition-all duration-200 inline-flex items-center group text-left w-full focus:outline-none focus:ring-2 focus:ring-deep-teal focus:ring-offset-2 rounded"
                       style={{ 
                         fontSize: '0.875rem',
                         letterSpacing: '-0.01em',
@@ -250,8 +255,9 @@ export default function Footer() {
                         e.currentTarget.style.color = 'rgb(106 106 109)';
                         e.currentTarget.style.textDecoration = 'none';
                       }}
+                      aria-label="Open Support modal"
                     >
-                      <HelpCircle size={14} className="mr-2 opacity-60 group-hover:opacity-80 transition-opacity duration-200" strokeWidth={2} />
+                      <HelpCircle size={14} className="mr-2 opacity-60 group-hover:opacity-80 transition-opacity duration-200" strokeWidth={2} aria-hidden="true" />
                       Support
                     </button>
                   </li>

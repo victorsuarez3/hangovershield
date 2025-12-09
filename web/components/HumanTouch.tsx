@@ -137,10 +137,11 @@ export default function HumanTouch() {
                       <div className="relative w-full h-[240px] rounded-[20px] overflow-hidden bg-white mb-6 flex-shrink-0">
                         <Image
                           src={moment.image}
-                          alt={moment.alt}
+                          alt={`${moment.alt} - Real moment of recovery with Hangover Shield app`}
                           fill
                           className="object-cover group-hover:scale-[1.02] transition-transform duration-300 ease-out"
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          loading="lazy"
                         />
                       </div>
 
