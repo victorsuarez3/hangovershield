@@ -1,0 +1,46 @@
+{
+  "name": "hangovershield-web",
+  "version": "1.0.0",
+  "description": "Hangover Shield - Landing Page",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prepare": "husky install"
+  },
+  "keywords": [
+    "hangover",
+    "hangxiety",
+    "wellness",
+    "recovery",
+    "health"
+  ],
+  "author": "Hangover Shield",
+  "license": "MIT",
+  "dependencies": {
+    "autoprefixer": "^10.4.22",
+    "framer-motion": "^12.23.25",
+    "lucide-react": "^0.556.0",
+    "next": "^16.0.8",
+    "next-intl": "^4.5.8",
+    "postcss": "^8.5.6",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/node": "^24.10.2",
+    "@types/react": "^19.2.7",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "next lint --fix",
+      "eslint --fix"
+    ]
+  }
+}
