@@ -23,6 +23,9 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { AppHeader } from '../components/AppHeader';
+import { AppMenuSheet } from '../components/AppMenuSheet';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -586,6 +589,10 @@ const ProgressSection: React.FC<ProgressSectionProps> = ({ completed, total }) =
 
 export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (props) => {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
+  
+  // Menu state
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const {
     date = DEFAULT_MOCK_DATA.date,
@@ -739,11 +746,17 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         style={StyleSheet.absoluteFillObject}
       />
 
+      {/* App Header with Menu */}
+      <AppHeader
+        showMenuButton
+        onMenuPress={() => setMenuVisible(true)}
+      />
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 140 },
+          { paddingBottom: insets.bottom + 140 },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -825,6 +838,27 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         onLogAmount={handleLogHydration}
         goalLiters={hydrationGoalLiters}
         currentLiters={hydrationLoggedLiters}
+      />
+
+      {/* App Menu Sheet */}
+      <AppMenuSheet
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        currentScreen="today"
+        isPremium={false} // TODO: Read from user subscription state
+        onGoToToday={() => setMenuVisible(false)}
+        onGoToProgress={() => {
+          setMenuVisible(false);
+          navigation.navigate('Progress');
+        }}
+        onGoToCheckIn={() => {
+          setMenuVisible(false);
+          navigation.navigate('DailyCheckIn');
+        }}
+        onGoToSubscription={() => {
+          setMenuVisible(false);
+          navigation.navigate('OnboardingPaywall');
+        }}
       />
     </View>
   );
