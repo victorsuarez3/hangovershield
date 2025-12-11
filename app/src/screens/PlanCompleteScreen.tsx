@@ -189,6 +189,7 @@ export const PlanCompleteScreen: React.FC = () => {
             variant="primary"
             size="large"
             fullWidth
+            textStyle={{ color: '#FFFFFF' }}
           />
         </View>
       </Animated.View>
