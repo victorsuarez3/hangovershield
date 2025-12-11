@@ -10,11 +10,15 @@ import { OnboardingInsightScreen } from '../screens/onboarding/OnboardingInsight
 import { OnboardingPaywallScreen } from '../screens/onboarding/OnboardingPaywallScreen';
 import { RecoveryPlanLoadingScreen } from '../screens/onboarding/RecoveryPlanLoadingScreen';
 import { TodayRecoveryPlanScreen } from '../screens/TodayRecoveryPlanScreen';
+import { PlanCompleteScreen } from '../screens/PlanCompleteScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { getRecoveryAnalysis, getKeySymptomLabels } from '../utils/recoveryAnalysis';
+import { markPlanCompletedForToday } from '../services/dailyCheckIn';
+import { getTodayId } from '../utils/dateUtils';
+import { useAuth } from '../providers/AuthProvider';
 
 const FEELING_ONBOARDING_KEY = '@hangovershield_feeling_onboarding_completed';
 
@@ -50,6 +54,8 @@ const FEELING_DISPLAY_LABELS: Record<FeelingOption, string> = {
 // Wrapper component for Today's Recovery Plan with data generation
 const TodayRecoveryPlanWrapper: React.FC = () => {
   const route = useRoute<RouteProp<OnboardingStackParamList, 'TodayRecoveryPlan'>>();
+  const navigation = useNavigation<NativeStackNavigationProp<OnboardingStackParamList>>();
+  const { user } = useAuth();
   const { feeling, symptoms } = route.params;
 
   // Generate recovery analysis from feeling + symptoms
@@ -196,18 +202,40 @@ const TodayRecoveryPlanWrapper: React.FC = () => {
   const { min, max } = analysis.estimatedRecoveryHoursRange;
   const recoveryWindowLabel = `${min}–${max} hours`;
 
+  // Handler for completing the plan
+  const handleCompletePlan = useCallback(async (stepsCompleted: number, totalSteps: number) => {
+    // Save completion to Firestore if user is authenticated
+    if (user?.uid) {
+      const dateId = getTodayId();
+      try {
+        await markPlanCompletedForToday({
+          uid: user.uid,
+          dateId,
+          stepsCompleted,
+          totalSteps,
+        });
+      } catch (error) {
+        console.error('Error saving plan completion:', error);
+        // Continue to celebration screen even if save fails
+      }
+    }
+
+    // Navigate to celebration screen
+    navigation.navigate('PlanComplete', { stepsCompleted, totalSteps });
+  }, [user?.uid, navigation]);
+
   return (
     <TodayRecoveryPlanScreen
       date={dateString}
       recoveryWindowLabel={recoveryWindowLabel}
       symptomLabels={symptomLabels}
-      focusAreas={['Hydration', 'Rest', 'Nutrition']}
       hydrationGoalLiters={1.5}
       hydrationProgress={0}
       actions={actions}
       onToggleAction={(id, completed) => {
         console.log(`Action ${id} toggled to ${completed}`);
       }}
+      onCompletePlan={handleCompletePlan}
     />
   );
 };
@@ -245,6 +273,10 @@ export type OnboardingStackParamList = {
     feeling: FeelingOption;
     symptoms: SymptomKey[];
   };
+  PlanComplete: {
+    stepsCompleted: number;
+    totalSteps: number;
+  };
 };
 
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
@@ -280,6 +312,10 @@ export function OnboardingNavigator() {
       <Stack.Screen
         name="TodayRecoveryPlan"
         component={TodayRecoveryPlanWrapper}
+      />
+      <Stack.Screen
+        name="PlanComplete"
+        component={PlanCompleteScreen}
       />
     </Stack.Navigator>
   );

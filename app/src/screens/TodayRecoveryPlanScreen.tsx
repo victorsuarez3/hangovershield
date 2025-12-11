@@ -51,6 +51,8 @@ export type TodayRecoveryPlanScreenProps = {
   hydrationProgress?: number;
   actions?: RecoveryAction[];
   onToggleAction?: (id: string, completed: boolean) => void;
+  // Plan completion props
+  onCompletePlan?: (stepsCompleted: number, totalSteps: number) => void;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -594,6 +596,7 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
     hydrationProgress: initialHydrationProgress = DEFAULT_MOCK_DATA.hydrationProgress,
     actions: initialActions = DEFAULT_MOCK_DATA.actions,
     onToggleAction,
+    onCompletePlan,
   } = props;
 
   const [localActions, setLocalActions] = useState<RecoveryAction[]>(initialActions);
@@ -654,21 +657,57 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
     [onToggleAction, logHydrationFromStep]
   );
 
-  // CTA text
-  const ctaText = allCompleted ? "I've completed today's plan" : 'Start My Next Step';
+  // CTA text - changes based on completion status
+  const ctaText = allCompleted 
+    ? "I've completed today's plan" 
+    : completedActions === 0 
+      ? 'Start My First Step'
+      : 'Continue My Plan';
 
-  // CTA handler
+  // Handler for completing the plan
+  const handleCompletePlan = useCallback(() => {
+    const doComplete = () => {
+      if (onCompletePlan) {
+        onCompletePlan(completedActions, totalActions);
+      } else {
+        // Fallback alert if no handler provided
+        Alert.alert(
+          '🎉 Amazing work!',
+          "You've completed all your recovery steps. Your body thanks you!",
+          [{ text: 'Awesome' }]
+        );
+      }
+    };
+
+    // If not all steps completed, ask for confirmation
+    if (completedActions < totalActions && totalActions > 0) {
+      Alert.alert(
+        "Finish today's plan?",
+        `You've only completed ${completedActions} of ${totalActions} steps. Are you sure you want to finish today's plan?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Finish anyway',
+            style: 'default',
+            onPress: doComplete,
+          },
+        ]
+      );
+    } else {
+      doComplete();
+    }
+  }, [completedActions, totalActions, onCompletePlan]);
+
+  // CTA handler - mark next step or complete plan
   const handleCtaPress = useCallback(() => {
     if (allCompleted) {
-      Alert.alert(
-        '🎉 Amazing work!',
-        "You've completed all your recovery steps. Your body thanks you!",
-        [{ text: 'Awesome' }]
-      );
+      // All steps done - trigger completion
+      handleCompletePlan();
     } else if (nextStepId) {
+      // Not all done - mark next step as completed
       handleToggleAction(nextStepId, true);
     }
-  }, [allCompleted, nextStepId, handleToggleAction]);
+  }, [allCompleted, nextStepId, handleToggleAction, handleCompletePlan]);
 
   // Build flat list with section markers
   const timelineItems = useMemo(() => {
@@ -766,6 +805,17 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
             <Ionicons name="arrow-forward" size={18} color="#FFF" style={{ marginLeft: 8 }} />
           )}
         </TouchableOpacity>
+        
+        {/* Secondary action - Finish plan early */}
+        {!allCompleted && completedActions > 0 && (
+          <TouchableOpacity
+            style={styles.finishEarlyButton}
+            onPress={handleCompletePlan}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.finishEarlyText}>Finish today's plan</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Hydration Log Bottom Sheet */}
@@ -1268,6 +1318,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFF',
     letterSpacing: 0.2,
+  },
+  finishEarlyButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  finishEarlyText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: 'rgba(15, 76, 68, 0.6)',
+    textDecorationLine: 'underline',
   },
 
   // ─────────────────────────────────────────────────────────────────────────

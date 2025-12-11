@@ -18,9 +18,12 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import { AuthNavigator } from './src/navigation/AuthNavigator';
 import { OnboardingNavigator } from './src/navigation/OnboardingNavigator';
 import { IntroOnboardingNavigator } from './src/navigation/IntroOnboardingNavigator';
+import { DailyCheckInNavigator } from './src/navigation/DailyCheckInNavigator';
 import { SplashScreen } from './src/screens/SplashScreen';
 import { AlertManager } from './src/utils/alert';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { getTodayDailyCheckIn } from './src/services/dailyCheckIn';
+import { getTodayId } from './src/utils/dateUtils';
 
 // Async storage keys for onboarding state
 const INTRO_ONBOARDING_KEY = '@hangovershield_intro_onboarding_completed'; // NEW pre-auth intro
@@ -36,6 +39,9 @@ function AppContent() {
   const [feelingOnboardingCompleted, setFeelingOnboardingCompleted] = React.useState(false);
   // Temporary: Skip auth mode for testing
   const [skipAuthMode, setSkipAuthMode] = React.useState(false);
+  // Daily check-in status for returning users
+  const [dailyCheckInStatus, setDailyCheckInStatus] = React.useState<'loading' | 'needs_checkin' | 'completed'>('loading');
+  const [checkingDailyStatus, setCheckingDailyStatus] = React.useState(false);
 
   // Check if onboarding has been completed
   React.useEffect(() => {
@@ -54,6 +60,34 @@ function AppContent() {
     };
     checkOnboarding();
   }, []);
+
+  // Check daily check-in status for authenticated users who completed onboarding
+  React.useEffect(() => {
+    const checkDailyStatus = async () => {
+      if (!user || !feelingOnboardingCompleted) {
+        setDailyCheckInStatus('loading');
+        return;
+      }
+
+      setCheckingDailyStatus(true);
+      try {
+        const todayCheckIn = await getTodayDailyCheckIn(user.uid);
+        if (todayCheckIn) {
+          setDailyCheckInStatus('completed');
+        } else {
+          setDailyCheckInStatus('needs_checkin');
+        }
+      } catch (error) {
+        console.error('Error checking daily check-in:', error);
+        // Default to needs check-in if we cannot verify
+        setDailyCheckInStatus('needs_checkin');
+      } finally {
+        setCheckingDailyStatus(false);
+      }
+    };
+
+    checkDailyStatus();
+  }, [user, feelingOnboardingCompleted]);
 
   // Wait for onboarding status to be loaded
   if (introOnboardingCompleted === null) {
@@ -143,7 +177,30 @@ function AppContent() {
     return <OnboardingNavigator />;
   }
 
-  // Authenticated and onboarding completed: show main app
+  // Show loading while checking daily check-in status
+  if (checkingDailyStatus || dailyCheckInStatus === 'loading') {
+    return (
+      <SplashScreen
+        onFinish={() => {}}
+        showContinueButton={false}
+        onContinue={() => {}}
+      />
+    );
+  }
+
+  // Authenticated + onboarding completed + needs daily check-in
+  if (dailyCheckInStatus === 'needs_checkin') {
+    return (
+      <DailyCheckInNavigator
+        userId={user.uid}
+        onComplete={() => {
+          setDailyCheckInStatus('completed');
+        }}
+      />
+    );
+  }
+
+  // Authenticated and onboarding completed and daily check-in done: show main app
   return <AppNavigator />;
 }
 
