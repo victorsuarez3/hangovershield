@@ -15,7 +15,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { CheckInScreen } from '../screens/CheckInScreen';
 import { SmartPlanScreen } from '../screens/SmartPlanScreen';
 import { ToolsScreen } from '../screens/ToolsScreen';
-import { HistoryScreen } from '../screens/HistoryScreen';
+import { ProgressScreen } from '../screens/ProgressScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 
@@ -47,10 +47,10 @@ const ToolsStack = () => {
   );
 };
 
-const HistoryStack = () => {
+const ProgressStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="History" component={HistoryScreen} />
+      <Stack.Screen name="Progress" component={ProgressScreen} />
     </Stack.Navigator>
   );
 };
@@ -90,7 +90,7 @@ export const AppNavigator: React.FC = () => {
         <Tab.Screen name="Home" component={HomeStack} />
         <Tab.Screen name="SmartPlan" component={SmartPlanStack} />
         <Tab.Screen name="Tools" component={ToolsStack} />
-        <Tab.Screen name="History" component={HistoryStack} />
+        <Tab.Screen name="Progress" component={ProgressStack} />
         <Tab.Screen name="Settings" component={ProfileStack} />
       </Tab.Navigator>
     </ProtectedRoute>

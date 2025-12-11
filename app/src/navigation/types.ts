@@ -10,7 +10,7 @@ export type RootStackParamList = {
   CheckIn: undefined;
   SmartPlan: undefined;
   Tools: undefined;
-  History: undefined;
+  Progress: undefined;
   ProfileMain: undefined;
   Settings: undefined;
 };
@@ -19,7 +19,7 @@ export type TabParamList = {
   Home: undefined;
   SmartPlan: undefined;
   Tools: undefined;
-  History: undefined;
+  Progress: undefined;
   Settings: undefined;
 };
 
@@ -31,7 +31,7 @@ export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'HomeMa
 export type CheckInScreenProps = NativeStackScreenProps<RootStackParamList, 'CheckIn'>;
 export type SmartPlanScreenProps = NativeStackScreenProps<RootStackParamList, 'SmartPlan'>;
 export type ToolsScreenProps = NativeStackScreenProps<RootStackParamList, 'Tools'>;
-export type HistoryScreenProps = NativeStackScreenProps<RootStackParamList, 'History'>;
+export type ProgressScreenProps = NativeStackScreenProps<RootStackParamList, 'Progress'>;
 export type ProfileScreenProps = NativeStackScreenProps<RootStackParamList, 'ProfileMain'>;
 export type SettingsScreenProps = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 

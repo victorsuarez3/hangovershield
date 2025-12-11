@@ -7,9 +7,13 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   serverTimestamp,
   Timestamp,
+  query,
+  orderBy,
+  limit as firestoreLimit,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getTodayId } from '../utils/dateUtils';
@@ -202,5 +206,129 @@ export const markPlanCompletedForToday = async (
 export const hasTodayPlanCompleted = async (uid: string): Promise<boolean> => {
   const checkIn = await getTodayDailyCheckIn(uid);
   return checkIn?.planCompleted === true;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Progress & History Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DailyCheckInSummary {
+  id: string; // same as dateId "YYYY-MM-DD"
+  date: string;
+  planCompleted: boolean;
+  stepsCompleted: number;
+  totalSteps: number;
+  completedAt: Timestamp | null;
+  severity?: DailyCheckInSeverity;
+}
+
+export interface GetRecentCheckInsParams {
+  uid?: string;
+  limit?: number; // default 14
+}
+
+/**
+ * Get recent daily check-ins for progress history
+ * Returns array sorted by date descending (most recent first)
+ */
+export const getRecentCheckIns = async (
+  params?: GetRecentCheckInsParams
+): Promise<DailyCheckInSummary[]> => {
+  const limit = params?.limit ?? 14;
+  const uid = params?.uid;
+
+  if (!uid) {
+    console.warn('[getRecentCheckIns] No user ID provided');
+    return [];
+  }
+
+  try {
+    const collectionRef = collection(db, 'users', uid, 'dailyCheckIns');
+    const q = query(
+      collectionRef,
+      orderBy('date', 'desc'),
+      firestoreLimit(limit)
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    const summaries: DailyCheckInSummary[] = snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        date: data.date || docSnap.id,
+        planCompleted: data.planCompleted === true,
+        stepsCompleted: data.stepsCompleted ?? 0,
+        totalSteps: data.totalSteps ?? 0,
+        completedAt: data.completedAt ?? null,
+        severity: data.severity,
+      };
+    });
+
+    // Sort by date descending (most recent first)
+    return summaries.sort((a, b) => b.date.localeCompare(a.date));
+  } catch (error) {
+    console.error('Error getting recent check-ins:', error);
+    return [];
+  }
+};
+
+/**
+ * Calculate current streak (consecutive days with planCompleted === true)
+ * Starting from today going backwards
+ */
+export const calculateStreak = (
+  checkIns: DailyCheckInSummary[],
+  todayId: string
+): number => {
+  if (checkIns.length === 0) return 0;
+
+  // Create a map for quick lookup
+  const checkInMap = new Map<string, DailyCheckInSummary>();
+  checkIns.forEach((ci) => checkInMap.set(ci.date, ci));
+
+  let streak = 0;
+  let currentDate = new Date(todayId + 'T00:00:00');
+
+  // Go backwards day by day
+  for (let i = 0; i < 365; i++) {
+    const dateId = currentDate.toISOString().split('T')[0];
+    const checkIn = checkInMap.get(dateId);
+
+    if (checkIn && checkIn.planCompleted) {
+      streak++;
+      // Move to previous day
+      currentDate.setDate(currentDate.getDate() - 1);
+    } else {
+      // Streak broken
+      break;
+    }
+  }
+
+  return streak;
+};
+
+/**
+ * Count completed days in the last N days
+ */
+export const countCompletedInLastDays = (
+  checkIns: DailyCheckInSummary[],
+  todayId: string,
+  days: number = 7
+): number => {
+  // Get date IDs for last N days
+  const targetDates = new Set<string>();
+  const currentDate = new Date(todayId + 'T00:00:00');
+  
+  for (let i = 0; i < days; i++) {
+    const dateId = currentDate.toISOString().split('T')[0];
+    targetDates.add(dateId);
+    currentDate.setDate(currentDate.getDate() - 1);
+  }
+
+  // Count completed in those dates
+  return checkIns.filter(
+    (ci) => targetDates.has(ci.date) && ci.planCompleted
+  ).length;
 };
 

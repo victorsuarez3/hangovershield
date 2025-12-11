@@ -45,10 +45,10 @@ const tabs: TabBarItem[] = [
     iconFocused: 'fitness',
   },
   {
-    name: 'History',
-    labelKey: 'tab_history',
-    icon: 'time-outline',
-    iconFocused: 'time',
+    name: 'Progress',
+    labelKey: 'tab_progress',
+    icon: 'stats-chart-outline',
+    iconFocused: 'stats-chart',
   },
   {
     name: 'Settings',
