@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
 import { AppMenuSheet } from '../components/AppMenuSheet';
+import { useAppNavigation } from '../contexts/AppNavigationContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -590,6 +591,7 @@ const ProgressSection: React.FC<ProgressSectionProps> = ({ completed, total }) =
 export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (props) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const appNav = useAppNavigation();
   
   // Menu state
   const [menuVisible, setMenuVisible] = useState(false);
@@ -849,15 +851,15 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         onGoToToday={() => setMenuVisible(false)}
         onGoToProgress={() => {
           setMenuVisible(false);
-          navigation.navigate('Progress');
+          appNav.goToProgress();
         }}
         onGoToCheckIn={() => {
           setMenuVisible(false);
-          navigation.navigate('DailyCheckIn');
+          appNav.goToDailyCheckIn();
         }}
         onGoToSubscription={() => {
           setMenuVisible(false);
-          navigation.navigate('OnboardingPaywall');
+          appNav.goToSubscription();
         }}
       />
     </View>

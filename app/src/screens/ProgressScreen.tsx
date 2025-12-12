@@ -21,6 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
 import { AppHeader } from '../components/AppHeader';
 import { AppMenuSheet } from '../components/AppMenuSheet';
+import { useAppNavigation } from '../contexts/AppNavigationContext';
 import {
   getRecentCheckIns,
   DailyCheckInSummary,
@@ -248,6 +249,7 @@ const EmptyState: React.FC = () => (
 export const ProgressScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const appNav = useAppNavigation();
   const { user } = useAuth();
 
   const [checkIns, setCheckIns] = useState<DailyCheckInSummary[]>([]);
@@ -369,16 +371,17 @@ export const ProgressScreen: React.FC = () => {
         isPremium={false} // TODO: Read from user subscription state
         onGoToToday={() => {
           setMenuVisible(false);
-          navigation.goBack();
+          // Navigate to Home tab which shows Today's plan
+          navigation.navigate('Home');
         }}
         onGoToProgress={() => setMenuVisible(false)}
         onGoToCheckIn={() => {
           setMenuVisible(false);
-          navigation.navigate('DailyCheckIn');
+          appNav.goToDailyCheckIn();
         }}
         onGoToSubscription={() => {
           setMenuVisible(false);
-          navigation.navigate('OnboardingPaywall');
+          appNav.goToSubscription();
         }}
       />
     </View>

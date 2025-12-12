@@ -8,6 +8,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import * as SplashScreenNative from 'expo-splash-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SkipAuthProvider } from './src/contexts/SkipAuthContext';
+import { AppNavigationProvider } from './src/contexts/AppNavigationContext';
 
 // Keep splash screen visible until fonts are loaded
 SplashScreenNative.preventAutoHideAsync();
@@ -188,20 +189,58 @@ function AppContent() {
     );
   }
 
+  // Navigation handlers for global menu
+  const handleGoToProgress = React.useCallback(() => {
+    // If in daily check-in flow, complete it and go to app
+    if (dailyCheckInStatus === 'needs_checkin') {
+      setDailyCheckInStatus('completed');
+    }
+    // Navigation to Progress tab will happen through the AppNavigator
+  }, [dailyCheckInStatus]);
+
+  const handleGoToDailyCheckIn = React.useCallback(() => {
+    // Reset daily check-in status to show the check-in screen
+    setDailyCheckInStatus('needs_checkin');
+  }, []);
+
+  const handleGoToSubscription = React.useCallback(() => {
+    // For now, just mark as completed to go to app
+    // TODO: Navigate to subscription management
+    if (dailyCheckInStatus === 'needs_checkin') {
+      setDailyCheckInStatus('completed');
+    }
+  }, [dailyCheckInStatus]);
+
   // Authenticated + onboarding completed + needs daily check-in
   if (dailyCheckInStatus === 'needs_checkin') {
     return (
-      <DailyCheckInNavigator
-        userId={user.uid}
-        onComplete={() => {
-          setDailyCheckInStatus('completed');
-        }}
-      />
+      <AppNavigationProvider
+        currentContext="daily_checkin"
+        goToProgress={handleGoToProgress}
+        goToDailyCheckIn={handleGoToDailyCheckIn}
+        goToSubscription={handleGoToSubscription}
+      >
+        <DailyCheckInNavigator
+          userId={user.uid}
+          onComplete={() => {
+            setDailyCheckInStatus('completed');
+          }}
+        />
+      </AppNavigationProvider>
     );
   }
 
   // Authenticated and onboarding completed and daily check-in done: show main app
-  return <AppNavigator />;
+  return (
+    <AppNavigationProvider
+      currentContext="app"
+      goToProgress={handleGoToProgress}
+      goToDailyCheckIn={handleGoToDailyCheckIn}
+      goToSubscription={handleGoToSubscription}
+    >
+      <AppNavigator />
+    </AppNavigationProvider>
+  );
 }
 
 export default function App() {
