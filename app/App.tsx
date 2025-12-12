@@ -90,6 +90,28 @@ function AppContent() {
     checkDailyStatus();
   }, [user, feelingOnboardingCompleted]);
 
+  // Navigation handlers for global menu - defined early so they're available in all returns
+  const handleGoToProgress = React.useCallback(() => {
+    // If in daily check-in flow, complete it and go to app
+    if (dailyCheckInStatus === 'needs_checkin') {
+      setDailyCheckInStatus('completed');
+    }
+    // Navigation to Progress tab will happen through the AppNavigator
+  }, [dailyCheckInStatus]);
+
+  const handleGoToDailyCheckIn = React.useCallback(() => {
+    // Reset daily check-in status to show the check-in screen
+    setDailyCheckInStatus('needs_checkin');
+  }, []);
+
+  const handleGoToSubscription = React.useCallback(() => {
+    // For now, just mark as completed to go to app
+    // TODO: Navigate to subscription management
+    if (dailyCheckInStatus === 'needs_checkin') {
+      setDailyCheckInStatus('completed');
+    }
+  }, [dailyCheckInStatus]);
+
   // Wait for onboarding status to be loaded
   if (introOnboardingCompleted === null) {
     return (
@@ -140,9 +162,27 @@ function AppContent() {
   if (skipAuthMode) {
     const hasCompletedFeelingOnboarding = feelingOnboardingCompleted;
     if (!hasCompletedFeelingOnboarding) {
-      return <OnboardingNavigator />;
+      return (
+        <AppNavigationProvider
+          currentContext="onboarding"
+          goToProgress={handleGoToProgress}
+          goToDailyCheckIn={handleGoToDailyCheckIn}
+          goToSubscription={handleGoToSubscription}
+        >
+          <OnboardingNavigator />
+        </AppNavigationProvider>
+      );
     }
-    return <AppNavigator />;
+    return (
+      <AppNavigationProvider
+        currentContext="app"
+        goToProgress={handleGoToProgress}
+        goToDailyCheckIn={handleGoToDailyCheckIn}
+        goToSubscription={handleGoToSubscription}
+      >
+        <AppNavigator />
+      </AppNavigationProvider>
+    );
   }
 
   // Unauthenticated: show auth navigator (login)
@@ -175,7 +215,16 @@ function AppContent() {
 
   // Show feeling onboarding if user hasn't completed it yet
   if (!hasCompletedFeelingOnboarding) {
-    return <OnboardingNavigator />;
+    return (
+      <AppNavigationProvider
+        currentContext="onboarding"
+        goToProgress={handleGoToProgress}
+        goToDailyCheckIn={handleGoToDailyCheckIn}
+        goToSubscription={handleGoToSubscription}
+      >
+        <OnboardingNavigator />
+      </AppNavigationProvider>
+    );
   }
 
   // Show loading while checking daily check-in status
@@ -188,28 +237,6 @@ function AppContent() {
       />
     );
   }
-
-  // Navigation handlers for global menu
-  const handleGoToProgress = React.useCallback(() => {
-    // If in daily check-in flow, complete it and go to app
-    if (dailyCheckInStatus === 'needs_checkin') {
-      setDailyCheckInStatus('completed');
-    }
-    // Navigation to Progress tab will happen through the AppNavigator
-  }, [dailyCheckInStatus]);
-
-  const handleGoToDailyCheckIn = React.useCallback(() => {
-    // Reset daily check-in status to show the check-in screen
-    setDailyCheckInStatus('needs_checkin');
-  }, []);
-
-  const handleGoToSubscription = React.useCallback(() => {
-    // For now, just mark as completed to go to app
-    // TODO: Navigate to subscription management
-    if (dailyCheckInStatus === 'needs_checkin') {
-      setDailyCheckInStatus('completed');
-    }
-  }, [dailyCheckInStatus]);
 
   // Authenticated + onboarding completed + needs daily check-in
   if (dailyCheckInStatus === 'needs_checkin') {
