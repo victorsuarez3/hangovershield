@@ -1363,7 +1363,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
     color: '#0F3D3E',
+    marginBottom: 8,
+  },
+  recoveryScoreSubtitle: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.7)',
     marginBottom: 16,
+    textAlign: 'center',
   },
   recoveryScoreCircle: {
     width: 120,
