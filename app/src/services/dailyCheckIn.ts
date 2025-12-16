@@ -9,6 +9,7 @@ import {
   getDoc,
   getDocs,
   setDoc,
+  deleteDoc,
   serverTimestamp,
   Timestamp,
   query,
@@ -213,6 +214,37 @@ export const markPlanCompletedForToday = async (
 export const hasTodayPlanCompleted = async (uid: string): Promise<boolean> => {
   const checkIn = await getTodayDailyCheckIn(uid);
   return checkIn?.planCompleted === true;
+};
+
+/**
+ * Delete today's daily check-in (for testing/reset)
+ * Deletes from both Firestore and local storage
+ */
+export const deleteTodayDailyCheckIn = async (uid?: string): Promise<boolean> => {
+  try {
+    const todayId = getTodayId();
+    
+    // Delete from local storage
+    const { deleteLocalDailyCheckIn } = await import('./dailyCheckInStorage');
+    await deleteLocalDailyCheckIn(todayId);
+    
+    // Delete from Firestore if user is logged in
+    if (uid) {
+      try {
+        const docRef = doc(db, 'users', uid, 'dailyCheckIns', todayId);
+        await deleteDoc(docRef);
+        console.log('[deleteTodayDailyCheckIn] Deleted from Firestore');
+      } catch (error) {
+        console.error('[deleteTodayDailyCheckIn] Error deleting from Firestore:', error);
+        // Continue anyway - local deletion succeeded
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('[deleteTodayDailyCheckIn] Error:', error);
+    return false;
+  }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -35,8 +35,9 @@ import {
   calculateStreak,
   countCompletedInLastDays,
   getTodayDailyCheckIn,
+  deleteTodayDailyCheckIn,
 } from '../services/dailyCheckIn';
-import { getLocalDailyCheckIn } from '../services/dailyCheckInStorage';
+import { getLocalDailyCheckIn, deleteLocalDailyCheckIn } from '../services/dailyCheckInStorage';
 import { getTodayId } from '../utils/dateUtils';
 import { typography } from '../design-system/typography';
 
@@ -284,6 +285,31 @@ export const HomeScreen: React.FC = () => {
   const handleUpgradePress = useCallback(() => {
     navigateToPaywall(PaywallSource.HOME_UPGRADE_BANNER);
   }, [navigateToPaywall]);
+
+  // Dev function to clear today's check-in
+  const handleClearTodayCheckIn = useCallback(async () => {
+    try {
+      // Clear local storage
+      await deleteLocalDailyCheckIn();
+      
+      // Clear Firestore if logged in
+      if (user?.uid) {
+        await deleteTodayDailyCheckIn(user.uid);
+      }
+      
+      // Refresh check-in status
+      if (dailyCheckIn.refreshCheckInStatus) {
+        await dailyCheckIn.refreshCheckInStatus();
+      }
+      
+      // Reload today's check-in data
+      setTodayCheckInData(null);
+      
+      console.log('✓ Today\'s check-in cleared!');
+    } catch (error) {
+      console.error('Error clearing check-in:', error);
+    }
+  }, [user?.uid, dailyCheckIn]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Computed Values
