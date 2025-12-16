@@ -73,6 +73,9 @@ export const HomeScreen: React.FC = () => {
   // Progress state
   const [streak, setStreak] = useState(0);
   const [completedLast7Days, setCompletedLast7Days] = useState(0);
+  
+  // Recovery plan state
+  const [planStepsLeft, setPlanStepsLeft] = useState<number | null>(null);
 
   // Load hydration data
   useEffect(() => {
@@ -94,6 +97,9 @@ export const HomeScreen: React.FC = () => {
     loadHydrationData();
   }, [user?.uid]);
 
+  // Daily check-in status (computed early for use in effects)
+  const isCheckInCompleted = dailyCheckIn.status === 'completed_today';
+
   // Load progress data
   useEffect(() => {
     const loadProgressData = async () => {
@@ -114,6 +120,19 @@ export const HomeScreen: React.FC = () => {
 
     loadProgressData();
   }, [user?.uid]);
+
+  // Load recovery plan steps (if check-in completed)
+  useEffect(() => {
+    if (!isCheckInCompleted || !user?.uid) {
+      setPlanStepsLeft(null);
+      return;
+    }
+
+    // For now, we'll use a default value or fetch from service if available
+    // In a real implementation, this would fetch from the recovery plan service
+    // Default to showing "Pending" if we can't determine
+    setPlanStepsLeft(null); // null means we'll show "Pending"
+  }, [isCheckInCompleted, user?.uid]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Analytics Helpers
@@ -164,9 +183,10 @@ export const HomeScreen: React.FC = () => {
     if (accessInfo.hasFullAccess) {
       navigation.navigate('EveningCheckIn');
     } else {
-      navigateToPaywall(PaywallSource.EVENING_CHECKIN_LOCKED);
+      // Navigate to locked screen first, which then shows paywall
+      navigation.navigate('EveningCheckInLocked');
     }
-  }, [navigation, accessInfo.hasFullAccess, navigateToPaywall]);
+  }, [navigation, accessInfo.hasFullAccess]);
 
   const handleGoToEveningCheckInLocked = useCallback(() => {
     navigateToPaywall(PaywallSource.EVENING_CHECKIN_LOCKED);
@@ -219,7 +239,6 @@ export const HomeScreen: React.FC = () => {
     return `${liters}L / ${goalLiters}L`;
   }, [hydrationLogged, hydrationGoal]);
 
-  const isCheckInCompleted = dailyCheckIn.status === 'completed_today';
   const hydrationPercent = hydrationGoal > 0 ? (hydrationLogged / hydrationGoal) * 100 : 0;
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -228,11 +247,18 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Premium gradient background - matching TodayRecoveryPlanScreen */}
+      {/* Premium gradient background with vignette for depth */}
       <LinearGradient
         colors={['#E4F2EF', '#D8EBE7', '#CEE5E1']}
         locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFillObject}
+      />
+      {/* Subtle vignette overlay for premium contrast */}
+      <LinearGradient
+        colors={['rgba(15,76,68,0.03)', 'transparent', 'rgba(15,76,68,0.05)']}
+        locations={[0, 0.5, 1]}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
       />
 
       {/* App Header with Menu */}
@@ -259,14 +285,20 @@ export const HomeScreen: React.FC = () => {
 
         {/* Hero Card - Main Focus */}
         <TouchableOpacity
-          style={styles.heroCard}
+          style={[
+            styles.heroCard,
+            !isCheckInCompleted && styles.heroCardPending,
+          ]}
           onPress={isCheckInCompleted ? handleRecoveryPlanPress : handleDailyCheckInPress}
           activeOpacity={0.9}
         >
+          {/* Accent strip for pending state */}
+          {!isCheckInCompleted && <View style={styles.heroAccentStrip} />}
+          
           <View style={styles.heroContent}>
             <View style={styles.heroHeader}>
               <Text style={styles.heroTitle}>
-                {isCheckInCompleted ? "Your plan for today" : "Start your recovery"}
+                {isCheckInCompleted ? "You're on track" : "Start your recovery"}
               </Text>
               <Text style={styles.heroSubtitle}>
                 {isCheckInCompleted
@@ -316,7 +348,7 @@ export const HomeScreen: React.FC = () => {
                 style={styles.heroButtonGradient}
               >
                 <Text style={styles.heroButtonText}>
-                  {isCheckInCompleted ? "View today's recovery plan" : "Complete daily check-in"}
+                  {isCheckInCompleted ? "View today's plan" : "Complete daily check-in"}
                 </Text>
                 <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
               </LinearGradient>
@@ -355,7 +387,7 @@ export const HomeScreen: React.FC = () => {
             </View>
             <Text style={styles.widgetTitle}>Progress</Text>
             <Text style={styles.widgetSubtitle}>
-              {streak > 0 ? `${streak} day streak` : 'Track progress'}
+              {streak > 0 ? `Streak: ${streak} days` : 'Track progress'}
             </Text>
             <View style={styles.widgetArrow}>
               <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
@@ -372,7 +404,15 @@ export const HomeScreen: React.FC = () => {
               <Ionicons name="sunny-outline" size={24} color="#0F4C44" />
             </View>
             <Text style={styles.widgetTitle}>Today's Plan</Text>
-            <Text style={styles.widgetSubtitle}>Recovery steps</Text>
+            <Text style={styles.widgetSubtitle}>
+              {planStepsLeft !== null ? `${planStepsLeft} steps left` : 'Recovery steps'}
+            </Text>
+            {planStepsLeft !== null && planStepsLeft > 0 && (
+              <Text style={styles.widgetMicroData}>{planStepsLeft} steps left</Text>
+            )}
+            {planStepsLeft === null && isCheckInCompleted && (
+              <Text style={styles.widgetMicroData}>Pending</Text>
+            )}
             <View style={styles.widgetArrow}>
               <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
             </View>
@@ -387,13 +427,13 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.widgetIconContainer}>
               <Ionicons name="moon-outline" size={24} color="#0F4C44" />
             </View>
-            <Text style={styles.widgetTitle}>Evening</Text>
+            <Text style={styles.widgetTitle}>Evening check-in</Text>
             <Text style={styles.widgetSubtitle}>
-              {accessInfo.hasFullAccess ? 'Check-in' : 'Premium'}
+              {accessInfo.hasFullAccess ? 'Reflect + sleep prep' : 'Reflect + sleep prep'}
             </Text>
             {!accessInfo.hasFullAccess && (
-              <View style={styles.lockBadge}>
-                <Ionicons name="lock-closed" size={12} color="rgba(15,76,68,0.5)" />
+              <View style={styles.premiumBadge}>
+                <Text style={styles.premiumBadgeText}>Premium</Text>
               </View>
             )}
             <View style={styles.widgetArrow}>
@@ -416,7 +456,10 @@ export const HomeScreen: React.FC = () => {
               <View style={styles.upgradeTextContainer}>
                 <Text style={styles.upgradeTitle}>Unlock Premium</Text>
                 <Text style={styles.upgradeSubtitle}>
-                  Evening check-ins, insights, and full guidance.
+                  Evening check-ins + insights
+                </Text>
+                <Text style={styles.upgradeMicroLine}>
+                  Takes 30 seconds/night
                 </Text>
               </View>
               <View style={styles.upgradeButton}>
@@ -477,6 +520,19 @@ const styles = StyleSheet.create({
     elevation: 6,
     borderWidth: 1,
     borderColor: 'rgba(15,76,68,0.08)',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroCardPending: {
+    backgroundColor: 'rgba(255,255,255,0.98)',
+  },
+  heroAccentStrip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(15,76,68,0.12)',
   },
   heroContent: {
     gap: 20,
@@ -580,6 +636,13 @@ const styles = StyleSheet.create({
     color: 'rgba(15,61,62,0.6)',
     lineHeight: 18,
   },
+  widgetMicroData: {
+    ...typography.bodySmall,
+    fontSize: 11,
+    color: '#0F4C44',
+    marginTop: 4,
+    fontFamily: 'Inter_600SemiBold',
+  },
   widgetArrow: {
     position: 'absolute',
     top: 16,
@@ -595,6 +658,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15,76,68,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  premiumBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(15,76,68,0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  premiumBadgeText: {
+    ...typography.labelSmall,
+    fontSize: 10,
+    color: '#0F4C44',
+    fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 0.5,
   },
 
   // Upgrade Card
@@ -633,6 +712,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(15,61,62,0.6)',
     lineHeight: 16,
+  },
+  upgradeMicroLine: {
+    ...typography.caption,
+    fontSize: 10,
+    color: 'rgba(15,61,62,0.5)',
+    marginTop: 2,
+    fontFamily: 'Inter_400Regular',
   },
   upgradeButton: {
     backgroundColor: '#0F4C44',
