@@ -201,16 +201,14 @@ export const EveningCheckInScreen: React.FC = () => {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Dev skip button */}
-            {__DEV__ && (
-              <TouchableOpacity
-                style={styles.skipButton}
-                onPress={handleSkip}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.skipButtonText}>Skip (Dev)</Text>
-              </TouchableOpacity>
-            )}
+            {/* Dev skip button - always visible for testing */}
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={handleSkip}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.skipButtonText}>Skip (Dev)</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </View>
