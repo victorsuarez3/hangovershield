@@ -51,7 +51,8 @@ try {
 type PaywallScreenRouteProp = RouteProp<RootStackParamList, 'Paywall'>;
 type PaywallScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Paywall'>;
 
-type SelectedPlan = 'yearly' | 'monthly';
+// Package identifier type for selection
+type PackageIdentifier = string | null;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -77,6 +78,7 @@ export const PaywallScreen: React.FC = () => {
     purchase,
     restore,
     refresh,
+    refreshOfferings,
     isLoading: isLoadingPackages,
     error: revenueCatError,
     isAvailable: isRevenueCatAvailable,
@@ -86,15 +88,34 @@ export const PaywallScreen: React.FC = () => {
   const accessInfo = useAccessStatus();
   
   // Local state
-  const [selectedPlan, setSelectedPlan] = useState<SelectedPlan>('yearly');
+  const [selectedPackageId, setSelectedPackageId] = useState<PackageIdentifier>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
-  const [retryAttempts, setRetryAttempts] = useState(0);
+  const [offeringsLoaded, setOfferingsLoaded] = useState(false);
+  
+  // Determine if purchases are ready (SDK available AND offerings loaded)
+  const purchasesReady = isRevenueCatAvailable && offeringsLoaded;
   
   // Calculate daily price for yearly plan
   const yearlyPriceNumber = yearlyPackage?.product.price || 29.99;
   const yearlyCurrencyCode = yearlyPackage?.product.currencyCode || 'USD';
   const dailyPrice = calculateDailyPrice(yearlyPriceNumber, yearlyCurrencyCode);
+  
+  // Set default selection when packages are available
+  useEffect(() => {
+    if (yearlyPackage && !selectedPackageId) {
+      setSelectedPackageId(yearlyPackage.identifier);
+    } else if (monthlyPackage && !selectedPackageId) {
+      setSelectedPackageId(monthlyPackage.identifier);
+    }
+  }, [yearlyPackage, monthlyPackage, selectedPackageId]);
+  
+  // Track when offerings are loaded
+  useEffect(() => {
+    if (packages.length > 0) {
+      setOfferingsLoaded(true);
+    }
+  }, [packages]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Log paywall shown on mount
@@ -119,7 +140,8 @@ export const PaywallScreen: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const handlePurchase = async () => {
-    const packageToPurchase = selectedPlan === 'yearly' ? yearlyPackage : monthlyPackage;
+    // Find selected package by identifier
+    const packageToPurchase = packages.find(pkg => pkg.identifier === selectedPackageId) || yearlyPackage || monthlyPackage;
     
     if (!packageToPurchase) {
       Alert.alert('Error', 'No package available. Please try again later.');
@@ -166,7 +188,7 @@ export const PaywallScreen: React.FC = () => {
     navigation.goBack();
   };
   
-  const handlePlanSelect = (plan: SelectedPlan) => {
+  const handlePlanSelect = (packageId: string) => {
     // Haptic feedback on selection (optional)
     if (Haptics) {
       try {
@@ -175,15 +197,25 @@ export const PaywallScreen: React.FC = () => {
         // Haptics not available, continue silently
       }
     }
-    setSelectedPlan(plan);
+    setSelectedPackageId(packageId);
   };
   
   const handleRetry = async () => {
-    setRetryAttempts(prev => prev + 1);
-    // Trigger refresh by calling refresh from useRevenueCat hook
-    // The refresh function will re-fetch offerings/packages
-    if (refresh) {
-      await refresh();
+    setOfferingsLoaded(false);
+    // Re-fetch offerings
+    if (refreshOfferings) {
+      try {
+        await refreshOfferings();
+        // After refresh, check if packages are available
+        // The packages will update via the hook, triggering the useEffect
+        setTimeout(() => {
+          if (packages.length > 0) {
+            setOfferingsLoaded(true);
+          }
+        }, 500);
+      } catch (error) {
+        console.error('[PaywallScreen] Retry failed:', error);
+      }
     }
   };
 
@@ -264,50 +296,54 @@ export const PaywallScreen: React.FC = () => {
         {/* Pricing Options */}
         <View style={styles.pricingSection}>
           {/* Yearly Option - Highlighted */}
-          <Pressable
-            style={[
-              styles.pricingCard,
-              styles.pricingCardHighlighted,
-              selectedPlan === 'yearly' && styles.pricingCardSelected,
-            ]}
-            onPress={() => handlePlanSelect('yearly')}
-            disabled={isLoading || !isRevenueCatAvailable}
-          >
-            <View style={styles.badgeContainer}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>BEST VALUE</Text>
+          {yearlyPackage && (
+            <Pressable
+              style={[
+                styles.pricingCard,
+                styles.pricingCardHighlighted,
+                selectedPackageId === yearlyPackage.identifier && styles.pricingCardSelected,
+              ]}
+              onPress={() => handlePlanSelect(yearlyPackage.identifier)}
+              disabled={isLoading}
+            >
+              <View style={styles.badgeContainer} pointerEvents="none">
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>BEST VALUE</Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.radioContainer}>
-              <View style={[styles.radio, selectedPlan === 'yearly' && styles.radioSelected]}>
-                {selectedPlan === 'yearly' && <View style={styles.radioInner} />}
+              <View style={styles.radioContainer} pointerEvents="none">
+                <View style={[styles.radio, selectedPackageId === yearlyPackage.identifier && styles.radioSelected]}>
+                  {selectedPackageId === yearlyPackage.identifier && <View style={styles.radioInner} />}
+                </View>
               </View>
-            </View>
-            <Text style={styles.pricingAmount}>{yearlyPrice}</Text>
-            <Text style={styles.pricingPeriod}>/ year</Text>
-            <Text style={styles.pricingSubtext}>
-              Less than {dailyPrice}/day to recover properly.
-            </Text>
-          </Pressable>
+              <Text style={styles.pricingAmount}>{yearlyPrice}</Text>
+              <Text style={styles.pricingPeriod}>/ year</Text>
+              <Text style={styles.pricingSubtext}>
+                Less than {dailyPrice}/day to recover properly.
+              </Text>
+            </Pressable>
+          )}
 
           {/* Monthly Option */}
-          <Pressable
-            style={[
-              styles.pricingCard,
-              selectedPlan === 'monthly' && styles.pricingCardSelected,
-            ]}
-            onPress={() => handlePlanSelect('monthly')}
-            disabled={isLoading || !isRevenueCatAvailable}
-          >
-            <View style={styles.radioContainer}>
-              <View style={[styles.radio, selectedPlan === 'monthly' && styles.radioSelected]}>
-                {selectedPlan === 'monthly' && <View style={styles.radioInner} />}
+          {monthlyPackage && (
+            <Pressable
+              style={[
+                styles.pricingCard,
+                selectedPackageId === monthlyPackage.identifier && styles.pricingCardSelected,
+              ]}
+              onPress={() => handlePlanSelect(monthlyPackage.identifier)}
+              disabled={isLoading}
+            >
+              <View style={styles.radioContainer} pointerEvents="none">
+                <View style={[styles.radio, selectedPackageId === monthlyPackage.identifier && styles.radioSelected]}>
+                  {selectedPackageId === monthlyPackage.identifier && <View style={styles.radioInner} />}
+                </View>
               </View>
-            </View>
-            <Text style={styles.pricingAmount}>{monthlyPrice}</Text>
-            <Text style={styles.pricingPeriod}>/ month</Text>
-            <Text style={styles.pricingSubtext}>Flexible — cancel anytime</Text>
-          </Pressable>
+              <Text style={styles.pricingAmount}>{monthlyPrice}</Text>
+              <Text style={styles.pricingPeriod}>/ month</Text>
+              <Text style={styles.pricingSubtext}>Flexible — cancel anytime</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Error Message */}
@@ -315,8 +351,8 @@ export const PaywallScreen: React.FC = () => {
           <Text style={styles.errorText}>{revenueCatError}</Text>
         )}
         
-        {/* SDK Not Available Message - Premium-friendly fallback */}
-        {!isRevenueCatAvailable && (
+        {/* Purchases Unavailable Messages */}
+        {isRevenueCatAvailable && !offeringsLoaded && (
           <View style={styles.sdkNotAvailableCard}>
             <Ionicons name="information-circle-outline" size={20} color="rgba(0, 0, 0, 0.5)" />
             <View style={styles.sdkNotAvailableTextContainer}>
@@ -325,29 +361,35 @@ export const PaywallScreen: React.FC = () => {
             </View>
           </View>
         )}
+        
+        {!isRevenueCatAvailable && __DEV__ && (
+          <View style={styles.devNoteCard}>
+            <Text style={styles.devNoteText}>Purchases available in TestFlight builds.</Text>
+          </View>
+        )}
 
         {/* CTA Button */}
         <View style={styles.ctaSection}>
           <TouchableOpacity
             style={[
               styles.ctaButton, 
-              (isLoading || !isRevenueCatAvailable) && styles.ctaButtonDisabled
+              (!purchasesReady || isLoading) && styles.ctaButtonDisabled
             ]}
-            onPress={!isRevenueCatAvailable ? handleRetry : handlePurchase}
+            onPress={!purchasesReady ? handleRetry : handlePurchase}
             activeOpacity={0.8}
-            disabled={isLoading || (!isRevenueCatAvailable && !isPurchasing)}
+            disabled={isLoading || (!purchasesReady && !isPurchasing)}
           >
             {isPurchasing ? (
               <ActivityIndicator color="#FFFFFF" />
-            ) : !isRevenueCatAvailable ? (
+            ) : !purchasesReady ? (
               <Text style={styles.ctaText}>Try Again</Text>
             ) : (
               <Text style={styles.ctaText}>
-                {getCTAText(selectedPlan === 'yearly', source)}
+                {getCTAText(selectedPackageId === yearlyPackage?.identifier, source)}
               </Text>
             )}
           </TouchableOpacity>
-          {isRevenueCatAvailable && (
+          {purchasesReady && (
             <>
               <Text style={styles.ctaSubtext}>
                 No risk. Cancel anytime.
@@ -618,6 +660,40 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(0, 0, 0, 0.6)',
     lineHeight: 18,
+  },
+  includesSection: {
+    marginBottom: 24,
+    paddingHorizontal: 4,
+  },
+  includesTitle: {
+    ...typography.labelSmall,
+    fontSize: 12,
+    color: 'rgba(0, 0, 0, 0.5)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  includesList: {
+    gap: 4,
+  },
+  includesItem: {
+    ...typography.bodySmall,
+    fontSize: 13,
+    color: 'rgba(0, 0, 0, 0.65)',
+    lineHeight: 20,
+  },
+  devNoteCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  devNoteText: {
+    ...typography.bodySmall,
+    fontSize: 12,
+    color: 'rgba(0, 0, 0, 0.5)',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   errorText: {
     ...typography.bodySmall,

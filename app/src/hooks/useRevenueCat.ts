@@ -279,6 +279,29 @@ export function useRevenueCat(): UseRevenueCatReturn {
     }
   }, [updateFromCustomerInfo, isAvailable]);
 
+  const refreshOfferings = useCallback(async (): Promise<void> => {
+    if (!isAvailable) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      // Re-fetch offerings
+      const offering = await getOfferings();
+      if (offering?.availablePackages) {
+        setPackages(offering.availablePackages);
+      } else {
+        setError('No packages available');
+      }
+    } catch (err: any) {
+      console.error('[useRevenueCat] Refresh offerings error:', err);
+      setError(err.message || 'Failed to load packages');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAvailable]);
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Return
   // ─────────────────────────────────────────────────────────────────────────────
@@ -300,6 +323,7 @@ export function useRevenueCat(): UseRevenueCatReturn {
     purchase,
     restore,
     refresh,
+    refreshOfferings,
     
     // Errors
     error,
