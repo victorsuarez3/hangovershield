@@ -374,7 +374,7 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
               label="Account"
               subtitle="Your plan, privacy & support."
               isActive={currentScreen === 'account'}
-              onPress={() => navigateAfterClose(onGoToAccount)}
+              onPress={handleAccount}
             />
           </View>
 
