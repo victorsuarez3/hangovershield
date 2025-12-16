@@ -335,43 +335,7 @@ function AppContent() {
     );
   }
 
-  // Temporary: Skip auth mode for testing
-  // When skipAuthMode is true, bypass user check and go directly to onboarding/app
-  if (skipAuthMode) {
-    const hasCompletedFeelingOnboarding = feelingOnboardingCompleted;
-    if (!hasCompletedFeelingOnboarding) {
-      return (
-        <AppNavigationProvider
-          currentContext="onboarding"
-          goToHome={handleGoToHome}
-          goToToday={handleGoToToday}
-          goToProgress={handleGoToProgress}
-          goToDailyCheckIn={handleGoToDailyCheckIn}
-          goToWaterLog={handleGoToWaterLog}
-          goToEveningCheckIn={handleGoToEveningCheckIn}
-          goToSubscription={handleGoToSubscription}
-        >
-          <OnboardingNavigator />
-        </AppNavigationProvider>
-      );
-    }
-    return (
-      <AppNavigationProvider
-        currentContext="app"
-        goToHome={handleGoToHome}
-        goToToday={handleGoToToday}
-        goToProgress={handleGoToProgress}
-        goToDailyCheckIn={handleGoToDailyCheckIn}
-        goToWaterLog={handleGoToWaterLog}
-        goToEveningCheckIn={handleGoToEveningCheckIn}
-        goToSubscription={handleGoToSubscription}
-      >
-        <AppNavigator />
-      </AppNavigationProvider>
-    );
-  }
-
-  // Unauthenticated: show auth navigator (login)
+  // Unauthenticated: show auth navigator (login) OR guest mode if Skip OAuth was pressed
   if (!user) {
     // Guest/Test mode: enabled only after pressing "Skip OAuth"
     // Allows exploring the app and navigation without being logged in.
