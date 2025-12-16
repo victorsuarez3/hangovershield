@@ -386,8 +386,9 @@ export const ProgressScreen: React.FC = () => {
   }, []);
 
   const handleGoToCheckIn = useCallback(() => {
-    appNav.goToDailyCheckIn();
-  }, [appNav]);
+    // Navigate directly to CheckIn screen within AppNavigator
+    navigation.navigate('CheckIn');
+  }, [navigation]);
 
   const handleGoToWaterLog = useCallback(() => {
     navigation.navigate('DailyWaterLog');
