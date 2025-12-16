@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
@@ -39,6 +39,9 @@ console.log('RC exports check:', {
 const INTRO_ONBOARDING_KEY = '@hangovershield_intro_onboarding_completed'; // NEW pre-auth intro
 const FEELING_ONBOARDING_KEY = '@hangovershield_feeling_onboarding_completed'; // Daily check-in flow
 
+// Global navigation ref so app-wide actions can navigate across conditional navigators
+export const navigationRef = createNavigationContainerRef<any>();
+
 function AppContent() {
   const { user, userDoc, loading } = useAuth();
   const [showSplash, setShowSplash] = React.useState(true);
@@ -52,6 +55,11 @@ function AppContent() {
   // Daily check-in status for returning users
   const [dailyCheckInStatus, setDailyCheckInStatus] = React.useState<'loading' | 'needs_checkin' | 'completed'>('loading');
   const [checkingDailyStatus, setCheckingDailyStatus] = React.useState(false);
+  const [pendingNav, setPendingNav] = React.useState<
+    | null
+    | { kind: 'tab'; tab: 'Home' | 'SmartPlan' | 'Tools' | 'Progress' | 'Settings' }
+    | { kind: 'homeStack'; screen: 'CheckIn' | 'DailyWaterLog' | 'EveningCheckIn' | 'Paywall'; params?: any }
+  >(null);
 
   // Check if we're in a real device environment (not Expo Go / dev overlay)
   const isRealDevice = React.useMemo(() => {
@@ -144,33 +152,11 @@ function AppContent() {
     checkDailyStatus();
   }, [user, feelingOnboardingCompleted]);
 
-  // Navigation handlers for global menu - defined early so they're available in all returns
-  const handleGoToProgress = React.useCallback(() => {
-    // If in daily check-in flow, complete it and go to app
-    if (dailyCheckInStatus === 'needs_checkin') {
-      setDailyCheckInStatus('completed');
-    }
-    // Navigation to Progress tab will happen through the AppNavigator
-  }, [dailyCheckInStatus]);
-
-  const handleGoToDailyCheckIn = React.useCallback(() => {
-    // Reset daily check-in status to show the check-in screen
-    setDailyCheckInStatus('needs_checkin');
-  }, []);
-
-  const handleGoToSubscription = React.useCallback(() => {
-    // For now, just mark as completed to go to app
-    // TODO: Navigate to subscription management
-    if (dailyCheckInStatus === 'needs_checkin') {
-      setDailyCheckInStatus('completed');
-    }
-  }, [dailyCheckInStatus]);
-
-  const handleGoToHome = React.useCallback(async () => {
+  const ensureMainAppVisible = React.useCallback(async () => {
     // Only proceed if user is authenticated
     if (!user) {
-      console.warn('[handleGoToHome] User not authenticated, cannot navigate to home');
-      return;
+      console.warn('[AppNavigation] User not authenticated, cannot navigate');
+      return false;
     }
 
     // Mark onboarding as completed if in onboarding flow
@@ -186,12 +172,88 @@ function AppContent() {
       }
     }
     
-    // Mark daily check-in as completed if in daily check-in flow
-    if (dailyCheckInStatus === 'needs_checkin') {
-      setDailyCheckInStatus('completed');
+    // Ensure we are not stuck behind the daily check-in gate when user explicitly navigates.
+    setCheckingDailyStatus(false);
+    setDailyCheckInStatus('completed');
+    return true;
+  }, [user, feelingOnboardingCompleted]);
+
+  // Flush pending navigation once the correct navigator tree is mounted
+  React.useEffect(() => {
+    if (!pendingNav) return;
+    if (!navigationRef.isReady()) return;
+
+    const rootState = navigationRef.getRootState();
+    const routeNames = rootState?.routeNames ?? [];
+
+    // Wait until the target routes exist in the current navigation tree
+    if (pendingNav.kind === 'tab') {
+      if (!routeNames.includes(pendingNav.tab)) return;
+      navigationRef.navigate(pendingNav.tab);
+      setPendingNav(null);
+      return;
     }
-    // App.tsx will automatically show AppNavigator when these conditions are met
-  }, [user, feelingOnboardingCompleted, dailyCheckInStatus]);
+
+    // Home stack destinations require the Tab navigator to be mounted
+    if (pendingNav.kind === 'homeStack') {
+      if (!routeNames.includes('Home')) return;
+      navigationRef.navigate('Home', {
+        screen: pendingNav.screen,
+        params: pendingNav.params,
+      });
+      setPendingNav(null);
+      return;
+    }
+  }, [pendingNav]);
+
+  // Navigation handlers for global menu (works from onboarding/daily_checkin/app)
+  const handleGoToHome = React.useCallback(async () => {
+    const ok = await ensureMainAppVisible();
+    if (!ok) return;
+    setPendingNav({ kind: 'tab', tab: 'Home' });
+  }, [ensureMainAppVisible]);
+
+  const handleGoToToday = React.useCallback(async () => {
+    const ok = await ensureMainAppVisible();
+    if (!ok) return;
+    setPendingNav({ kind: 'tab', tab: 'SmartPlan' });
+  }, [ensureMainAppVisible]);
+
+  const handleGoToProgress = React.useCallback(async () => {
+    const ok = await ensureMainAppVisible();
+    if (!ok) return;
+    setPendingNav({ kind: 'tab', tab: 'Progress' });
+  }, [ensureMainAppVisible]);
+
+  const handleGoToWaterLog = React.useCallback(async () => {
+    const ok = await ensureMainAppVisible();
+    if (!ok) return;
+    setPendingNav({ kind: 'homeStack', screen: 'DailyWaterLog' });
+  }, [ensureMainAppVisible]);
+
+  const handleGoToEveningCheckIn = React.useCallback(async () => {
+    const ok = await ensureMainAppVisible();
+    if (!ok) return;
+    setPendingNav({ kind: 'homeStack', screen: 'EveningCheckIn' });
+  }, [ensureMainAppVisible]);
+
+  const handleGoToDailyCheckIn = React.useCallback(async () => {
+    // This flow is rendered conditionally in AppContent
+    const ok = await ensureMainAppVisible();
+    if (!ok) return;
+    setPendingNav(null);
+    setDailyCheckInStatus('needs_checkin');
+  }, [ensureMainAppVisible]);
+
+  const handleGoToSubscription = React.useCallback(async (source?: string, contextScreen?: string) => {
+    const ok = await ensureMainAppVisible();
+    if (!ok) return;
+    setPendingNav({
+      kind: 'homeStack',
+      screen: 'Paywall',
+      params: { source: source ?? 'menu_subscription', contextScreen },
+    });
+  }, [ensureMainAppVisible]);
 
   // Wait for onboarding status to be loaded
   if (introOnboardingCompleted === null) {
@@ -258,10 +320,13 @@ function AppContent() {
       return (
         <AppNavigationProvider
           currentContext="onboarding"
+          goToHome={handleGoToHome}
+          goToToday={handleGoToToday}
           goToProgress={handleGoToProgress}
           goToDailyCheckIn={handleGoToDailyCheckIn}
+          goToWaterLog={handleGoToWaterLog}
+          goToEveningCheckIn={handleGoToEveningCheckIn}
           goToSubscription={handleGoToSubscription}
-          goToHome={handleGoToHome}
         >
           <OnboardingNavigator />
         </AppNavigationProvider>
@@ -270,10 +335,13 @@ function AppContent() {
     return (
       <AppNavigationProvider
         currentContext="app"
+        goToHome={handleGoToHome}
+        goToToday={handleGoToToday}
         goToProgress={handleGoToProgress}
         goToDailyCheckIn={handleGoToDailyCheckIn}
+        goToWaterLog={handleGoToWaterLog}
+        goToEveningCheckIn={handleGoToEveningCheckIn}
         goToSubscription={handleGoToSubscription}
-        goToHome={handleGoToHome}
       >
         <AppNavigator />
       </AppNavigationProvider>
@@ -313,10 +381,13 @@ function AppContent() {
     return (
       <AppNavigationProvider
         currentContext="onboarding"
+        goToHome={handleGoToHome}
+        goToToday={handleGoToToday}
         goToProgress={handleGoToProgress}
         goToDailyCheckIn={handleGoToDailyCheckIn}
+        goToWaterLog={handleGoToWaterLog}
+        goToEveningCheckIn={handleGoToEveningCheckIn}
         goToSubscription={handleGoToSubscription}
-        goToHome={handleGoToHome}
       >
         <OnboardingNavigator />
       </AppNavigationProvider>
@@ -339,10 +410,13 @@ function AppContent() {
     return (
       <AppNavigationProvider
         currentContext="daily_checkin"
+        goToHome={handleGoToHome}
+        goToToday={handleGoToToday}
         goToProgress={handleGoToProgress}
         goToDailyCheckIn={handleGoToDailyCheckIn}
+        goToWaterLog={handleGoToWaterLog}
+        goToEveningCheckIn={handleGoToEveningCheckIn}
         goToSubscription={handleGoToSubscription}
-        goToHome={handleGoToHome}
       >
         <DailyCheckInNavigator
           userId={user.uid}
@@ -358,10 +432,13 @@ function AppContent() {
   return (
     <AppNavigationProvider
       currentContext="app"
+      goToHome={handleGoToHome}
+      goToToday={handleGoToToday}
       goToProgress={handleGoToProgress}
       goToDailyCheckIn={handleGoToDailyCheckIn}
+      goToWaterLog={handleGoToWaterLog}
+      goToEveningCheckIn={handleGoToEveningCheckIn}
       goToSubscription={handleGoToSubscription}
-      goToHome={handleGoToHome}
     >
       <AppNavigator />
     </AppNavigationProvider>
@@ -401,7 +478,7 @@ export default function App() {
         <SafeAreaProvider>
           <ThemeProvider>
             <AuthProvider>
-              <NavigationContainer>
+              <NavigationContainer ref={navigationRef}>
                 <AppContent />
                 <StatusBar style="dark" />
               </NavigationContainer>

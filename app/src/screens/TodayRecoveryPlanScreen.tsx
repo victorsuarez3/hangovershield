@@ -886,8 +886,14 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         visible={menuVisible}
         onClose={() => setMenuVisible(false)}
         currentScreen="today"
-        isPremium={false} // TODO: Read from user subscription state
-        onGoToToday={() => setMenuVisible(false)}
+        onGoToHome={() => {
+          setMenuVisible(false);
+          appNav.goToHome();
+        }}
+        onGoToToday={() => {
+          // Already on today's plan during onboarding; keep it instant
+          setMenuVisible(false);
+        }}
         onGoToProgress={() => {
           setMenuVisible(false);
           appNav.goToProgress();
@@ -896,9 +902,21 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
           setMenuVisible(false);
           appNav.goToDailyCheckIn();
         }}
-        onGoToSubscription={() => {
+        onGoToWaterLog={() => {
           setMenuVisible(false);
-          appNav.goToSubscription();
+          appNav.goToWaterLog();
+        }}
+        onGoToEveningCheckIn={() => {
+          setMenuVisible(false);
+          appNav.goToEveningCheckIn();
+        }}
+        onGoToEveningCheckInLocked={() => {
+          setMenuVisible(false);
+          appNav.goToEveningCheckIn();
+        }}
+        onGoToSubscription={(source) => {
+          setMenuVisible(false);
+          appNav.goToSubscription(source, 'TodayRecoveryPlan');
         }}
       />
     </View>

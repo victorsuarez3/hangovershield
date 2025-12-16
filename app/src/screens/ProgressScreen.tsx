@@ -21,7 +21,6 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
 import { AppHeader } from '../components/AppHeader';
 import { AppMenuSheet } from '../components/AppMenuSheet';
-import { useAppNavigation } from '../contexts/AppNavigationContext';
 import { useAccessStatus } from '../hooks/useAccessStatus';
 import { SoftGateCard } from '../components/SoftGateCard';
 import { LockedSection } from '../components/LockedSection';
@@ -253,7 +252,6 @@ const EmptyState: React.FC = () => (
 export const ProgressScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const appNav = useAppNavigation();
   const { user } = useAuth();
   const accessInfo = useAccessStatus();
 
@@ -445,20 +443,34 @@ export const ProgressScreen: React.FC = () => {
         visible={menuVisible}
         onClose={() => setMenuVisible(false)}
         currentScreen="progress"
-        isPremium={false} // TODO: Read from user subscription state
+        onGoToHome={() => {
+          setMenuVisible(false);
+          navigation.navigate('Home');
+        }}
         onGoToToday={() => {
           setMenuVisible(false);
-          // Navigate to Home tab which shows Today's plan
-          navigation.navigate('Home');
+          navigation.navigate('SmartPlan');
         }}
         onGoToProgress={() => setMenuVisible(false)}
         onGoToCheckIn={() => {
           setMenuVisible(false);
-          appNav.goToDailyCheckIn();
+          navigation.navigate('Home', { screen: 'CheckIn' });
         }}
-        onGoToSubscription={() => {
+        onGoToWaterLog={() => {
           setMenuVisible(false);
-          appNav.goToSubscription();
+          navigation.navigate('Home', { screen: 'DailyWaterLog' });
+        }}
+        onGoToEveningCheckIn={() => {
+          setMenuVisible(false);
+          navigation.navigate('Home', { screen: 'EveningCheckIn' });
+        }}
+        onGoToEveningCheckInLocked={() => {
+          setMenuVisible(false);
+          navigation.navigate('Home', { screen: 'EveningCheckIn' });
+        }}
+        onGoToSubscription={(source) => {
+          setMenuVisible(false);
+          navigation.navigate('Home', { screen: 'Paywall', params: { source } });
         }}
       />
     </View>

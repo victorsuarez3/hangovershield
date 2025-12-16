@@ -10,23 +10,26 @@ import React, { createContext, useContext, useCallback, ReactNode } from 'react'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface AppNavigationContextType {
-  // Navigate to main app and specific tab
-  goToProgress: () => void;
-  // Trigger daily check-in flow
-  goToDailyCheckIn: () => void;
-  // Navigate to subscription/paywall
-  goToSubscription: () => void;
-  // Navigate to Home (main app)
+  // Navigate to main app and specific destinations (works from onboarding, daily check-in, or app)
   goToHome: () => void;
+  goToToday: () => void;
+  goToProgress: () => void;
+  goToDailyCheckIn: () => void;
+  goToWaterLog: () => void;
+  goToEveningCheckIn: () => void;
+  goToSubscription: (source?: string, contextScreen?: string) => void;
   // Current context (where the user currently is)
   currentContext: 'onboarding' | 'daily_checkin' | 'app' | 'unknown';
 }
 
 const defaultContext: AppNavigationContextType = {
+  goToHome: () => console.warn('[AppNavigation] goToHome not implemented'),
+  goToToday: () => console.warn('[AppNavigation] goToToday not implemented'),
   goToProgress: () => console.warn('[AppNavigation] goToProgress not implemented'),
   goToDailyCheckIn: () => console.warn('[AppNavigation] goToDailyCheckIn not implemented'),
+  goToWaterLog: () => console.warn('[AppNavigation] goToWaterLog not implemented'),
+  goToEveningCheckIn: () => console.warn('[AppNavigation] goToEveningCheckIn not implemented'),
   goToSubscription: () => console.warn('[AppNavigation] goToSubscription not implemented'),
-  goToHome: () => console.warn('[AppNavigation] goToHome not implemented'),
   currentContext: 'unknown',
 };
 
@@ -42,10 +45,13 @@ const AppNavigationContext = createContext<AppNavigationContextType>(defaultCont
 
 export interface AppNavigationProviderProps {
   children: ReactNode;
+  goToHome: () => void;
+  goToToday: () => void;
   goToProgress: () => void;
   goToDailyCheckIn: () => void;
-  goToSubscription: () => void;
-  goToHome: () => void;
+  goToWaterLog: () => void;
+  goToEveningCheckIn: () => void;
+  goToSubscription: (source?: string, contextScreen?: string) => void;
   currentContext: 'onboarding' | 'daily_checkin' | 'app' | 'unknown';
 }
 
@@ -55,19 +61,25 @@ export interface AppNavigationProviderProps {
 
 export const AppNavigationProvider: React.FC<AppNavigationProviderProps> = ({
   children,
+  goToHome,
+  goToToday,
   goToProgress,
   goToDailyCheckIn,
+  goToWaterLog,
+  goToEveningCheckIn,
   goToSubscription,
-  goToHome,
   currentContext,
 }) => {
   return (
     <AppNavigationContext.Provider
       value={{
+        goToHome,
+        goToToday,
         goToProgress,
         goToDailyCheckIn,
+        goToWaterLog,
+        goToEveningCheckIn,
         goToSubscription,
-        goToHome,
         currentContext,
       }}
     >

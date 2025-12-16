@@ -47,6 +47,10 @@ export const HomeScreen: React.FC = () => {
     navigation.navigate('SmartPlan');
   }, [navigation]);
 
+  const handleGoToProgress = useCallback(() => {
+    navigation.navigate('Progress');
+  }, [navigation]);
+
   const handleGoToCheckIn = useCallback(() => {
     // Navigate to CheckIn screen in Home stack
     navigation.navigate('CheckIn');
