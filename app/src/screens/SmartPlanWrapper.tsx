@@ -106,6 +106,13 @@ export const SmartPlanWrapper: React.FC = () => {
       drinkingToday,
     });
 
+    console.log('[SmartPlanWrapper] Generated plan:', {
+      feeling,
+      symptoms,
+      stepsCount: plan.steps.length,
+      steps: plan.steps.map(s => s.title),
+    });
+
     // Get today's date
     const today = new Date();
     const dateString = today.toLocaleDateString('en-US', {

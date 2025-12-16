@@ -4,7 +4,7 @@
  * Calm / Whoop / Levels quality
  */
 
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -614,6 +614,16 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
   } = props;
 
   const [localActions, setLocalActions] = useState<RecoveryAction[]>(initialActions);
+
+  // Update localActions when initialActions prop changes (e.g., when plan loads)
+  useEffect(() => {
+    if (initialActions && initialActions.length > 0) {
+      console.log('[TodayRecoveryPlanScreen] Updating actions:', initialActions.length, 'actions');
+      setLocalActions(initialActions);
+    } else {
+      console.warn('[TodayRecoveryPlanScreen] No actions provided or empty array');
+    }
+  }, [initialActions]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Hydration State
