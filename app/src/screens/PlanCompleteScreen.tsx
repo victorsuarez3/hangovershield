@@ -109,19 +109,24 @@ export const PlanCompleteScreen: React.FC = () => {
   }, []);
 
   const handleDone = () => {
-    // Navigate to HomeScreen using AppNavigationContext
-    // This works from any navigator context (OnboardingNavigator or DailyCheckInNavigator)
-    console.log('[PlanCompleteScreen] handleDone called', {
-      user: user?.uid,
-      context: appNav.currentContext,
-    });
-    
-    if (!user) {
-      console.error('[PlanCompleteScreen] User not authenticated, cannot navigate to home');
-      return;
+    // Navigate to HomeScreen
+    // Try direct navigation first (if we're in AppNavigator)
+    try {
+      navigation.navigate('HomeMain');
+    } catch (error) {
+      // Fallback to AppNavigationContext if direct navigation fails
+      console.log('[PlanCompleteScreen] Using appNav.goToHome()', {
+        user: user?.uid,
+        context: appNav.currentContext,
+      });
+      
+      if (user) {
+        appNav.goToHome();
+      } else {
+        // If no user, just navigate directly
+        navigation.navigate('HomeMain');
+      }
     }
-    
-    appNav.goToHome();
   };
 
   const rotateInterpolate = iconRotate.interpolate({

@@ -10,6 +10,10 @@ export type RootStackParamList = {
   CheckIn: undefined;
   CheckInComplete: undefined;
   SmartPlan: undefined;
+  PlanComplete: {
+    stepsCompleted: number;
+    totalSteps: number;
+  };
   Tools: undefined;
   Progress: undefined;
   ProfileMain: undefined;

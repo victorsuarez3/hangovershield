@@ -5,6 +5,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
 import { TodayRecoveryPlanScreen, RecoveryAction } from './TodayRecoveryPlanScreen';
 import { getTodayDailyCheckIn } from '../services/dailyCheckIn';
@@ -23,6 +24,7 @@ const FEELING_DISPLAY_LABELS: Record<FeelingOption, string> = {
 
 export const SmartPlanWrapper: React.FC = () => {
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
   const [isLoading, setIsLoading] = useState(true);
   const [planData, setPlanData] = useState<{
     date: string;
@@ -130,20 +132,25 @@ export const SmartPlanWrapper: React.FC = () => {
   };
 
   const handleCompletePlan = useCallback(async (stepsCompleted: number, totalSteps: number) => {
-    if (!user?.uid) return;
-
-    const dateId = getTodayId();
-    try {
-      await markPlanCompletedForToday({
-        uid: user.uid,
-        dateId,
-        stepsCompleted,
-        totalSteps,
-      });
-    } catch (error) {
-      console.error('Error saving plan completion:', error);
+    // Save completion to Firestore if user is authenticated
+    if (user?.uid) {
+      const dateId = getTodayId();
+      try {
+        await markPlanCompletedForToday({
+          uid: user.uid,
+          dateId,
+          stepsCompleted,
+          totalSteps,
+        });
+      } catch (error) {
+        console.error('Error saving plan completion:', error);
+        // Continue to celebration screen even if save fails
+      }
     }
-  }, [user?.uid]);
+
+    // Navigate to celebration screen
+    navigation.navigate('PlanComplete', { stepsCompleted, totalSteps });
+  }, [user?.uid, navigation]);
 
   if (isLoading || !planData) {
     // Show loading state or TodayRecoveryPlanScreen with default data
