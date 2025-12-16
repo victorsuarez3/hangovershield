@@ -33,6 +33,16 @@ import { RootStackParamList } from '../navigation/types';
 import { useRevenueCat } from '../hooks/useRevenueCat';
 import { useAccessStatus } from '../hooks/useAccessStatus';
 import { Analytics } from '../utils/analytics';
+import { getPaywallCopy, PAYWALL_FEATURES, getCTAText, calculateDailyPrice } from '../utils/paywallCopy';
+import { PaywallSourceType } from '../constants/paywallSources';
+
+// Optional haptics - gracefully handle if not available
+let Haptics: any = null;
+try {
+  Haptics = require('expo-haptics');
+} catch {
+  // Haptics not available, continue without it
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -52,9 +62,12 @@ export const PaywallScreen: React.FC = () => {
   const route = useRoute<PaywallScreenRouteProp>();
   const navigation = useNavigation<PaywallScreenNavigationProp>();
   
-  // Get source for analytics
-  const source = route.params?.source || 'unknown';
+  // Get source for analytics and copy
+  const source = (route.params?.source || 'default') as PaywallSourceType;
   const contextScreen = route.params?.contextScreen || 'unknown';
+  
+  // Get dynamic copy based on source
+  const copy = getPaywallCopy(source);
   
   // RevenueCat hook
   const {
@@ -63,6 +76,7 @@ export const PaywallScreen: React.FC = () => {
     yearlyPackage,
     purchase,
     restore,
+    refresh,
     isLoading: isLoadingPackages,
     error: revenueCatError,
     isAvailable: isRevenueCatAvailable,
@@ -75,6 +89,12 @@ export const PaywallScreen: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<SelectedPlan>('yearly');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [retryAttempts, setRetryAttempts] = useState(0);
+  
+  // Calculate daily price for yearly plan
+  const yearlyPriceNumber = yearlyPackage?.product.price || 29.99;
+  const yearlyCurrencyCode = yearlyPackage?.product.currencyCode || 'USD';
+  const dailyPrice = calculateDailyPrice(yearlyPriceNumber, yearlyCurrencyCode);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Log paywall shown on mount
@@ -145,6 +165,27 @@ export const PaywallScreen: React.FC = () => {
     Analytics.paywallDismissed(source, 'close');
     navigation.goBack();
   };
+  
+  const handlePlanSelect = (plan: SelectedPlan) => {
+    // Haptic feedback on selection (optional)
+    if (Haptics) {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (error) {
+        // Haptics not available, continue silently
+      }
+    }
+    setSelectedPlan(plan);
+  };
+  
+  const handleRetry = async () => {
+    setRetryAttempts(prev => prev + 1);
+    // Trigger refresh by calling refresh from useRevenueCat hook
+    // The refresh function will re-fetch offerings/packages
+    if (refresh) {
+      await refresh();
+    }
+  };
 
   const handlePrivacyPolicy = () => {
     // TODO: Open privacy policy
@@ -197,31 +238,28 @@ export const PaywallScreen: React.FC = () => {
             <View style={styles.iconGlow} />
             <Ionicons name="shield-checkmark" size={64} color="#0F3D3E" />
           </View>
-          <Text style={styles.headline}>Unlock Full Recovery</Text>
+          <Text style={styles.headline}>{copy.headline}</Text>
           <Text style={styles.subheadline}>
-            Get personalized recovery plans, evening check-ins, detailed insights, and more.
+            {copy.subheadline}
           </Text>
         </View>
 
         {/* Feature Highlights */}
         <View style={styles.featuresCard}>
-          <FeatureRow
-            icon="sparkles-outline"
-            text="Personalized daily recovery plan tailored to how you feel"
-          />
-          <FeatureRow
-            icon="moon-outline"
-            text="Evening check-ins to track your progress"
-          />
-          <FeatureRow
-            icon="stats-chart-outline"
-            text="Detailed trends and insights (30/90 day)"
-          />
-          <FeatureRow
-            icon="water-outline"
-            text="Advanced hydration tracking and goals"
-          />
+          {PAYWALL_FEATURES.map((feature, index) => (
+            <FeatureRow
+              key={index}
+              icon={index === 0 ? 'sparkles-outline' : index === 1 ? 'moon-outline' : index === 2 ? 'stats-chart-outline' : 'water-outline'}
+              title={feature.title}
+              subtitle={feature.subtitle}
+            />
+          ))}
         </View>
+
+        {/* Urgency Line */}
+        {!accessInfo.isPremium && (
+          <Text style={styles.urgencyLine}>{copy.urgencyLine}</Text>
+        )}
 
         {/* Pricing Options */}
         <View style={styles.pricingSection}>
@@ -232,8 +270,8 @@ export const PaywallScreen: React.FC = () => {
               styles.pricingCardHighlighted,
               selectedPlan === 'yearly' && styles.pricingCardSelected,
             ]}
-            onPress={() => setSelectedPlan('yearly')}
-            disabled={isLoading}
+            onPress={() => handlePlanSelect('yearly')}
+            disabled={isLoading || !isRevenueCatAvailable}
           >
             <View style={styles.badgeContainer}>
               <View style={styles.badge}>
@@ -247,7 +285,9 @@ export const PaywallScreen: React.FC = () => {
             </View>
             <Text style={styles.pricingAmount}>{yearlyPrice}</Text>
             <Text style={styles.pricingPeriod}>/ year</Text>
-            <Text style={styles.pricingSubtext}>Save 58% — feel better all year</Text>
+            <Text style={styles.pricingSubtext}>
+              Less than {dailyPrice}/day to recover properly.
+            </Text>
           </Pressable>
 
           {/* Monthly Option */}
@@ -256,8 +296,8 @@ export const PaywallScreen: React.FC = () => {
               styles.pricingCard,
               selectedPlan === 'monthly' && styles.pricingCardSelected,
             ]}
-            onPress={() => setSelectedPlan('monthly')}
-            disabled={isLoading}
+            onPress={() => handlePlanSelect('monthly')}
+            disabled={isLoading || !isRevenueCatAvailable}
           >
             <View style={styles.radioContainer}>
               <View style={[styles.radio, selectedPlan === 'monthly' && styles.radioSelected]}>
@@ -275,35 +315,48 @@ export const PaywallScreen: React.FC = () => {
           <Text style={styles.errorText}>{revenueCatError}</Text>
         )}
         
-        {/* SDK Not Available Message */}
+        {/* SDK Not Available Message - Premium-friendly fallback */}
         {!isRevenueCatAvailable && (
           <View style={styles.sdkNotAvailableCard}>
-            <Ionicons name="information-circle-outline" size={24} color="rgba(0, 0, 0, 0.6)" />
-            <Text style={styles.sdkNotAvailableText}>
-              Subscriptions coming soon! Install RevenueCat SDK to enable purchases.
-            </Text>
+            <Ionicons name="information-circle-outline" size={20} color="rgba(0, 0, 0, 0.5)" />
+            <View style={styles.sdkNotAvailableTextContainer}>
+              <Text style={styles.sdkNotAvailableTitle}>Purchases temporarily unavailable</Text>
+              <Text style={styles.sdkNotAvailableSubtitle}>Please try again in a moment.</Text>
+            </View>
           </View>
         )}
 
         {/* CTA Button */}
         <View style={styles.ctaSection}>
           <TouchableOpacity
-            style={[styles.ctaButton, isLoading && styles.ctaButtonDisabled]}
-            onPress={handlePurchase}
+            style={[
+              styles.ctaButton, 
+              (isLoading || !isRevenueCatAvailable) && styles.ctaButtonDisabled
+            ]}
+            onPress={!isRevenueCatAvailable ? handleRetry : handlePurchase}
             activeOpacity={0.8}
-            disabled={isLoading}
+            disabled={isLoading || (!isRevenueCatAvailable && !isPurchasing)}
           >
             {isPurchasing ? (
               <ActivityIndicator color="#FFFFFF" />
+            ) : !isRevenueCatAvailable ? (
+              <Text style={styles.ctaText}>Try Again</Text>
             ) : (
               <Text style={styles.ctaText}>
-                {selectedPlan === 'yearly' ? 'Get Premium Yearly' : 'Get Premium Monthly'}
+                {getCTAText(selectedPlan === 'yearly', source)}
               </Text>
             )}
           </TouchableOpacity>
-          <Text style={styles.ctaSubtext}>
-            No risk. Cancel anytime.
-          </Text>
+          {isRevenueCatAvailable && (
+            <>
+              <Text style={styles.ctaSubtext}>
+                No risk. Cancel anytime.
+              </Text>
+              <Text style={styles.ctaSubtextSecondary}>
+                Most users cancel after they feel better.
+              </Text>
+            </>
+          )}
         </View>
 
         {/* Footer Links */}
@@ -337,16 +390,22 @@ export const PaywallScreen: React.FC = () => {
 
 interface FeatureRowProps {
   icon: keyof typeof Ionicons.glyphMap;
-  text: string;
+  title: string;
+  subtitle: string;
 }
 
-const FeatureRow: React.FC<FeatureRowProps> = ({ icon, text }) => {
+const FeatureRow: React.FC<FeatureRowProps> = ({ icon, title, subtitle }) => {
   return (
     <View style={styles.featureRow}>
       <View style={styles.featureIconContainer}>
         <Ionicons name={icon} size={20} color="#0F3D3E" />
       </View>
-      <Text style={styles.featureText}>{text}</Text>
+      <View style={styles.featureTextContainer}>
+        <Text style={styles.featureText}>{title}</Text>
+        {subtitle ? (
+          <Text style={styles.featureSubtext}>{subtitle}</Text>
+        ) : null}
+      </View>
     </View>
   );
 };
@@ -445,12 +504,30 @@ const styles = StyleSheet.create({
     marginRight: 14,
     marginTop: 2,
   },
+  featureTextContainer: {
+    flex: 1,
+  },
   featureText: {
     ...typography.body,
     fontSize: 15,
     color: 'rgba(0, 0, 0, 0.8)',
     lineHeight: 22,
-    flex: 1,
+    marginBottom: 2,
+  },
+  featureSubtext: {
+    ...typography.bodySmall,
+    fontSize: 13,
+    color: 'rgba(0, 0, 0, 0.6)',
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+  urgencyLine: {
+    ...typography.bodySmall,
+    fontSize: 13,
+    color: 'rgba(0, 0, 0, 0.7)',
+    textAlign: 'center',
+    marginBottom: 16,
+    fontStyle: 'italic',
   },
   pricingSection: {
     marginBottom: 24,
@@ -558,6 +635,22 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 12,
   },
+  sdkNotAvailableTextContainer: {
+    flex: 1,
+  },
+  sdkNotAvailableTitle: {
+    ...typography.bodyMedium,
+    fontSize: 14,
+    color: 'rgba(0, 0, 0, 0.7)',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  sdkNotAvailableSubtitle: {
+    ...typography.bodySmall,
+    fontSize: 13,
+    color: 'rgba(0, 0, 0, 0.5)',
+    lineHeight: 18,
+  },
   sdkNotAvailableText: {
     ...typography.bodySmall,
     fontSize: 14,
@@ -598,6 +691,15 @@ const styles = StyleSheet.create({
     color: 'rgba(0, 0, 0, 0.6)',
     textAlign: 'center',
     lineHeight: 20,
+    marginBottom: 4,
+  },
+  ctaSubtextSecondary: {
+    ...typography.bodySmall,
+    fontSize: 13,
+    color: 'rgba(0, 0, 0, 0.5)',
+    textAlign: 'center',
+    lineHeight: 18,
+    fontStyle: 'italic',
   },
   footer: {
     flexDirection: 'row',
