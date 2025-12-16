@@ -161,6 +161,7 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
   onGoToWaterLog,
   onGoToEveningCheckIn,
   onGoToEveningCheckInLocked,
+  onGoToAccount,
   onGoToSubscription,
   currentScreen,
 }) => {
