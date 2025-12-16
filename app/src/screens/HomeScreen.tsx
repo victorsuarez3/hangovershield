@@ -32,6 +32,7 @@ import {
   addWaterEntry,
 } from '../services/hydrationService';
 import { createWaterEntry } from '../features/water/waterUtils';
+import { createWaterEntry } from '../features/water/waterUtils';
 import {
   getRecentCheckIns,
   calculateStreak,
@@ -68,7 +69,7 @@ export const HomeScreen: React.FC = () => {
   // Menu state
   const [menuVisible, setMenuVisible] = useState(false);
   const [currentScreen] = useState<CurrentScreen>('home');
-  
+
   // Get user's first name
   const firstName = useMemo(() => {
     const displayName = userDoc?.displayName || '';
@@ -272,6 +273,23 @@ export const HomeScreen: React.FC = () => {
     logWidgetClick('water_log');
     handleGoToWaterLog();
   }, [logWidgetClick, handleGoToWaterLog]);
+
+  // Quick add water handlers
+  const handleQuickAddWater = useCallback(async (amountMl: number) => {
+    if (!user?.uid) return;
+    
+    try {
+      const newEntry = createWaterEntry(amountMl);
+      await addWaterEntry(user.uid, newEntry);
+      
+      // Refresh from service to ensure consistency
+      const todayLogs = await getTodayHydrationLog(user.uid);
+      const totalMl = todayLogs.reduce((sum, entry) => sum + entry.amountMl, 0);
+      setHydrationLogged(totalMl);
+    } catch (error) {
+      console.error('[HomeScreen] Error adding water:', error);
+    }
+  }, [user?.uid]);
 
   const handleProgressPress = useCallback(() => {
     logWidgetClick('progress');
@@ -532,6 +550,61 @@ export const HomeScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+
+        {/* Water Log Widget Card */}
+        <View style={styles.waterLogCard}>
+          {/* Header */}
+          <View style={styles.waterLogHeader}>
+            <Ionicons name="water" size={20} color="#FF8C42" />
+            <Text style={styles.waterLogTitle}>Hydration today</Text>
+          </View>
+
+          {/* Progress */}
+          <View style={styles.waterLogProgress}>
+            <Text style={styles.waterLogProgressText}>
+              Logged: <Text style={styles.waterLogBold}>{hydrationLogged}ml</Text> of {hydrationGoal}ml
+            </Text>
+            <View style={styles.waterLogProgressBar}>
+              <View 
+                style={[
+                  styles.waterLogProgressFill,
+                  { width: `${Math.min(hydrationPercent, 100)}%` }
+                ]} 
+              />
+            </View>
+          </View>
+
+          {/* Quick Add Buttons */}
+          <View style={styles.waterLogQuickAdd}>
+            <TouchableOpacity
+              style={styles.waterLogQuickButton}
+              onPress={() => handleQuickAddWater(250)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.waterLogQuickButtonText}>+250ml</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.waterLogQuickButton}
+              onPress={() => handleQuickAddWater(500)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.waterLogQuickButtonText}>+500ml</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Goal Info */}
+          <Text style={styles.waterLogGoalText}>
+            ~{Math.max(0, hydrationGoal - hydrationLogged)}ml left to reach today's goal
+          </Text>
+
+          {/* View Full Log Link */}
+          <TouchableOpacity
+            onPress={handleWaterLogPress}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.waterLogViewLink}>View full water log</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Quick Widgets Grid - 2x2 */}
         <View style={styles.widgetsGrid}>
@@ -816,6 +889,82 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
+  // Water Log Card
+  waterLogCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 24,
+    shadowColor: 'rgba(15, 76, 68, 0.08)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 1,
+    elevation: 4,
+  },
+  waterLogHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  waterLogTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    color: '#0F3D3E',
+  },
+  waterLogProgress: {
+    marginBottom: 16,
+  },
+  waterLogProgressText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: '#0F3D3E',
+    marginBottom: 8,
+  },
+  waterLogBold: {
+    fontFamily: 'Inter_600SemiBold',
+  },
+  waterLogProgressBar: {
+    height: 8,
+    backgroundColor: 'rgba(15, 76, 68, 0.1)',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  waterLogProgressFill: {
+    height: '100%',
+    backgroundColor: '#0F4C44',
+    borderRadius: 4,
+  },
+  waterLogQuickAdd: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  waterLogQuickButton: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 76, 68, 0.06)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  waterLogQuickButtonText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 14,
+    color: '#0F4C44',
+  },
+  waterLogGoalText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: '#0F3D3E',
+    marginBottom: 12,
+  },
+  waterLogViewLink: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#0F4C44',
+    textDecorationLine: 'underline',
+  },
   // Widgets Grid
   widgetsGrid: {
     flexDirection: 'row',
