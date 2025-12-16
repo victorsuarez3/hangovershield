@@ -89,11 +89,13 @@ export const EveningCheckInScreen: React.FC = () => {
   const [completionMessage] = useState(
     COMPLETION_MESSAGES[Math.floor(Math.random() * COMPLETION_MESSAGES.length)]
   );
+  const [devSkipEnabled, setDevSkipEnabled] = useState(false);
 
   // Dev skip button (bypass premium check)
   const handleSkip = () => {
     if (__DEV__) {
-      // Allow access in dev mode
+      setDevSkipEnabled(true);
+      // Allow access in dev mode - user can now proceed
     }
   };
 
