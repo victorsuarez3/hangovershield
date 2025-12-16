@@ -27,6 +27,13 @@ import { getTodayDailyCheckIn } from './src/services/dailyCheckIn';
 import { getTodayId } from './src/utils/dateUtils';
 import { initializeRevenueCat, identifyUser, logOutRevenueCat } from './src/services/revenuecat';
 
+// Debug: Verify RevenueCat exports are available
+console.log('RC exports check:', {
+  initializeRevenueCat: typeof initializeRevenueCat,
+  identifyUser: typeof identifyUser,
+  logOutRevenueCat: typeof logOutRevenueCat,
+});
+
 // Async storage keys for onboarding state
 const INTRO_ONBOARDING_KEY = '@hangovershield_intro_onboarding_completed'; // NEW pre-auth intro
 const FEELING_ONBOARDING_KEY = '@hangovershield_feeling_onboarding_completed'; // Daily check-in flow
@@ -278,6 +285,7 @@ function AppContent() {
         goToProgress={handleGoToProgress}
         goToDailyCheckIn={handleGoToDailyCheckIn}
         goToSubscription={handleGoToSubscription}
+        goToHome={handleGoToHome}
       >
         <OnboardingNavigator />
       </AppNavigationProvider>
@@ -322,6 +330,7 @@ function AppContent() {
       goToProgress={handleGoToProgress}
       goToDailyCheckIn={handleGoToDailyCheckIn}
       goToSubscription={handleGoToSubscription}
+      goToHome={handleGoToHome}
     >
       <AppNavigator />
     </AppNavigationProvider>
