@@ -58,11 +58,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       <View style={styles.leftContainer}>
         {showBackButton && (
           <TouchableOpacity
+            style={styles.backButton}
             onPress={onBackPress}
             activeOpacity={0.7}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Ionicons name="chevron-back" size={24} color="#0F3D3E" />
+            <Ionicons name="chevron-back" size={20} color="rgba(0, 0, 0, 0.6)" />
           </TouchableOpacity>
         )}
       </View>
@@ -111,6 +112,19 @@ const styles = StyleSheet.create({
     width: 44,
     alignItems: 'flex-start',
     justifyContent: 'center',
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: 'rgba(0, 0, 0, 0.1)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    shadowOpacity: 1,
+    elevation: 2,
   },
   centerContainer: {
     flex: 1,
