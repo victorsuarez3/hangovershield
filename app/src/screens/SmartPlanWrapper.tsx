@@ -12,19 +12,7 @@ import { getLocalDailyCheckIn } from '../services/dailyCheckInStorage';
 import { getRecoveryAnalysis, getKeySymptomLabels } from '../utils/recoveryAnalysis';
 import { getTodayId } from '../utils/dateUtils';
 import { markPlanCompletedForToday } from '../services/dailyCheckIn';
-
-// Map DailyCheckInSeverity to FeelingOption
-type FeelingOption = 'mild' | 'moderate' | 'severe' | 'none';
-type SymptomKey =
-  | 'headache'
-  | 'nausea'
-  | 'dryMouth'
-  | 'dizziness'
-  | 'fatigue'
-  | 'anxiety'
-  | 'brainFog'
-  | 'poorSleep'
-  | 'noSymptoms';
+import { FeelingOption, SymptomKey } from '../navigation/OnboardingNavigator';
 
 const FEELING_DISPLAY_LABELS: Record<FeelingOption, string> = {
   mild: 'Mild hangover',
