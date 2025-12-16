@@ -12,7 +12,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Analytics } from '../utils/analytics';
+import { logAnalyticsEvent } from '../utils/analytics';
 import { useAccessStatus } from '../hooks/useAccessStatus';
 import { PaywallSourceType } from '../constants/paywallSources';
 
@@ -39,7 +39,7 @@ export const SoftGateCard: React.FC<SoftGateCardProps> = ({
   }
 
   const handleUpgrade = () => {
-    Analytics.logAnalyticsEvent('soft_gate_cta_clicked', {
+    logAnalyticsEvent('soft_gate_cta_clicked', {
       source,
       contextScreen,
       accessStatus: accessInfo.status,
@@ -54,7 +54,7 @@ export const SoftGateCard: React.FC<SoftGateCardProps> = ({
   // Log soft gate shown (ONCE per mount - prevent duplicate events)
   useEffect(() => {
     if (!hasLoggedImpression.current) {
-      Analytics.logAnalyticsEvent('soft_gate_shown', {
+      logAnalyticsEvent('soft_gate_shown', {
         source,
         contextScreen,
         accessStatus: accessInfo.status,

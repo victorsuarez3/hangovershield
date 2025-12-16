@@ -12,7 +12,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useAccessStatus } from '../hooks/useAccessStatus';
-import { Analytics } from '../utils/analytics';
+import { logAnalyticsEvent } from '../utils/analytics';
 
 interface LockedSectionProps {
   children: React.ReactNode;
@@ -40,7 +40,7 @@ export const LockedSection: React.FC<LockedSectionProps> = ({
   // Log locked section impression (ONCE per mount - prevent duplicate events)
   useEffect(() => {
     if (!hasLoggedImpression.current) {
-      Analytics.logAnalyticsEvent('locked_section_shown', {
+      logAnalyticsEvent('locked_section_shown', {
         feature,
         contextScreen,
         accessStatus: accessInfo.status,
@@ -50,7 +50,7 @@ export const LockedSection: React.FC<LockedSectionProps> = ({
   }, [feature, contextScreen, accessInfo.status]);
 
   const handleTap = () => {
-    Analytics.logAnalyticsEvent('locked_section_tapped', {
+    logAnalyticsEvent('locked_section_tapped', {
       feature,
       contextScreen,
       accessStatus: accessInfo.status,

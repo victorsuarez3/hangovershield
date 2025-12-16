@@ -20,7 +20,7 @@ import { markPlanCompletedForToday } from '../services/dailyCheckIn';
 import { getTodayId } from '../utils/dateUtils';
 import { useAuth } from '../providers/AuthProvider';
 import { grantWelcomeUnlock } from '../services/welcomeUnlock';
-import * as Analytics from '../utils/analytics';
+import { logAnalyticsEvent } from '../utils/analytics';
 
 const FEELING_ONBOARDING_KEY = '@hangovershield_feeling_onboarding_completed';
 
@@ -43,7 +43,7 @@ const PlanLoadingScreenWrapper: React.FC = () => {
     if (user?.uid) {
       try {
         await grantWelcomeUnlock(user.uid);
-        Analytics.logAnalyticsEvent('welcome_unlock_granted', {
+        logAnalyticsEvent('welcome_unlock_granted', {
           trigger: 'feeling_onboarding_complete',
           userId: user.uid,
         });

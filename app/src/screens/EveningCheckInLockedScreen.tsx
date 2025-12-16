@@ -20,7 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { PaywallSource } from '../constants/paywallSources';
-import { Analytics } from '../utils/analytics';
+import { logAnalyticsEvent } from '../utils/analytics';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -31,7 +31,7 @@ export const EveningCheckInLockedScreen: React.FC = () => {
   const navigation = useNavigation();
 
   const handleUpgrade = () => {
-    Analytics.logAnalyticsEvent('premium_feature_locked_tapped', {
+    logAnalyticsEvent('premium_feature_locked_tapped', {
       feature: 'evening_checkin',
       source: PaywallSource.EVENING_CHECKIN_LOCKED,
       contextScreen: 'EveningCheckIn',
