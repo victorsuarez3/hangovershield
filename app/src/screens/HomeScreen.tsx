@@ -542,9 +542,9 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     ...typography.sectionTitle,
-    fontSize: 24,
+    fontSize: 48,
     color: '#0F3D3E',
-    lineHeight: 32,
+    lineHeight: 64,
   },
   heroSubtitle: {
     ...typography.body,
