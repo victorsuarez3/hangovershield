@@ -165,6 +165,9 @@ export const EveningCheckInScreen: React.FC = () => {
                 {eveningReflection.length}/500
               </Text>
             </View>
+            <Text style={styles.reflectionHelper}>
+              Big or small. It all counts.
+            </Text>
           </View>
 
           {/* Emotional State Selection */}
@@ -297,6 +300,12 @@ const styles = StyleSheet.create({
     color: '#0F3D3E',
     marginBottom: 6,
     lineHeight: 32,
+  },
+  alcoholTitle: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 18,
+    color: 'rgba(15, 61, 62, 0.8)',
+    marginBottom: 6,
   },
   sectionSubtitle: {
     fontFamily: 'Inter_400Regular',
