@@ -23,7 +23,6 @@ import {
   Pressable,
   Animated,
   Dimensions,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -166,7 +165,6 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const accessInfo = useAccessStatus();
-  const DEBUG_MENU_ALERTS = __DEV__ === true;
   
   // Animations
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -240,23 +238,16 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
     setTimeout(callback, 80);
   };
 
-  // TEMP DEBUG: verify row presses are firing (dev-only)
-  const debugNavigateAfterClose = (label: string, callback: () => void) => {
-    if (DEBUG_MENU_ALERTS) {
-      Alert.alert('Menu tap', label);
-    }
-    navigateAfterClose(callback);
-  };
 
   // Handle Evening Check-in navigation - always navigate, but screen will show paywall if no access
   const handleEveningCheckIn = () => {
     // Always navigate to EveningCheckIn - the screen itself will redirect to paywall if needed
-    debugNavigateAfterClose('Evening check-in', onGoToEveningCheckIn);
+    navigateAfterClose(onGoToEveningCheckIn);
   };
 
   // Handle subscription/upgrade
   const handleSubscription = () => {
-    debugNavigateAfterClose('Upgrade / Subscription', () =>
+    navigateAfterClose(() =>
       onGoToSubscription(PaywallSource.MENU_SUBSCRIPTION)
     );
   };
@@ -327,7 +318,7 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
               label="Home"
               subtitle="Your dashboard for today."
               isActive={currentScreen === 'home'}
-              onPress={() => debugNavigateAfterClose('Home', onGoToHome)}
+              onPress={() => navigateAfterClose(onGoToHome)}
             />
 
             {/* 1. Today's recovery plan */}
@@ -336,7 +327,7 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
               label="Today's recovery plan"
               subtitle="See today's steps and hydration goals."
               isActive={currentScreen === 'today'}
-              onPress={() => debugNavigateAfterClose("Today's recovery plan", onGoToToday)}
+              onPress={() => navigateAfterClose(onGoToToday)}
             />
 
             {/* 2. Daily check-in */}
@@ -345,7 +336,7 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
               label="Daily check-in"
               subtitle="Update how you're feeling today."
               isActive={currentScreen === 'checkin'}
-              onPress={() => debugNavigateAfterClose('Daily check-in', onGoToCheckIn)}
+              onPress={() => navigateAfterClose(onGoToCheckIn)}
             />
 
             {/* 4. Water log */}
@@ -354,7 +345,7 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
               label="Water log"
               subtitle="Track your hydration progress."
               isActive={currentScreen === 'waterlog'}
-              onPress={() => debugNavigateAfterClose('Water log', onGoToWaterLog)}
+              onPress={() => navigateAfterClose(onGoToWaterLog)}
             />
 
             {/* 5. Evening check-in (always visible, always active) */}

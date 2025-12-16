@@ -58,7 +58,7 @@ export const HomeScreen: React.FC = () => {
   const { user } = useAuth();
   const accessInfo = useAccessStatus();
   const appNav = useAppNavigation();
-
+  
   // Menu state
   const [menuVisible, setMenuVisible] = useState(false);
   const [currentScreen] = useState<CurrentScreen>('home');
@@ -181,7 +181,7 @@ export const HomeScreen: React.FC = () => {
 
   const handleGoToEveningCheckIn = useCallback(() => {
     if (accessInfo.hasFullAccess) {
-      navigation.navigate('EveningCheckIn');
+    navigation.navigate('EveningCheckIn');
     } else {
       // Navigate to locked screen first, which then shows paywall
       navigation.navigate('EveningCheckInLocked');
@@ -280,7 +280,7 @@ export const HomeScreen: React.FC = () => {
         {accessInfo.isWelcome && (
           <View style={styles.welcomeBannerContainer}>
             <WelcomeCountdownBanner />
-          </View>
+        </View>
         )}
 
         {/* Hero Card - Main Focus */}
@@ -366,11 +366,11 @@ export const HomeScreen: React.FC = () => {
           >
             <View style={styles.widgetIconContainer}>
               <Ionicons name="water-outline" size={24} color="#0F4C44" />
-            </View>
+      </View>
             <Text style={styles.widgetTitle}>Water</Text>
             <Text style={styles.widgetSubtitle}>
               {hydrationLogged > 0 ? hydrationProgressText : 'Log water'}
-            </Text>
+          </Text>
             <View style={styles.widgetArrow}>
               <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
             </View>
@@ -388,12 +388,12 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.widgetTitle}>Progress</Text>
             <Text style={styles.widgetSubtitle}>
               {streak > 0 ? `Streak: ${streak} days` : 'Track progress'}
-            </Text>
+          </Text>
             <View style={styles.widgetArrow}>
               <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
             </View>
           </TouchableOpacity>
-
+          
           {/* Today's Plan Widget */}
           <TouchableOpacity
             style={styles.widgetCard}
@@ -430,7 +430,7 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.widgetTitle}>Evening check-in</Text>
             <Text style={styles.widgetSubtitle}>
               {accessInfo.hasFullAccess ? 'Reflect + sleep prep' : 'Reflect + sleep prep'}
-            </Text>
+              </Text>
             {!accessInfo.hasFullAccess && (
               <View style={styles.premiumBadge}>
                 <Text style={styles.premiumBadgeText}>Premium</Text>
@@ -444,7 +444,7 @@ export const HomeScreen: React.FC = () => {
 
         {/* Premium CTA (only for free users, subtle) */}
         {accessInfo.isFree && (
-          <TouchableOpacity
+            <TouchableOpacity
             style={styles.upgradeCard}
             onPress={handleUpgradePress}
             activeOpacity={0.8}
@@ -457,15 +457,15 @@ export const HomeScreen: React.FC = () => {
                 <Text style={styles.upgradeTitle}>Unlock Premium</Text>
                 <Text style={styles.upgradeSubtitle}>
                   Evening check-ins + insights
-                </Text>
+              </Text>
                 <Text style={styles.upgradeMicroLine}>
                   Takes 30 seconds/night
-                </Text>
-              </View>
+              </Text>
+          </View>
               <View style={styles.upgradeButton}>
                 <Text style={styles.upgradeButtonText}>Upgrade</Text>
-              </View>
-            </View>
+        </View>
+      </View>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -542,9 +542,9 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     ...typography.sectionTitle,
-    fontSize: 48,
+    fontSize: 38, // 20% smaller (was 48px)
     color: '#0F3D3E',
-    lineHeight: 64,
+    lineHeight: 51, // Proportional to fontSize
   },
   heroSubtitle: {
     ...typography.body,
