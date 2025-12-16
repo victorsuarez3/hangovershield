@@ -87,7 +87,7 @@ export const PAYWALL_FEATURES = [
   },
   {
     title: 'See patterns your body repeats',
-    subtitle: 'So you don't guess anymore',
+    subtitle: "So you don't guess anymore",
   },
   {
     title: 'Hydrate with intention, not hope',
