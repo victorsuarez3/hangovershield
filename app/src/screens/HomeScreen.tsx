@@ -32,7 +32,6 @@ import {
   addWaterEntry,
 } from '../services/hydrationService';
 import { createWaterEntry } from '../features/water/waterUtils';
-import { createWaterEntry } from '../features/water/waterUtils';
 import {
   getRecentCheckIns,
   calculateStreak,
@@ -279,7 +278,12 @@ export const HomeScreen: React.FC = () => {
     if (!user?.uid) return;
     
     try {
-      const newEntry = createWaterEntry(amountMl);
+      // Create water entry inline
+      const newEntry = {
+        id: `water_${Date.now()}`,
+        amountMl,
+        timestamp: Date.now(),
+      };
       await addWaterEntry(user.uid, newEntry);
       
       // Refresh from service to ensure consistency
