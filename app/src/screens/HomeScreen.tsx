@@ -690,12 +690,11 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   welcomeText: {
-    ...typography.sectionTitle,
-    fontSize: 36, // Much larger - this is the header
+    fontFamily: 'CormorantGaramond_600SemiBold', // Different font family for welcome
+    fontSize: 42, // 5% larger than before (was 36px)
     color: '#0F3D3E',
     marginBottom: 12,
     letterSpacing: -0.5,
-    fontWeight: '600',
   },
   contextualFeedback: {
     ...typography.body,
@@ -757,10 +756,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   heroTitle: {
-    ...typography.sectionTitle,
-    fontSize: 34, // 10% smaller (was 38px)
+    fontFamily: 'CormorantGaramond_600SemiBold', // Different font family for hero card title
+    fontSize: 28, // Smaller than welcomeText for clear hierarchy
     color: '#0F3D3E',
-    lineHeight: 46, // Proportional to fontSize
+    lineHeight: 38, // Proportional to fontSize
+    letterSpacing: -0.3,
   },
   heroSubtitle: {
     ...typography.body,
