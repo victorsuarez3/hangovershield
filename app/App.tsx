@@ -154,13 +154,15 @@ function AppContent() {
   }, [user, feelingOnboardingCompleted]);
 
   const ensureMainAppVisible = React.useCallback(async () => {
-    // In guest mode (dev), allow navigating without authentication
+    // In guest/test mode (skipAuthMode), allow navigating without authentication
+    // This enables full app exploration during development/testing
     if (!user && !skipAuthMode) {
       console.warn('[AppNavigation] User not authenticated, cannot navigate');
       return false;
     }
 
     // Mark onboarding as completed if in onboarding flow
+    // This ensures we switch from OnboardingNavigator to AppNavigator
     // Save to AsyncStorage FIRST, then update state synchronously
     if (!feelingOnboardingCompleted) {
       try {
@@ -182,6 +184,7 @@ function AppContent() {
   // Flush pending navigation once the correct navigator tree is mounted.
   // IMPORTANT: AppContent conditionally renders different navigators; routeNames change AFTER state updates.
   // We retry a few times until the target routes exist.
+  // Also re-run when feelingOnboardingCompleted changes (navigator tree switches from OnboardingNavigator to AppNavigator)
   React.useEffect(() => {
     if (!pendingNav) return;
 
@@ -227,14 +230,25 @@ function AppContent() {
     return () => {
       cancelled = true;
     };
-  }, [pendingNav]);
+  }, [pendingNav, feelingOnboardingCompleted]);
 
   // Navigation handlers for global menu (works from onboarding/daily_checkin/app)
   const handleGoToHome = React.useCallback(async () => {
+    if (__DEV__) {
+      console.log('[AppNavigation] handleGoToHome called', { user: !!user, skipAuthMode });
+    }
     const ok = await ensureMainAppVisible();
-    if (!ok) return;
+    if (!ok) {
+      if (__DEV__) {
+        console.warn('[AppNavigation] handleGoToHome blocked by ensureMainAppVisible');
+      }
+      return;
+    }
+    if (__DEV__) {
+      console.log('[AppNavigation] handleGoToHome setting pendingNav to Home');
+    }
     setPendingNav({ kind: 'tab', tab: 'Home' });
-  }, [ensureMainAppVisible]);
+  }, [ensureMainAppVisible, user, skipAuthMode]);
 
   const handleGoToToday = React.useCallback(async () => {
     const ok = await ensureMainAppVisible();
@@ -243,10 +257,21 @@ function AppContent() {
   }, [ensureMainAppVisible]);
 
   const handleGoToProgress = React.useCallback(async () => {
+    if (__DEV__) {
+      console.log('[AppNavigation] handleGoToProgress called', { user: !!user, skipAuthMode });
+    }
     const ok = await ensureMainAppVisible();
-    if (!ok) return;
+    if (!ok) {
+      if (__DEV__) {
+        console.warn('[AppNavigation] handleGoToProgress blocked by ensureMainAppVisible');
+      }
+      return;
+    }
+    if (__DEV__) {
+      console.log('[AppNavigation] handleGoToProgress setting pendingNav to Progress');
+    }
     setPendingNav({ kind: 'tab', tab: 'Progress' });
-  }, [ensureMainAppVisible]);
+  }, [ensureMainAppVisible, user, skipAuthMode]);
 
   const handleGoToWaterLog = React.useCallback(async () => {
     const ok = await ensureMainAppVisible();
