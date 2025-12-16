@@ -190,28 +190,44 @@ function AppContent() {
 
     let cancelled = false;
     let attempts = 0;
-    const maxAttempts = 40; // ~2s at 50ms intervals
+    const maxAttempts = 60; // ~3s at 50ms intervals (increased for navigator tree switches)
 
     const tryFlush = () => {
       if (cancelled) return;
       attempts += 1;
 
       if (!navigationRef.isReady()) {
-        if (attempts < maxAttempts) setTimeout(tryFlush, 50);
+        if (attempts < maxAttempts) {
+          setTimeout(tryFlush, 50);
+        } else {
+          if (__DEV__) {
+            console.warn('[AppNavigation] Navigation ref not ready after max attempts');
+          }
+        }
         return;
       }
 
       const rootState = navigationRef.getRootState();
       const routeNames = rootState?.routeNames ?? [];
 
+      if (__DEV__ && attempts === 1) {
+        console.log('[AppNavigation] Attempting to flush pendingNav', { pendingNav, routeNames });
+      }
+
       if (pendingNav.kind === 'tab') {
         if (routeNames.includes(pendingNav.tab)) {
+          if (__DEV__) {
+            console.log('[AppNavigation] Navigating to tab', pendingNav.tab);
+          }
           navigationRef.navigate(pendingNav.tab);
           setPendingNav(null);
           return;
         }
       } else if (pendingNav.kind === 'homeStack') {
         if (routeNames.includes('Home')) {
+          if (__DEV__) {
+            console.log('[AppNavigation] Navigating to homeStack screen', pendingNav.screen);
+          }
           navigationRef.navigate('Home', {
             screen: pendingNav.screen,
             params: pendingNav.params,
@@ -223,10 +239,22 @@ function AppContent() {
 
       if (attempts < maxAttempts) {
         setTimeout(tryFlush, 50);
+      } else {
+        if (__DEV__) {
+          console.warn('[AppNavigation] Failed to flush pendingNav after max attempts', { pendingNav, routeNames });
+        }
       }
     };
 
-    tryFlush();
+    // Small delay when navigator tree just switched (feelingOnboardingCompleted changed)
+    // This gives React time to mount the new navigator tree
+    const initialDelay = feelingOnboardingCompleted ? 100 : 0;
+    setTimeout(() => {
+      if (!cancelled) {
+        tryFlush();
+      }
+    }, initialDelay);
+
     return () => {
       cancelled = true;
     };
@@ -395,7 +423,7 @@ function AppContent() {
           goToEveningCheckIn={handleGoToEveningCheckIn}
           goToSubscription={handleGoToSubscription}
         >
-          <AppNavigator />
+          <AppNavigator allowGuestMode={skipAuthMode} />
         </AppNavigationProvider>
       );
     }
@@ -490,7 +518,7 @@ function AppContent() {
       goToEveningCheckIn={handleGoToEveningCheckIn}
       goToSubscription={handleGoToSubscription}
     >
-      <AppNavigator />
+      <AppNavigator allowGuestMode={skipAuthMode} />
     </AppNavigationProvider>
   );
 }

@@ -70,9 +70,17 @@ const ProfileStack = () => {
   );
 };
 
-export const AppNavigator: React.FC = () => {
+interface AppNavigatorProps {
+  /**
+   * Allow guest/test mode navigation without authentication
+   * When true, bypasses auth check in ProtectedRoute (for development/testing)
+   */
+  allowGuestMode?: boolean;
+}
+
+export const AppNavigator: React.FC<AppNavigatorProps> = ({ allowGuestMode = false }) => {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowGuestMode={allowGuestMode}>
       <Tab.Navigator
         tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{
