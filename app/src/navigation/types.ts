@@ -17,6 +17,7 @@ export type RootStackParamList = {
   Tools: undefined;
   Progress: undefined;
   ProfileMain: undefined;
+  Account: undefined;
   Settings: undefined;
   Paywall: {
     source: PaywallSourceType;

@@ -27,6 +27,7 @@ import {
   PrivacyPolicyContent,
 } from '../components/LegalContent';
 import { useAuth } from '../providers/AuthProvider';
+import { AppHeader } from '../components/AppHeader';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -402,20 +403,11 @@ export const AccountScreen: React.FC = () => {
       />
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Ionicons name="chevron-back" size={24} color="#0F3D3E" />
-        </TouchableOpacity>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>Account</Text>
-          <Text style={styles.subtitle}>Your plan, privacy & support.</Text>
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+      <AppHeader
+        title="Account"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+      />
 
       <ScrollView
         style={styles.scrollView}

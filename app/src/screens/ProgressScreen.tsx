@@ -406,6 +406,10 @@ export const ProgressScreen: React.FC = () => {
     navigation.navigate('EveningCheckInLocked');
   }, [navigation]);
 
+  const handleGoToAccount = useCallback(() => {
+    navigation.navigate('Account');
+  }, [navigation]);
+
   const handleGoToSubscription = useCallback((source: string) => {
     navigation.navigate('Paywall', { source });
   }, [navigation]);
@@ -443,9 +447,11 @@ export const ProgressScreen: React.FC = () => {
         pointerEvents="none"
       />
 
-      {/* App Header with Menu */}
+      {/* App Header with Back Button and Menu */}
       <AppHeader
         title="Progress"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
         showMenuButton
         onMenuPress={() => setMenuVisible(true)}
       />
@@ -568,6 +574,7 @@ export const ProgressScreen: React.FC = () => {
         onGoToWaterLog={handleGoToWaterLog}
         onGoToEveningCheckIn={handleGoToEveningCheckIn}
         onGoToEveningCheckInLocked={handleGoToEveningCheckInLocked}
+        onGoToAccount={handleGoToAccount}
         onGoToSubscription={handleGoToSubscription}
       />
     </View>

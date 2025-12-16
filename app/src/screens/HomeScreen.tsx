@@ -249,6 +249,10 @@ export const HomeScreen: React.FC = () => {
     navigateToPaywall(PaywallSource.EVENING_CHECKIN_LOCKED);
   }, [navigateToPaywall]);
 
+  const handleGoToAccount = useCallback(() => {
+    navigation.navigate('Account');
+  }, [navigation]);
+
   const handleGoToSubscription = useCallback((source: string) => {
     navigateToPaywall(source);
   }, [navigateToPaywall]);
@@ -663,6 +667,7 @@ export const HomeScreen: React.FC = () => {
         onGoToWaterLog={handleGoToWaterLog}
         onGoToEveningCheckIn={handleGoToEveningCheckIn}
         onGoToEveningCheckInLocked={handleGoToEveningCheckInLocked}
+        onGoToAccount={handleGoToAccount}
         onGoToSubscription={handleGoToSubscription}
         currentScreen={currentScreen}
       />

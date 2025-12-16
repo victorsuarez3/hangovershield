@@ -62,7 +62,7 @@ function getSubscriptionSubtitle(accessInfo: {
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type CurrentScreen = 'home' | 'today' | 'progress' | 'checkin' | 'waterlog' | 'evening';
+export type CurrentScreen = 'home' | 'today' | 'progress' | 'checkin' | 'waterlog' | 'evening' | 'account';
 
 export interface AppMenuSheetProps {
   visible: boolean;
@@ -75,6 +75,7 @@ export interface AppMenuSheetProps {
   onGoToWaterLog: () => void;
   onGoToEveningCheckIn: () => void;
   onGoToEveningCheckInLocked: () => void;
+  onGoToAccount: () => void;
   onGoToSubscription: (source: string) => void;
   // Current screen for "Current" badge
   currentScreen?: CurrentScreen;
@@ -245,6 +246,11 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
     navigateAfterClose(onGoToEveningCheckIn);
   };
 
+  // Handle Account navigation
+  const handleAccount = () => {
+    navigateAfterClose(onGoToAccount);
+  };
+
   // Handle subscription/upgrade
   const handleSubscription = () => {
     navigateAfterClose(() =>
@@ -355,6 +361,20 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
               subtitle="Reflect on your day's recovery."
               isActive={currentScreen === 'evening'}
               onPress={handleEveningCheckIn}
+            />
+          </View>
+
+          {/* Separator */}
+          <View style={styles.separator} />
+
+          {/* Account */}
+          <View style={styles.menuItems}>
+            <MenuItem
+              icon="person-outline"
+              label="Account"
+              subtitle="Your plan, privacy & support."
+              isActive={currentScreen === 'account'}
+              onPress={() => navigateAfterClose(onGoToAccount)}
             />
           </View>
 
