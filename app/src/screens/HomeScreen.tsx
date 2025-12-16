@@ -245,6 +245,7 @@ export const HomeScreen: React.FC = () => {
       try {
         // Get today's check-in
         let checkIn = null;
+        let plan = null;
         if (user?.uid) {
           checkIn = await getTodayDailyCheckIn(user.uid);
         }
@@ -270,7 +271,7 @@ export const HomeScreen: React.FC = () => {
             return ['headache', 'nausea', 'dryMouth', 'dizziness', 'fatigue', 'anxiety', 'brainFog', 'poorSleep', 'noSymptoms'].includes(s);
           }) as any[];
           
-          const plan = generatePlan({
+          plan = generatePlan({
             level: feeling,
             symptoms: symptomKeys,
             drankLastNight: checkIn.drankLastNight,
@@ -297,14 +298,14 @@ export const HomeScreen: React.FC = () => {
         score += Math.round(hydrationProgress * 30);
         
         // 3. Micro-step completed (if check-in exists, micro-action is available) (15 points)
-        if (checkIn && plan.microAction) {
+        if (checkIn && plan?.microAction) {
           // Micro-step is considered "completed" if user has checked in
           // In future, we could track if user actually completed the micro-action
           score += 15;
         }
         
         // 4. Today's plan steps completed (up to 30 points)
-        if (checkIn) {
+        if (checkIn && user?.uid) {
           const todayCheckIn = await getTodayDailyCheckIn(user.uid);
           if (todayCheckIn?.planCompleted) {
             score += 30; // Full plan completed
@@ -1396,6 +1397,22 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#0F4C44',
     borderRadius: 4,
+  },
+  recoveryScoreHelper: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.7)',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  recoveryScoreCTA: {
+    marginTop: 12,
+    alignSelf: 'center',
+  },
+  recoveryScoreCTAText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#0F4C44',
   },
   // Widgets Grid
   widgetsGrid: {
