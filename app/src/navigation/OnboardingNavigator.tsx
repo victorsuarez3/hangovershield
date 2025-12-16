@@ -11,6 +11,8 @@ import { OnboardingPaywallScreen } from '../screens/onboarding/OnboardingPaywall
 import { RecoveryPlanLoadingScreen } from '../screens/onboarding/RecoveryPlanLoadingScreen';
 import { TodayRecoveryPlanScreen } from '../screens/TodayRecoveryPlanScreen';
 import { PlanCompleteScreen } from '../screens/PlanCompleteScreen';
+import { PaywallScreen } from '../screens/PaywallScreen';
+import { PaywallSourceType } from '../constants/paywallSources';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -295,6 +297,10 @@ export type OnboardingStackParamList = {
     stepsCompleted: number;
     totalSteps: number;
   };
+  Paywall: {
+    source: PaywallSourceType;
+    contextScreen?: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
@@ -334,6 +340,10 @@ export function OnboardingNavigator() {
       <Stack.Screen
         name="PlanComplete"
         component={PlanCompleteScreen}
+      />
+      <Stack.Screen
+        name="Paywall"
+        component={PaywallScreen}
       />
     </Stack.Navigator>
   );

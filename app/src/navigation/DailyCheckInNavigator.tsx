@@ -12,6 +12,8 @@ import { DailyCheckInScreen } from '../screens/DailyCheckInScreen';
 import { RecoveryPlanLoadingScreen } from '../screens/onboarding/RecoveryPlanLoadingScreen';
 import { TodayRecoveryPlanScreen } from '../screens/TodayRecoveryPlanScreen';
 import { PlanCompleteScreen } from '../screens/PlanCompleteScreen';
+import { PaywallScreen } from '../screens/PaywallScreen';
+import { PaywallSourceType } from '../constants/paywallSources';
 import { getRecoveryAnalysis, getKeySymptomLabels } from '../utils/recoveryAnalysis';
 import { DailyCheckInSeverity, markPlanCompletedForToday } from '../services/dailyCheckIn';
 import { getTodayId } from '../utils/dateUtils';
@@ -47,6 +49,10 @@ export type DailyCheckInStackParamList = {
   PlanComplete: {
     stepsCompleted: number;
     totalSteps: number;
+  };
+  Paywall: {
+    source: PaywallSourceType;
+    contextScreen?: string;
   };
 };
 
@@ -330,6 +336,10 @@ export const DailyCheckInNavigator: React.FC<DailyCheckInNavigatorProps> = ({
       <Stack.Screen
         name="PlanComplete"
         component={PlanCompleteScreen}
+      />
+      <Stack.Screen
+        name="Paywall"
+        component={PaywallScreen}
       />
     </Stack.Navigator>
   );
