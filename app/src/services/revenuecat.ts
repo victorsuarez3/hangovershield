@@ -452,7 +452,7 @@ export function addCustomerInfoListener(
   try {
     const listener = Purchases.addCustomerInfoUpdateListener(callback);
     return () => {
-      listener.remove();
+      if (listener && typeof listener.remove === "function") { listener.remove(); }
     };
   } catch (error) {
     console.error('[RevenueCat] Error adding listener:', error);
