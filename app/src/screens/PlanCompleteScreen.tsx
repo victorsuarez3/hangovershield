@@ -19,6 +19,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { Button } from '../components/Button';
 import { useAppNavigation } from '../contexts/AppNavigationContext';
+import { useAuth } from '../providers/AuthProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -45,6 +46,7 @@ export const PlanCompleteScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<PlanCompleteRouteProp>();
   const appNav = useAppNavigation();
+  const { user } = useAuth();
   
   const { stepsCompleted = 0, totalSteps = 0 } = route.params || {};
 
@@ -109,6 +111,16 @@ export const PlanCompleteScreen: React.FC = () => {
   const handleDone = () => {
     // Navigate to HomeScreen using AppNavigationContext
     // This works from any navigator context (OnboardingNavigator or DailyCheckInNavigator)
+    console.log('[PlanCompleteScreen] handleDone called', {
+      user: user?.uid,
+      context: appNav.currentContext,
+    });
+    
+    if (!user) {
+      console.error('[PlanCompleteScreen] User not authenticated, cannot navigate to home');
+      return;
+    }
+    
     appNav.goToHome();
   };
 

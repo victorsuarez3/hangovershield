@@ -136,6 +136,7 @@ function AppContent() {
     }
 
     // Mark onboarding as completed if in onboarding flow
+    // Save to AsyncStorage FIRST, then update state synchronously
     if (!feelingOnboardingCompleted) {
       try {
         await AsyncStorage.setItem(FEELING_ONBOARDING_KEY, 'true');
@@ -146,6 +147,7 @@ function AppContent() {
         setFeelingOnboardingCompleted(true);
       }
     }
+    
     // Mark daily check-in as completed if in daily check-in flow
     if (dailyCheckInStatus === 'needs_checkin') {
       setDailyCheckInStatus('completed');
