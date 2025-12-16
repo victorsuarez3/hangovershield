@@ -16,6 +16,8 @@ export interface AppNavigationContextType {
   goToDailyCheckIn: () => void;
   // Navigate to subscription/paywall
   goToSubscription: () => void;
+  // Navigate to Home (main app)
+  goToHome: () => void;
   // Current context (where the user currently is)
   currentContext: 'onboarding' | 'daily_checkin' | 'app' | 'unknown';
 }
@@ -24,6 +26,7 @@ const defaultContext: AppNavigationContextType = {
   goToProgress: () => console.warn('[AppNavigation] goToProgress not implemented'),
   goToDailyCheckIn: () => console.warn('[AppNavigation] goToDailyCheckIn not implemented'),
   goToSubscription: () => console.warn('[AppNavigation] goToSubscription not implemented'),
+  goToHome: () => console.warn('[AppNavigation] goToHome not implemented'),
   currentContext: 'unknown',
 };
 
@@ -42,6 +45,7 @@ export interface AppNavigationProviderProps {
   goToProgress: () => void;
   goToDailyCheckIn: () => void;
   goToSubscription: () => void;
+  goToHome: () => void;
   currentContext: 'onboarding' | 'daily_checkin' | 'app' | 'unknown';
 }
 
@@ -54,6 +58,7 @@ export const AppNavigationProvider: React.FC<AppNavigationProviderProps> = ({
   goToProgress,
   goToDailyCheckIn,
   goToSubscription,
+  goToHome,
   currentContext,
 }) => {
   return (
@@ -62,6 +67,7 @@ export const AppNavigationProvider: React.FC<AppNavigationProviderProps> = ({
         goToProgress,
         goToDailyCheckIn,
         goToSubscription,
+        goToHome,
         currentContext,
       }}
     >

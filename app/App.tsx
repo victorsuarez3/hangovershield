@@ -128,6 +128,18 @@ function AppContent() {
     }
   }, [dailyCheckInStatus]);
 
+  const handleGoToHome = React.useCallback(() => {
+    // Mark onboarding as completed if in onboarding flow
+    if (!feelingOnboardingCompleted) {
+      setFeelingOnboardingCompleted(true);
+    }
+    // Mark daily check-in as completed if in daily check-in flow
+    if (dailyCheckInStatus === 'needs_checkin') {
+      setDailyCheckInStatus('completed');
+    }
+    // App.tsx will automatically show AppNavigator when these conditions are met
+  }, [feelingOnboardingCompleted, dailyCheckInStatus]);
+
   // Wait for onboarding status to be loaded
   if (introOnboardingCompleted === null) {
     return (
@@ -196,6 +208,7 @@ function AppContent() {
           goToProgress={handleGoToProgress}
           goToDailyCheckIn={handleGoToDailyCheckIn}
           goToSubscription={handleGoToSubscription}
+          goToHome={handleGoToHome}
         >
           <OnboardingNavigator />
         </AppNavigationProvider>
@@ -207,6 +220,7 @@ function AppContent() {
         goToProgress={handleGoToProgress}
         goToDailyCheckIn={handleGoToDailyCheckIn}
         goToSubscription={handleGoToSubscription}
+        goToHome={handleGoToHome}
       >
         <AppNavigator />
       </AppNavigationProvider>
@@ -274,6 +288,7 @@ function AppContent() {
         goToProgress={handleGoToProgress}
         goToDailyCheckIn={handleGoToDailyCheckIn}
         goToSubscription={handleGoToSubscription}
+        goToHome={handleGoToHome}
       >
         <DailyCheckInNavigator
           userId={user.uid}

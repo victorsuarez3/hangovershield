@@ -15,9 +15,10 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { Button } from '../components/Button';
+import { useAppNavigation } from '../contexts/AppNavigationContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -41,8 +42,9 @@ type PlanCompleteRouteProp = RouteProp<
 
 export const PlanCompleteScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute<PlanCompleteRouteProp>();
+  const appNav = useAppNavigation();
   
   const { stepsCompleted = 0, totalSteps = 0 } = route.params || {};
 
@@ -105,13 +107,9 @@ export const PlanCompleteScreen: React.FC = () => {
   }, []);
 
   const handleDone = () => {
-    // Navigate to HomeScreen and reset navigation stack
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'Home' }],
-      })
-    );
+    // Navigate to HomeScreen using AppNavigationContext
+    // This works from any navigator context (OnboardingNavigator or DailyCheckInNavigator)
+    appNav.goToHome();
   };
 
   const rotateInterpolate = iconRotate.interpolate({
