@@ -3,21 +3,72 @@
  * Main entry point with call to action for check-in
  */
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { HomeScreenProps } from '../navigation/types';
+import { useNavigation, CommonActions } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { AppMenuSheet, CurrentScreen } from '../components/AppMenuSheet';
+import { useAccessStatus } from '../hooks/useAccessStatus';
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
+export const HomeScreen: React.FC = () => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
+  const accessInfo = useAccessStatus();
+  
+  // Menu state
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [currentScreen] = useState<CurrentScreen>('home');
 
   const handleCheckIn = () => {
     navigation.navigate('CheckIn');
   };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Menu Navigation Handlers
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const handleGoToHome = useCallback(() => {
+    // Reset to Home root
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      })
+    );
+  }, [navigation]);
+
+  const handleGoToToday = useCallback(() => {
+    navigation.navigate('SmartPlan');
+  }, [navigation]);
+
+  const handleGoToProgress = useCallback(() => {
+    navigation.navigate('Progress');
+  }, [navigation]);
+
+  const handleGoToCheckIn = useCallback(() => {
+    navigation.navigate('CheckIn');
+  }, [navigation]);
+
+  const handleGoToWaterLog = useCallback(() => {
+    // Navigate to water log screen (if it exists in your navigation)
+    navigation.navigate('DailyWaterLog');
+  }, [navigation]);
+
+  const handleGoToEveningCheckIn = useCallback(() => {
+    navigation.navigate('EveningCheckIn');
+  }, [navigation]);
+
+  const handleGoToEveningCheckInLocked = useCallback(() => {
+    navigation.navigate('EveningCheckInLocked');
+  }, [navigation]);
+
+  const handleGoToSubscription = useCallback((source: string) => {
+    navigation.navigate('Paywall', { source });
+  }, [navigation]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.colors.background }]}>
@@ -26,8 +77,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         style={StyleSheet.absoluteFillObject}
       />
       
-      <View style={styles.content}>
-        <View style={styles.header}>
+      {/* Header with Menu Button */}
+      <View style={styles.headerRow}>
+        <View>
           <Text style={[styles.greeting, { color: theme.colors.textSecondary }]}>
             Welcome back
           </Text>
@@ -35,7 +87,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             Hangover Shield
           </Text>
         </View>
+        <TouchableOpacity
+          style={[styles.menuButton, { backgroundColor: theme.colors.surfaceElevated }]}
+          onPress={() => setMenuVisible(true)}
+        >
+          <Ionicons name="menu" size={24} color={theme.colors.deepTeal} />
+        </TouchableOpacity>
+      </View>
 
+      <View style={styles.content}>
         <View style={styles.ctaContainer}>
           <Text style={[styles.ctaTitle, { color: theme.colors.text }]}>
             How do you feel today?
@@ -68,21 +128,38 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               style={[styles.actionCard, { backgroundColor: theme.colors.surfaceElevated }]}
               onPress={() => navigation.navigate('SmartPlan')}
             >
+              <Ionicons name="sunny-outline" size={24} color={theme.colors.deepTeal} style={styles.actionIcon} />
               <Text style={[styles.actionCardTitle, { color: theme.colors.text }]}>
-                Smart Plan
+                Recovery Plan
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionCard, { backgroundColor: theme.colors.surfaceElevated }]}
-              onPress={() => navigation.navigate('Tools')}
+              onPress={() => navigation.navigate('Progress')}
             >
+              <Ionicons name="stats-chart-outline" size={24} color={theme.colors.deepTeal} style={styles.actionIcon} />
               <Text style={[styles.actionCardTitle, { color: theme.colors.text }]}>
-                Tools
+                Progress
               </Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
+
+      {/* App Menu Sheet */}
+      <AppMenuSheet
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        onGoToHome={handleGoToHome}
+        onGoToToday={handleGoToToday}
+        onGoToProgress={handleGoToProgress}
+        onGoToCheckIn={handleGoToCheckIn}
+        onGoToWaterLog={handleGoToWaterLog}
+        onGoToEveningCheckIn={handleGoToEveningCheckIn}
+        onGoToEveningCheckInLocked={handleGoToEveningCheckInLocked}
+        onGoToSubscription={handleGoToSubscription}
+        currentScreen={currentScreen}
+      />
     </View>
   );
 };
@@ -91,19 +168,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  menuButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   content: {
     flex: 1,
-    padding: 24,
-  },
-  header: {
-    marginBottom: 48,
+    paddingHorizontal: 24,
   },
   greeting: {
     fontSize: 16,
     marginBottom: 8,
   },
   title: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '700',
   },
   ctaContainer: {
@@ -152,8 +246,12 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
   },
+  actionIcon: {
+    marginBottom: 8,
+  },
   actionCardTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
   },
 });

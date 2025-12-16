@@ -1,6 +1,16 @@
 /**
  * App Menu Sheet - Hangover Shield
  * Premium command center overlay menu
+ * 
+ * Menu items (in order):
+ * 0. Home - Dashboard
+ * 1. Today's recovery plan
+ * 2. Progress & history
+ * 3. Daily check-in
+ * 4. Water log
+ * 5. Evening check-in (always visible, locked for free users)
+ * --- divider ---
+ * 6. Upgrade to Premium / Subscription
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -16,6 +26,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAccessStatus } from '../hooks/useAccessStatus';
+import { PaywallSource } from '../constants/paywallSources';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -23,16 +35,21 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type CurrentScreen = 'today' | 'progress' | 'checkin';
+export type CurrentScreen = 'home' | 'today' | 'progress' | 'checkin' | 'waterlog' | 'evening';
 
 export interface AppMenuSheetProps {
   visible: boolean;
   onClose: () => void;
+  // Navigation callbacks
+  onGoToHome: () => void;
   onGoToToday: () => void;
   onGoToProgress: () => void;
   onGoToCheckIn: () => void;
-  onGoToSubscription: () => void;
-  isPremium?: boolean;
+  onGoToWaterLog: () => void;
+  onGoToEveningCheckIn: () => void;
+  onGoToEveningCheckInLocked: () => void;
+  onGoToSubscription: (source: string) => void;
+  // Current screen for "Current" badge
   currentScreen?: CurrentScreen;
 }
 
@@ -47,6 +64,7 @@ interface MenuItemProps {
   isActive?: boolean;
   onPress: () => void;
   isPremiumItem?: boolean;
+  isLocked?: boolean;
 }
 
 const MenuItem: React.FC<MenuItemProps> = ({
@@ -56,24 +74,40 @@ const MenuItem: React.FC<MenuItemProps> = ({
   isActive = false,
   onPress,
   isPremiumItem = false,
+  isLocked = false,
 }) => (
   <TouchableOpacity
     style={[styles.menuItem, isActive && styles.menuItemActive]}
     onPress={onPress}
     activeOpacity={0.7}
   >
-    <View style={[styles.menuItemIcon, isPremiumItem && styles.menuItemIconPremium]}>
+    <View style={[
+      styles.menuItemIcon, 
+      isPremiumItem && styles.menuItemIconPremium,
+      isLocked && styles.menuItemIconLocked,
+    ]}>
       <Ionicons
         name={icon as any}
         size={20}
-        color={isPremiumItem ? '#E8A957' : '#0F4C44'}
+        color={isLocked ? '#9CA3AF' : isPremiumItem ? '#E8A957' : '#0F4C44'}
       />
     </View>
     <View style={styles.menuItemContent}>
-      <Text style={[styles.menuItemLabel, isPremiumItem && styles.menuItemLabelPremium]}>
-        {label}
+      <View style={styles.menuItemLabelRow}>
+        <Text style={[
+          styles.menuItemLabel, 
+          isPremiumItem && styles.menuItemLabelPremium,
+          isLocked && styles.menuItemLabelLocked,
+        ]}>
+          {label}
+        </Text>
+        {isLocked && (
+          <Ionicons name="lock-closed" size={12} color="#9CA3AF" style={{ marginLeft: 6 }} />
+        )}
+      </View>
+      <Text style={[styles.menuItemSubtitle, isLocked && styles.menuItemSubtitleLocked]}>
+        {subtitle}
       </Text>
-      <Text style={styles.menuItemSubtitle}>{subtitle}</Text>
     </View>
     {isActive ? (
       <View style={styles.currentPill}>
@@ -92,14 +126,18 @@ const MenuItem: React.FC<MenuItemProps> = ({
 export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
   visible,
   onClose,
+  onGoToHome,
   onGoToToday,
   onGoToProgress,
   onGoToCheckIn,
+  onGoToWaterLog,
+  onGoToEveningCheckIn,
+  onGoToEveningCheckInLocked,
   onGoToSubscription,
-  isPremium = false,
   currentScreen,
 }) => {
   const insets = useSafeAreaInsets();
+  const accessInfo = useAccessStatus();
   
   // Animations
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -166,6 +204,26 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
     });
   };
 
+  // Helper to close menu then navigate
+  const navigateAfterClose = (callback: () => void) => {
+    handleClose();
+    setTimeout(callback, 200);
+  };
+
+  // Handle Evening Check-in navigation based on access
+  const handleEveningCheckIn = () => {
+    if (accessInfo.hasFullAccess) {
+      navigateAfterClose(onGoToEveningCheckIn);
+    } else {
+      navigateAfterClose(onGoToEveningCheckInLocked);
+    }
+  };
+
+  // Handle subscription/upgrade
+  const handleSubscription = () => {
+    navigateAfterClose(() => onGoToSubscription(PaywallSource.MENU_SUBSCRIPTION));
+  };
+
   if (!visible) return null;
 
   return (
@@ -216,37 +274,61 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
 
           {/* Menu Items */}
           <View style={styles.menuItems}>
+            {/* 0. Home */}
+            <MenuItem
+              icon="home-outline"
+              label="Home"
+              subtitle="Your dashboard for today."
+              isActive={currentScreen === 'home'}
+              onPress={() => navigateAfterClose(onGoToHome)}
+            />
+
+            {/* 1. Today's recovery plan */}
             <MenuItem
               icon="sunny-outline"
               label="Today's recovery plan"
               subtitle="See today's steps and hydration goals."
               isActive={currentScreen === 'today'}
-              onPress={() => {
-                handleClose();
-                setTimeout(onGoToToday, 200);
-              }}
+              onPress={() => navigateAfterClose(onGoToToday)}
             />
 
+            {/* 2. Progress & history */}
             <MenuItem
               icon="stats-chart-outline"
               label="Progress & history"
               subtitle="Track your streak and recent days."
               isActive={currentScreen === 'progress'}
-              onPress={() => {
-                handleClose();
-                setTimeout(onGoToProgress, 200);
-              }}
+              onPress={() => navigateAfterClose(onGoToProgress)}
             />
 
+            {/* 3. Daily check-in */}
             <MenuItem
               icon="clipboard-outline"
               label="Daily check-in"
               subtitle="Update how you're feeling today."
               isActive={currentScreen === 'checkin'}
-              onPress={() => {
-                handleClose();
-                setTimeout(onGoToCheckIn, 200);
-              }}
+              onPress={() => navigateAfterClose(onGoToCheckIn)}
+            />
+
+            {/* 4. Water log */}
+            <MenuItem
+              icon="water-outline"
+              label="Water log"
+              subtitle="Track your hydration progress."
+              isActive={currentScreen === 'waterlog'}
+              onPress={() => navigateAfterClose(onGoToWaterLog)}
+            />
+
+            {/* 5. Evening check-in (always visible) */}
+            <MenuItem
+              icon="moon-outline"
+              label="Evening check-in"
+              subtitle={accessInfo.hasFullAccess 
+                ? "Reflect on your day's recovery." 
+                : "Unlock with Premium or Welcome access."}
+              isActive={currentScreen === 'evening'}
+              isLocked={!accessInfo.hasFullAccess}
+              onPress={handleEveningCheckIn}
             />
           </View>
 
@@ -256,14 +338,13 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
           {/* Subscription Item */}
           <View style={styles.subscriptionSection}>
             <MenuItem
-              icon={isPremium ? 'settings-outline' : 'star-outline'}
-              label={isPremium ? 'Manage subscription' : 'Upgrade to Premium'}
-              subtitle={isPremium ? 'View or update your plan.' : 'Unlock full recovery guidance.'}
-              isPremiumItem={!isPremium}
-              onPress={() => {
-                handleClose();
-                setTimeout(onGoToSubscription, 200);
-              }}
+              icon={accessInfo.isPremium ? 'card-outline' : 'star-outline'}
+              label={accessInfo.isPremium ? 'Subscription' : 'Upgrade to Premium'}
+              subtitle={accessInfo.isPremium 
+                ? 'Manage your subscription.' 
+                : 'Unlock full recovery guidance.'}
+              isPremiumItem={!accessInfo.isPremium}
+              onPress={handleSubscription}
             />
           </View>
         </View>
@@ -353,8 +434,15 @@ const styles = StyleSheet.create({
   menuItemIconPremium: {
     backgroundColor: 'rgba(232, 169, 87, 0.12)',
   },
+  menuItemIconLocked: {
+    backgroundColor: 'rgba(156, 163, 175, 0.12)',
+  },
   menuItemContent: {
     flex: 1,
+  },
+  menuItemLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   menuItemLabel: {
     fontFamily: 'Inter_600SemiBold',
@@ -365,10 +453,16 @@ const styles = StyleSheet.create({
   menuItemLabelPremium: {
     color: '#C4893D',
   },
+  menuItemLabelLocked: {
+    color: '#9CA3AF',
+  },
   menuItemSubtitle: {
     fontFamily: 'Inter_400Regular',
     fontSize: 13,
     color: 'rgba(15, 61, 62, 0.5)',
+  },
+  menuItemSubtitleLocked: {
+    color: 'rgba(156, 163, 175, 0.7)',
   },
 
   // Current Pill
@@ -399,4 +493,3 @@ const styles = StyleSheet.create({
 });
 
 export default AppMenuSheet;
-
