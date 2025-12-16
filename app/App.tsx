@@ -50,10 +50,9 @@ function AppContent() {
   const [introOnboardingCompleted, setIntroOnboardingCompleted] = React.useState<boolean | null>(null);
   // Existing: Daily check-in flow (post-auth)
   const [feelingOnboardingCompleted, setFeelingOnboardingCompleted] = React.useState(false);
-  // Temporary: Guest mode for testing/exploration (remove before production)
-  // When enabled, we allow navigating the app without authentication.
-  const ENABLE_GUEST_MODE = __DEV__ === true;
-  const [skipAuthMode, setSkipAuthMode] = React.useState(ENABLE_GUEST_MODE);
+  // Temporary: Skip auth mode for testing/exploration (enabled via "Skip OAuth" button)
+  // NOTE: Keep default false so the Auth screen (and Skip OAuth button) still appears.
+  const [skipAuthMode, setSkipAuthMode] = React.useState(false);
   // Daily check-in status for returning users
   const [dailyCheckInStatus, setDailyCheckInStatus] = React.useState<'loading' | 'needs_checkin' | 'completed'>('loading');
   const [checkingDailyStatus, setCheckingDailyStatus] = React.useState(false);
@@ -374,41 +373,6 @@ function AppContent() {
 
   // Unauthenticated: show auth navigator (login)
   if (!user) {
-    // In guest mode (dev), bypass auth and use the skip-auth flow automatically
-    if (skipAuthMode) {
-      const hasCompletedFeelingOnboarding = feelingOnboardingCompleted;
-      if (!hasCompletedFeelingOnboarding) {
-        return (
-          <AppNavigationProvider
-            currentContext="onboarding"
-            goToHome={handleGoToHome}
-            goToToday={handleGoToToday}
-            goToProgress={handleGoToProgress}
-            goToDailyCheckIn={handleGoToDailyCheckIn}
-            goToWaterLog={handleGoToWaterLog}
-            goToEveningCheckIn={handleGoToEveningCheckIn}
-            goToSubscription={handleGoToSubscription}
-          >
-            <OnboardingNavigator />
-          </AppNavigationProvider>
-        );
-      }
-      return (
-        <AppNavigationProvider
-          currentContext="app"
-          goToHome={handleGoToHome}
-          goToToday={handleGoToToday}
-          goToProgress={handleGoToProgress}
-          goToDailyCheckIn={handleGoToDailyCheckIn}
-          goToWaterLog={handleGoToWaterLog}
-          goToEveningCheckIn={handleGoToEveningCheckIn}
-          goToSubscription={handleGoToSubscription}
-        >
-          <AppNavigator />
-        </AppNavigationProvider>
-      );
-    }
-
     return (
       <SkipAuthProvider onSkipAuth={async () => {
         // Reset the feeling onboarding flag so the user goes to OnboardingNavigator
