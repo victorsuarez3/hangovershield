@@ -228,8 +228,8 @@ export const HomeScreen: React.FC = () => {
   }, [navigation]);
 
   const handleGoToCheckIn = useCallback(() => {
-    appNav.goToDailyCheckIn();
-  }, [appNav]);
+    navigation.navigate('CheckIn');
+  }, [navigation]);
 
   const handleGoToWaterLog = useCallback(() => {
     navigation.navigate('DailyWaterLog');
