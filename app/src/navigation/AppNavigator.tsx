@@ -11,7 +11,7 @@ import { ProtectedRoute } from '../components/ProtectedRoute';
 // Screens
 import { HomeScreen } from '../screens/HomeScreen';
 import { CheckInScreen } from '../screens/CheckInScreen';
-import { TodayRecoveryPlanScreen } from '../screens/TodayRecoveryPlanScreen';
+import { SmartPlanWrapper } from '../screens/SmartPlanWrapper';
 import { ToolsScreen } from '../screens/ToolsScreen';
 import { ProgressScreen } from '../screens/ProgressScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
@@ -44,7 +44,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({ allowGuestMode = fal
       >
         {/* Main screens - navigated via menu */}
         <Stack.Screen name="HomeMain" component={HomeScreen} />
-        <Stack.Screen name="SmartPlan" component={TodayRecoveryPlanScreen} />
+        <Stack.Screen name="SmartPlan" component={SmartPlanWrapper} />
         <Stack.Screen name="Tools" component={ToolsScreen} />
         <Stack.Screen name="Progress" component={ProgressScreen} />
         <Stack.Screen name="ProfileMain" component={ProfileScreen} />
