@@ -12,6 +12,7 @@ import { useNavigation, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppMenuSheet, CurrentScreen } from '../components/AppMenuSheet';
 import { useAccessStatus } from '../hooks/useAccessStatus';
+import { WelcomeCountdownBanner } from '../components/WelcomeCountdownBanner';
 
 export const HomeScreen: React.FC = () => {
   const { theme } = useTheme();
@@ -94,6 +95,9 @@ export const HomeScreen: React.FC = () => {
           <Ionicons name="menu" size={24} color={theme.colors.deepTeal} />
         </TouchableOpacity>
       </View>
+
+      {/* Welcome Countdown Banner */}
+      <WelcomeCountdownBanner />
 
       <View style={styles.content}>
         <View style={styles.ctaContainer}>

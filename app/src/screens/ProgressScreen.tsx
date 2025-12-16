@@ -22,6 +22,10 @@ import { useAuth } from '../providers/AuthProvider';
 import { AppHeader } from '../components/AppHeader';
 import { AppMenuSheet } from '../components/AppMenuSheet';
 import { useAppNavigation } from '../contexts/AppNavigationContext';
+import { useAccessStatus } from '../hooks/useAccessStatus';
+import { SoftGateCard } from '../components/SoftGateCard';
+import { LockedSection } from '../components/LockedSection';
+import { PaywallSource } from '../constants/paywallSources';
 import {
   getRecentCheckIns,
   DailyCheckInSummary,
@@ -251,6 +255,7 @@ export const ProgressScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const appNav = useAppNavigation();
   const { user } = useAuth();
+  const accessInfo = useAccessStatus();
 
   const [checkIns, setCheckIns] = useState<DailyCheckInSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -347,17 +352,89 @@ export const ProgressScreen: React.FC = () => {
           <EmptyState />
         ) : (
           <>
-            {/* Weekly Summary */}
+            {/* Weekly Summary - Always visible */}
             <WeeklySummaryCard completedDays={completedLast7Days} streak={streak} />
+
+            {/* Soft Gate for Trends (if user doesn't have full access) */}
+            {!accessInfo.hasFullAccess && (
+              <SoftGateCard
+                title="Unlock 30 & 90-day trends"
+                description="See your recovery patterns over time with advanced insights."
+                source={PaywallSource.PROGRESS_OVERVIEW_SOFT_GATE}
+                contextScreen="Progress"
+              />
+            )}
+
+            {/* Trends Section - Locked for free users */}
+            {!accessInfo.hasFullAccess ? (
+              <LockedSection
+                feature="progress_trends"
+                contextScreen="Progress"
+              >
+                <View style={styles.historySection}>
+                  <Text style={styles.historySectionTitle}>TRENDS</Text>
+                  <View style={styles.historyList}>
+                    {/* Placeholder for trends - would show 30/90 day stats */}
+                    <View style={styles.placeholderCard}>
+                      <Text style={styles.placeholderText}>30-day trends</Text>
+                      <Text style={styles.placeholderText}>90-day trends</Text>
+                    </View>
+                  </View>
+                </View>
+              </LockedSection>
+            ) : (
+              <View style={styles.historySection}>
+                <Text style={styles.historySectionTitle}>TRENDS</Text>
+                <View style={styles.historyList}>
+                  {/* Premium users see real trends */}
+                  <View style={styles.placeholderCard}>
+                    <Text style={styles.placeholderText}>30-day trends</Text>
+                    <Text style={styles.placeholderText}>90-day trends</Text>
+                  </View>
+                </View>
+              </View>
+            )}
 
             {/* Recent History */}
             <View style={styles.historySection}>
               <Text style={styles.historySectionTitle}>RECENT DAYS</Text>
-              <View style={styles.historyList}>
-                {checkIns.map((summary) => (
-                  <HistoryRow key={summary.id} summary={summary} />
-                ))}
-              </View>
+              
+              {/* Show first 3 for free users, all for premium/welcome */}
+              {!accessInfo.hasFullAccess ? (
+                <>
+                  <View style={styles.historyList}>
+                    {checkIns.slice(0, 3).map((summary) => (
+                      <HistoryRow key={summary.id} summary={summary} />
+                    ))}
+                  </View>
+                  
+                  {/* Soft Gate for Full History */}
+                  <SoftGateCard
+                    title="Unlock full history"
+                    description="See all your past recovery days and build a complete picture."
+                    source={PaywallSource.PROGRESS_HISTORY_SOFT_GATE}
+                    contextScreen="Progress"
+                  />
+                  
+                  {/* Locked remaining history */}
+                  <LockedSection
+                    feature="progress_history"
+                    contextScreen="Progress"
+                  >
+                    <View style={styles.historyList}>
+                      {checkIns.slice(3).map((summary) => (
+                        <HistoryRow key={summary.id} summary={summary} />
+                      ))}
+                    </View>
+                  </LockedSection>
+                </>
+              ) : (
+                <View style={styles.historyList}>
+                  {checkIns.map((summary) => (
+                    <HistoryRow key={summary.id} summary={summary} />
+                  ))}
+                </View>
+              )}
             </View>
           </>
         )}
@@ -648,6 +725,19 @@ const styles = StyleSheet.create({
     color: 'rgba(15, 61, 62, 0.5)',
     textAlign: 'center',
     lineHeight: 22,
+  },
+  placeholderCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  placeholderText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: 'rgba(15, 61, 62, 0.5)',
+    marginBottom: 8,
   },
 });
 

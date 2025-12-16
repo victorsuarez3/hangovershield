@@ -20,7 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../providers/AuthProvider';
-import { useEntitlements } from '../hooks/useEntitlements';
+import { useAccessStatus } from '../hooks/useAccessStatus';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -49,7 +49,7 @@ export const EveningCheckInScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { hasFullAccess } = useEntitlements();
+  const accessInfo = useAccessStatus();
 
   // Form state
   const [feltTonight, setFeltTonight] = useState<FeltTonightOption | null>(null);
@@ -60,10 +60,10 @@ export const EveningCheckInScreen: React.FC = () => {
 
   // Redirect free users to locked screen
   useEffect(() => {
-    if (!hasFullAccess) {
+    if (!accessInfo.hasFullAccess) {
       navigation.replace('EveningCheckInLocked');
     }
-  }, [hasFullAccess, navigation]);
+  }, [accessInfo.hasFullAccess, navigation]);
 
   const handleSymptomToggle = (symptom: string) => {
     setSymptomsNow(prev =>
@@ -109,7 +109,7 @@ export const EveningCheckInScreen: React.FC = () => {
   };
 
   // Don't render for free users (they get redirected)
-  if (!hasFullAccess) {
+  if (!accessInfo.hasFullAccess) {
     return null;
   }
 

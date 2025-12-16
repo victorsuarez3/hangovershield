@@ -27,6 +27,10 @@ import { useNavigation } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
 import { AppMenuSheet } from '../components/AppMenuSheet';
 import { useAppNavigation } from '../contexts/AppNavigationContext';
+import { useAccessStatus } from '../hooks/useAccessStatus';
+import { SoftGateCard } from '../components/SoftGateCard';
+import { LockedSection } from '../components/LockedSection';
+import { PaywallSource } from '../constants/paywallSources';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -592,6 +596,7 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const appNav = useAppNavigation();
+  const accessInfo = useAccessStatus();
   
   // Menu state
   const [menuVisible, setMenuVisible] = useState(false);
@@ -788,9 +793,29 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
           {/* Timeline Items */}
           {timelineItems.map((item, index) => {
             if (item.type === 'header') {
-              return <SectionHeader key={`header-${item.timeOfDay}`} label={TIME_OF_DAY_LABELS[item.timeOfDay]} />;
-            } else {
+              // Check if this is the first non-morning header (where we insert soft gate)
+              const isFirstNonMorningHeader = item.timeOfDay !== 'morning' && 
+                timelineItems.slice(0, index).every(i => i.type === 'header' ? i.timeOfDay === 'morning' : true);
+              
               return (
+                <React.Fragment key={`header-${item.timeOfDay}`}>
+                  {/* Insert SoftGateCard before first non-morning section if user doesn't have full access */}
+                  {isFirstNonMorningHeader && !accessInfo.hasFullAccess && (
+                    <SoftGateCard
+                      title="Unlock full recovery plan"
+                      description="See midday, afternoon, and evening steps tailored to your recovery."
+                      source={PaywallSource.RECOVERY_PLAN_SOFT_GATE}
+                      contextScreen="TodayRecoveryPlan"
+                    />
+                  )}
+                  <SectionHeader label={TIME_OF_DAY_LABELS[item.timeOfDay]} />
+                </React.Fragment>
+              );
+            } else {
+              // Wrap non-morning actions in LockedSection if user doesn't have full access
+              const shouldLock = !accessInfo.hasFullAccess && item.action.timeOfDay !== 'morning';
+              
+              const stepCard = (
                 <RecoveryStepCard
                   key={item.action.id}
                   action={item.action}
@@ -800,6 +825,20 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
                   onToggle={handleToggleAction}
                 />
               );
+              
+              if (shouldLock) {
+                return (
+                  <LockedSection
+                    key={`locked-${item.action.id}`}
+                    feature={`recovery_plan_${item.action.timeOfDay}`}
+                    contextScreen="TodayRecoveryPlan"
+                  >
+                    {stepCard}
+                  </LockedSection>
+                );
+              }
+              
+              return stepCard;
             }
           })}
         </View>
