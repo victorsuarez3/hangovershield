@@ -758,9 +758,9 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     ...typography.sectionTitle,
-    fontSize: 38, // 20% smaller (was 48px)
+    fontSize: 34, // 10% smaller (was 38px)
     color: '#0F3D3E',
-    lineHeight: 51, // Proportional to fontSize
+    lineHeight: 46, // Proportional to fontSize
   },
   heroSubtitle: {
     ...typography.body,
