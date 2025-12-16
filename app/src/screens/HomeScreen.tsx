@@ -33,11 +33,11 @@ export const HomeScreen: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const handleGoToHome = useCallback(() => {
-    // Reset to Home tab root
+    // Reset to Home screen
     navigation.dispatch(
       CommonActions.reset({
         index: 0,
-        routes: [{ name: 'Home' }],
+        routes: [{ name: 'HomeMain' }],
       })
     );
   }, [navigation]);

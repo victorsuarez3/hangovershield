@@ -445,7 +445,7 @@ export const ProgressScreen: React.FC = () => {
         currentScreen="progress"
         onGoToHome={() => {
           setMenuVisible(false);
-          navigation.navigate('Home');
+          navigation.navigate('HomeMain');
         }}
         onGoToToday={() => {
           setMenuVisible(false);
@@ -454,23 +454,23 @@ export const ProgressScreen: React.FC = () => {
         onGoToProgress={() => setMenuVisible(false)}
         onGoToCheckIn={() => {
           setMenuVisible(false);
-          navigation.navigate('Home', { screen: 'CheckIn' });
+          navigation.navigate('CheckIn');
         }}
         onGoToWaterLog={() => {
           setMenuVisible(false);
-          navigation.navigate('Home', { screen: 'DailyWaterLog' });
+          navigation.navigate('DailyWaterLog');
         }}
         onGoToEveningCheckIn={() => {
           setMenuVisible(false);
-          navigation.navigate('Home', { screen: 'EveningCheckIn' });
+          navigation.navigate('EveningCheckIn');
         }}
         onGoToEveningCheckInLocked={() => {
           setMenuVisible(false);
-          navigation.navigate('Home', { screen: 'EveningCheckIn' });
+          navigation.navigate('EveningCheckIn');
         }}
         onGoToSubscription={(source) => {
           setMenuVisible(false);
-          navigation.navigate('Home', { screen: 'Paywall', params: { source } });
+          navigation.navigate('Paywall', { source });
         }}
       />
     </View>
