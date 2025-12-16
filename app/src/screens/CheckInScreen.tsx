@@ -88,20 +88,38 @@ interface SymptomChipProps {
   onToggle: () => void;
 }
 
-const SymptomChip: React.FC<SymptomChipProps> = ({ label, isSelected, onToggle }) => (
-  <TouchableOpacity
-    style={[styles.symptomChip, isSelected && styles.symptomChipSelected]}
-    onPress={onToggle}
-    activeOpacity={0.8}
-  >
-    <Text style={[styles.symptomChipText, isSelected && styles.symptomChipTextSelected]}>
-      {label}
-    </Text>
-    {isSelected && (
-      <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
-    )}
-  </TouchableOpacity>
-);
+const SymptomChip: React.FC<SymptomChipProps> = ({ label, isSelected, onToggle }) => {
+  // Optional haptics - gracefully handle if not available
+  let Haptics: any = null;
+  try {
+    Haptics = require('expo-haptics');
+  } catch {
+    // Haptics not available, continue without it
+  }
+
+  const handlePress = () => {
+    // Light haptic feedback when selecting
+    if (isSelected && Haptics) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onToggle();
+  };
+
+  return (
+    <TouchableOpacity
+      style={[styles.symptomChip, isSelected && styles.symptomChipSelected]}
+      onPress={handlePress}
+      activeOpacity={0.8}
+    >
+      <Text style={[styles.symptomChipText, isSelected && styles.symptomChipTextSelected]}>
+        {label}
+      </Text>
+      {isSelected && (
+        <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
+      )}
+    </TouchableOpacity>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Component
@@ -201,9 +219,9 @@ export const CheckInScreen: React.FC = () => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>How are you feeling today?</Text>
+          <Text style={styles.title}>How are you feeling right now?</Text>
           <Text style={styles.subtitle}>
-            This helps us personalize your recovery for today.
+            This helps us personalize today's recovery for your body.
           </Text>
         </View>
 
@@ -225,7 +243,7 @@ export const CheckInScreen: React.FC = () => {
         {/* Symptoms Section (only show if severity is selected and not "none") */}
         {selectedSeverity && selectedSeverity !== 'none' && (
           <View style={styles.symptomsSection}>
-            <Text style={styles.symptomsLabel}>Any symptoms right now?</Text>
+            <Text style={styles.symptomsLabel}>Any symptoms right now? (Optional)</Text>
             <View style={styles.symptomsGrid}>
               {SYMPTOM_OPTIONS.map(({ key, label }) => (
                 <SymptomChip
@@ -246,7 +264,7 @@ export const CheckInScreen: React.FC = () => {
           style={[styles.ctaButton, !canContinue && styles.ctaButtonDisabled]}
           onPress={handleContinue}
           disabled={!canContinue || isSubmitting}
-          activeOpacity={0.85}
+          activeOpacity={canContinue ? 0.85 : 1}
         >
           {isSubmitting ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -258,7 +276,7 @@ export const CheckInScreen: React.FC = () => {
           )}
         </TouchableOpacity>
         <Text style={styles.footerText}>
-          You can update this later from your Daily Check-In.
+          You can update this anytime from your Daily Check-In.
         </Text>
       </View>
     </View>
@@ -288,7 +306,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'CormorantGaramond_600SemiBold',
     fontSize: 32,
-    color: '#0F3D3E',
+    color: '#0A2E2F', // 10-15% darker for better contrast
     textAlign: 'center',
     marginBottom: 12,
     letterSpacing: -0.5,
@@ -325,7 +343,9 @@ const styles = StyleSheet.create({
   },
   severityCardSelected: {
     borderColor: '#0F4C44',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: 'rgba(255, 255, 255, 1)', // More solid background when selected
+    shadowColor: 'rgba(15, 76, 68, 0.12)',
+    shadowOpacity: 1.2,
   },
   severityIconContainer: {
     width: 48,
@@ -408,8 +428,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(15, 76, 68, 0.15)',
   },
   symptomChipSelected: {
-    backgroundColor: '#0F4C44',
-    borderColor: '#0F4C44',
+    backgroundColor: '#0A3F37', // Darker background when selected
+    borderColor: '#0A3F37',
   },
   symptomChipText: {
     fontFamily: 'Inter_500Medium',
@@ -418,6 +438,7 @@ const styles = StyleSheet.create({
   },
   symptomChipTextSelected: {
     color: '#FFFFFF',
+    fontFamily: 'Inter_600SemiBold', // Slightly more bold when selected
   },
 
   // CTA

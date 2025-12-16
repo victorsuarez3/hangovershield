@@ -57,9 +57,9 @@ export const SEVERITY_LABELS: Record<DailyCheckInSeverity, string> = {
 
 export const SEVERITY_DESCRIPTIONS: Record<DailyCheckInSeverity, string> = {
   mild: 'Slight headache, a bit tired.',
-  moderate: 'Heavy head, low energy, maybe nausea.',
-  severe: 'Very rough morning. I need full guidance.',
-  none: 'Just checking in and building healthy habits.',
+  moderate: 'Heavy head, low energy, some nausea.',
+  severe: 'Very rough morning. I want full guidance.',
+  none: 'Just checking in and building healthier habits.',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
