@@ -65,9 +65,16 @@ export function useRevenueCat(): UseRevenueCatReturn {
   const [error, setError] = useState<string | null>(null);
 
   // Safely check if RevenueCat is available
-  const isAvailable = typeof isRevenueCatAvailable === 'function' 
-    ? isRevenueCatAvailable() 
-    : false;
+  // Use a try-catch to handle any import/export issues
+  let isAvailable = false;
+  try {
+    if (typeof checkRevenueCatAvailable === 'function') {
+      isAvailable = checkRevenueCatAvailable();
+    }
+  } catch (error) {
+    console.warn('[useRevenueCat] Error checking RevenueCat availability:', error);
+    isAvailable = false;
+  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Derived state
