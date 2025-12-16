@@ -34,7 +34,9 @@ import {
   getRecentCheckIns,
   calculateStreak,
   countCompletedInLastDays,
+  getTodayDailyCheckIn,
 } from '../services/dailyCheckIn';
+import { getLocalDailyCheckIn } from '../services/dailyCheckInStorage';
 import { getTodayId } from '../utils/dateUtils';
 import { typography } from '../design-system/typography';
 
@@ -53,22 +55,6 @@ type WidgetType =
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Rotating motivational messages (12 phrases)
-const MOTIVATIONAL_MESSAGES = [
-  "Small steps. Big recovery.",
-  "Your future self will thank you tonight.",
-  "Hydration now = easier morning later.",
-  "Consistency beats intensity.",
-  "You're building the habit.",
-  "Recovery loves a plan.",
-  "One good decision at a time.",
-  "Today is a reset.",
-  "Keep it gentle. Keep it steady.",
-  "You're doing the right thing.",
-  "Your body responds to rhythm.",
-  "Show up today. Feel it tomorrow.",
-];
-
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
@@ -79,12 +65,6 @@ export const HomeScreen: React.FC = () => {
   // Menu state
   const [menuVisible, setMenuVisible] = useState(false);
   const [currentScreen] = useState<CurrentScreen>('home');
-  
-  // Rotating message (stable per session)
-  const [motivationalMessage] = useState(() => {
-    const randomIndex = Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length);
-    return MOTIVATIONAL_MESSAGES[randomIndex];
-  });
   
   // Get user's first name
   const firstName = useMemo(() => {
@@ -108,6 +88,13 @@ export const HomeScreen: React.FC = () => {
   
   // Recovery plan state
   const [planStepsLeft, setPlanStepsLeft] = useState<number | null>(null);
+  
+  // Today's check-in data (for contextual feedback)
+  const [todayCheckInData, setTodayCheckInData] = useState<{
+    severity?: string;
+    drankLastNight?: boolean;
+    drinkingToday?: boolean;
+  } | null>(null);
 
   // Load hydration data
   useEffect(() => {
@@ -165,6 +152,43 @@ export const HomeScreen: React.FC = () => {
     // Default to showing "Pending" if we can't determine
     setPlanStepsLeft(null); // null means we'll show "Pending"
   }, [isCheckInCompleted, user?.uid]);
+
+  // Load today's check-in data for contextual feedback
+  useEffect(() => {
+    const loadTodayCheckIn = async () => {
+      try {
+        // Try local first (fast)
+        const localCheckIn = await getLocalDailyCheckIn();
+        if (localCheckIn) {
+          const todayId = getTodayId();
+          if (localCheckIn.id === todayId) {
+            setTodayCheckInData({
+              severity: localCheckIn.level,
+              drankLastNight: localCheckIn.drankLastNight,
+              drinkingToday: localCheckIn.drinkingToday,
+            });
+            return;
+          }
+        }
+
+        // Try Firestore if logged in
+        if (user?.uid) {
+          const firestoreCheckIn = await getTodayDailyCheckIn(user.uid);
+          if (firestoreCheckIn) {
+            setTodayCheckInData({
+              severity: firestoreCheckIn.severity,
+              drankLastNight: firestoreCheckIn.drankLastNight,
+              drinkingToday: firestoreCheckIn.drinkingToday,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('[HomeScreen] Error loading today check-in:', error);
+      }
+    };
+
+    loadTodayCheckIn();
+  }, [user?.uid, isCheckInCompleted]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Analytics Helpers
@@ -273,6 +297,81 @@ export const HomeScreen: React.FC = () => {
 
   const hydrationPercent = hydrationGoal > 0 ? (hydrationLogged / hydrationGoal) * 100 : 0;
 
+  // Generate contextual daily feedback
+  const contextualFeedback = useMemo(() => {
+    const hour = new Date().getHours();
+    const isMorning = hour >= 5 && hour < 12;
+    const isAfternoon = hour >= 12 && hour < 17;
+    const isEvening = hour >= 17;
+
+    if (isCheckInCompleted) {
+      if (streak > 0) {
+        if (streak >= 3) {
+          return "Good choice checking in early.";
+        } else if (streak >= 1) {
+          return "You're building the habit.";
+        }
+      }
+      
+      if (todayCheckInData?.severity === 'none') {
+        return "Today looks light — focus on hydration.";
+      } else if (todayCheckInData?.severity === 'mild') {
+        return "Recovery day ahead. Go slow.";
+      } else if (todayCheckInData?.severity === 'moderate' || todayCheckInData?.severity === 'severe') {
+        return "Recovery day ahead. Go slow.";
+      }
+      
+      return "Your plan is ready.";
+    } else {
+      // Not checked in yet
+      if (isMorning) {
+        return "Start your day right — check in now.";
+      } else if (isAfternoon) {
+        return "Take a moment to check in.";
+      } else {
+        return "Check in to see your plan.";
+      }
+    }
+  }, [isCheckInCompleted, streak, todayCheckInData]);
+
+  // Generate progress signal
+  const progressSignal = useMemo(() => {
+    if (streak > 0) {
+      if (streak === 1) {
+        return "You checked in yesterday";
+      } else {
+        return `${streak}-day check-in streak`;
+      }
+    } else if (completedLast7Days > 0) {
+      return "Recovery habit: building";
+    }
+    return null;
+  }, [streak, completedLast7Days]);
+
+  // Generate contextual alcohol question (not always shown)
+  const contextualAlcoholQuestion = useMemo(() => {
+    // Only show if:
+    // 1. Not checked in yet
+    // 2. It's afternoon/evening (more relevant)
+    // 3. Random chance (30%) to not be annoying
+    if (isCheckInCompleted) return null;
+    
+    const hour = new Date().getHours();
+    const isAfternoonOrEvening = hour >= 14;
+    
+    if (!isAfternoonOrEvening) return null;
+    
+    // 30% chance to show
+    if (Math.random() > 0.3) return null;
+
+    const questions = [
+      "Planning to drink later today?",
+      "Recovery day or prep day?",
+    ];
+    
+    return questions[Math.floor(Math.random() * questions.length)];
+  }, [isCheckInCompleted]);
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────────────────────────
@@ -313,7 +412,13 @@ export const HomeScreen: React.FC = () => {
           <Text style={styles.welcomeText}>
             Welcome back{firstName ? `, ${firstName}` : ''}
           </Text>
-          <Text style={styles.motivationalText}>{motivationalMessage}</Text>
+          <Text style={styles.contextualFeedback}>{contextualFeedback}</Text>
+          {progressSignal && (
+            <Text style={styles.progressSignal}>{progressSignal}</Text>
+          )}
+          {contextualAlcoholQuestion && (
+            <Text style={styles.contextualQuestion}>{contextualAlcoholQuestion}</Text>
+          )}
         </View>
 
         {/* Welcome Banner (only for welcome users, small) */}
@@ -338,7 +443,7 @@ export const HomeScreen: React.FC = () => {
           <View style={styles.heroContent}>
             <View style={styles.heroHeader}>
               <Text style={styles.heroTitle}>
-                {isCheckInCompleted ? "You're on track" : "Start your recovery"}
+                {isCheckInCompleted ? "You're on track" : "Check in for today"}
               </Text>
               <Text style={styles.heroSubtitle}>
                 {isCheckInCompleted
@@ -549,17 +654,33 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     ...typography.sectionTitle,
-    fontSize: 24,
+    fontSize: 36, // Much larger - this is the header
     color: '#0F3D3E',
-    marginBottom: 8,
-    letterSpacing: -0.3,
+    marginBottom: 12,
+    letterSpacing: -0.5,
+    fontWeight: '600',
   },
-  motivationalText: {
+  contextualFeedback: {
     ...typography.body,
-    fontSize: 15,
-    color: 'rgba(15, 61, 62, 0.75)',
-    lineHeight: 22,
+    fontSize: 16,
+    color: 'rgba(15, 61, 62, 0.85)',
+    lineHeight: 24,
+    marginBottom: 8,
     fontStyle: 'italic',
+  },
+  progressSignal: {
+    ...typography.bodySmall,
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.65)',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  contextualQuestion: {
+    ...typography.bodySmall,
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.6)',
+    fontStyle: 'italic',
+    marginTop: 8,
   },
   welcomeBannerContainer: {
     marginBottom: 16,
