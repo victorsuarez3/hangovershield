@@ -613,6 +613,17 @@ export const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Dev: Clear Check-In Button (only in development) */}
+        {__DEV__ && (
+          <TouchableOpacity
+            style={styles.devButton}
+            onPress={handleClearTodayCheckIn}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.devButtonText}>🧹 Clear Today's Check-In (Dev)</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Premium CTA (only for free users, subtle) */}
         {accessInfo.isFree && (
             <TouchableOpacity
@@ -935,5 +946,22 @@ const styles = StyleSheet.create({
     ...typography.button,
     fontSize: 13,
     color: '#FFFFFF',
+  },
+
+  // Dev Button
+  devButton: {
+    backgroundColor: 'rgba(204, 92, 108, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(204, 92, 108, 0.3)',
+    alignItems: 'center',
+  },
+  devButtonText: {
+    ...typography.bodySmall,
+    fontSize: 12,
+    color: '#CC5C6C',
+    fontFamily: 'Inter_500Medium',
   },
 });
