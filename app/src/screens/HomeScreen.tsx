@@ -283,30 +283,54 @@ export const HomeScreen: React.FC = () => {
         }
 
         // Calculate recovery score
-        let score = 60; // Base score
+        // Score should NOT depend on alcohol consumption
+        let score = 0; // Start from 0, build up
         
-        // Completed today's check-in
+        // 1. Daily check-in completed (20 points)
         if (isCheckInCompleted) {
           score += 20;
         }
         
-        // Logged at least 50% hydration
-        const halfGoal = hydrationGoal * 0.5;
-        if (hydrationLogged >= halfGoal) {
-          score += 10;
+        // 2. Hydration progress (up to 30 points)
+        // 50% of goal = 15 points, 100% of goal = 30 points
+        const hydrationProgress = Math.min(hydrationLogged / hydrationGoal, 1);
+        score += Math.round(hydrationProgress * 30);
+        
+        // 3. Micro-step completed (if check-in exists, micro-action is available) (15 points)
+        if (checkIn && plan.microAction) {
+          // Micro-step is considered "completed" if user has checked in
+          // In future, we could track if user actually completed the micro-action
+          score += 15;
         }
         
-        // Reached daily hydration goal
-        if (hydrationLogged >= hydrationGoal) {
-          score += 10;
+        // 4. Today's plan steps completed (up to 30 points)
+        if (checkIn) {
+          const todayCheckIn = await getTodayDailyCheckIn(user.uid);
+          if (todayCheckIn?.planCompleted) {
+            score += 30; // Full plan completed
+          } else if (todayCheckIn?.stepsCompleted && todayCheckIn?.totalSteps) {
+            // Partial completion based on steps
+            const stepsProgress = todayCheckIn.stepsCompleted / todayCheckIn.totalSteps;
+            score += Math.round(stepsProgress * 30);
+          }
         }
         
-        // Streak ≥ 2
-        if (streak >= 2) {
-          score += 3;
+        // 5. (Premium) Evening check-in (5 points)
+        // Check if evening check-in exists for today
+        if (accessInfo.hasFullAccess && user?.uid) {
+          try {
+            // Try to fetch evening check-in for today
+            // For now, we'll skip this as it requires evening check-in service
+            // In future: const eveningCheckIn = await getTodayEveningCheckIn(user.uid);
+            // if (eveningCheckIn) score += 5;
+          } catch (error) {
+            // Evening check-in not available, skip
+          }
         }
         
-        setRecoveryScore(Math.min(score, 100)); // Cap at 100
+        // Ensure score is between 0-100
+        score = Math.min(Math.max(score, 0), 100);
+        setRecoveryScore(score);
       } catch (error) {
         console.error('[HomeScreen] Error loading micro-action and score:', error);
       }
@@ -473,7 +497,24 @@ export const HomeScreen: React.FC = () => {
 
   const hydrationPercent = hydrationGoal > 0 ? (hydrationLogged / hydrationGoal) * 100 : 0;
 
-  // Generate contextual daily feedback
+  // Rotating motivational messages (fixed list, not random)
+  const motivationalMessages = [
+    "Small actions today lead to a better tomorrow.",
+    "Consistency beats intensity.",
+    "Taking care of yourself counts.",
+    "Every check-in moves you forward.",
+    "Progress happens one day at a time.",
+    "You're building something meaningful.",
+    "Small steps, big impact.",
+  ];
+
+  // Select message based on day of week for consistency
+  const motivationalMessage = useMemo(() => {
+    const dayOfWeek = new Date().getDay();
+    return motivationalMessages[dayOfWeek % motivationalMessages.length];
+  }, []);
+
+  // Generate contextual daily feedback (deprecated, using rotating messages instead)
   const contextualFeedback = useMemo(() => {
     const hour = new Date().getHours();
     const isMorning = hour >= 5 && hour < 12;
@@ -588,12 +629,9 @@ export const HomeScreen: React.FC = () => {
           <Text style={styles.welcomeText}>
             Welcome back{firstName ? `, ${firstName}` : ''}
           </Text>
-          <Text style={styles.contextualFeedback}>{contextualFeedback}</Text>
+          <Text style={styles.motivationalMessage}>{motivationalMessage}</Text>
           {progressSignal && (
             <Text style={styles.progressSignal}>{progressSignal}</Text>
-          )}
-          {contextualAlcoholQuestion && (
-            <Text style={styles.contextualQuestion}>{contextualAlcoholQuestion}</Text>
           )}
         </View>
 
@@ -624,7 +662,7 @@ export const HomeScreen: React.FC = () => {
               <Text style={styles.heroSubtitle}>
                 {isCheckInCompleted
                   ? "Follow your personalized steps to feel better faster."
-                  : "Complete your daily check-in to get your personalized recovery plan."}
+                  : "This helps us guide you to feel better today."}
               </Text>
             </View>
 
@@ -784,11 +822,7 @@ export const HomeScreen: React.FC = () => {
 
           {/* Motivational copy */}
           <Text style={styles.progressMotivational}>
-            {streak >= 3
-              ? "You're building a habit."
-              : streak >= 1
-              ? "Consistency beats intensity."
-              : "Every check-in counts."}
+            Every check-in counts.
           </Text>
 
           {/* CTA */}
@@ -805,6 +839,9 @@ export const HomeScreen: React.FC = () => {
         {recoveryScore !== null && (
           <View style={styles.recoveryScoreCard}>
             <Text style={styles.recoveryScoreTitle}>Today's Recovery Score</Text>
+            <Text style={styles.recoveryScoreSubtitle}>
+              Based on today's check-in, hydration, and recovery actions.
+            </Text>
             <View style={styles.recoveryScoreCircle}>
               <Text style={styles.recoveryScoreNumber}>{recoveryScore}</Text>
               <Text style={styles.recoveryScoreMax}>/100</Text>
@@ -817,6 +854,16 @@ export const HomeScreen: React.FC = () => {
                 ]} 
               />
             </View>
+            <Text style={styles.recoveryScoreHelper}>
+              Complete today's plan to improve your score.
+            </Text>
+            <TouchableOpacity
+              onPress={handleRecoveryPlanPress}
+              activeOpacity={0.7}
+              style={styles.recoveryScoreCTA}
+            >
+              <Text style={styles.recoveryScoreCTAText}>View today's full plan →</Text>
+            </TouchableOpacity>
           </View>
         )}
 
