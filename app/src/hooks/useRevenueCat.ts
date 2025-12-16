@@ -36,17 +36,18 @@ export interface UseRevenueCatReturn {
   isTrialActive: boolean;
   subscriptionStatus: SubscriptionStatus | null;
   isAvailable: boolean;
-  
+
   // Offerings
   packages: any[];
   monthlyPackage: any | null;
   yearlyPackage: any | null;
-  
+
   // Actions
   purchase: (pkg: any, source: string) => Promise<boolean>;
   restore: () => Promise<boolean>;
   refresh: () => Promise<void>;
-  
+  refreshOfferings: () => Promise<void>;
+
   // Errors
   error: string | null;
 }
@@ -64,17 +65,8 @@ export function useRevenueCat(): UseRevenueCatReturn {
   const [packages, setPackages] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Safely check if RevenueCat is available
-  // Use a try-catch to handle any import/export issues
-  let isAvailable = false;
-  try {
-    if (typeof checkRevenueCatAvailable === 'function') {
-      isAvailable = checkRevenueCatAvailable();
-    }
-  } catch (error) {
-    console.warn('[useRevenueCat] Error checking RevenueCat availability:', error);
-    isAvailable = false;
-  }
+  // Get availability from the service
+  const isAvailable = isRevenueCatAvailable();
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Derived state

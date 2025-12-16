@@ -10,7 +10,7 @@
  * - Loading and error states
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -26,15 +26,28 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { PurchasesPackage } from 'react-native-purchases';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { typography } from '../design-system/typography';
 import { RootStackParamList } from '../navigation/types';
 import { useRevenueCat } from '../hooks/useRevenueCat';
 import { useAccessStatus } from '../hooks/useAccessStatus';
 import { Analytics } from '../utils/analytics';
-import { getPaywallCopy, PAYWALL_FEATURES, getCTAText, calculateDailyPrice } from '../utils/paywallCopy';
+import { PAYWALL_FEATURES, getCTAText } from '../utils/paywallCopy';
 import { PaywallSourceType } from '../constants/paywallSources';
+
+// Includes section items (grouped)
+const PAYWALL_INCLUDES = {
+  daily: [
+    'Evening Check-In (Pro)',
+    'Full Day Recovery Plan (all steps)',
+    'Hydration goals',
+  ],
+  insights: [
+    '30 / 90-day trends',
+    'Full check-in history',
+    'Progress overview dashboard',
+  ],
+} as const;
 
 // Optional haptics - gracefully handle if not available
 let Haptics: any = null;
@@ -51,8 +64,7 @@ try {
 type PaywallScreenRouteProp = RouteProp<RootStackParamList, 'Paywall'>;
 type PaywallScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Paywall'>;
 
-// Package identifier type for selection
-type PackageIdentifier = string | null;
+type PlanId = 'yearly' | 'monthly';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -67,9 +79,6 @@ export const PaywallScreen: React.FC = () => {
   const source = (route.params?.source || 'default') as PaywallSourceType;
   const contextScreen = route.params?.contextScreen || 'unknown';
   
-  // Get dynamic copy based on source
-  const copy = getPaywallCopy(source);
-  
   // RevenueCat hook
   const {
     packages,
@@ -77,7 +86,6 @@ export const PaywallScreen: React.FC = () => {
     yearlyPackage,
     purchase,
     restore,
-    refresh,
     refreshOfferings,
     isLoading: isLoadingPackages,
     error: revenueCatError,
@@ -88,41 +96,24 @@ export const PaywallScreen: React.FC = () => {
   const accessInfo = useAccessStatus();
   
   // Local state
-  const [selectedPackageId, setSelectedPackageId] = useState<PackageIdentifier>(null);
-  const [selectedPlanType, setSelectedPlanType] = useState<'yearly' | 'monthly'>('yearly'); // Fallback selection
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>('yearly');
+  const [includesExpanded, setIncludesExpanded] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
-  const [offeringsLoaded, setOfferingsLoaded] = useState(false);
   
-  // Determine if purchases are ready (SDK available AND offerings loaded)
+  const offeringsLoaded = packages.length > 0;
   const purchasesReady = isRevenueCatAvailable && offeringsLoaded;
-  
-  // Calculate daily price for yearly plan
-  const yearlyPriceNumber = yearlyPackage?.product.price || 29.99;
-  const yearlyCurrencyCode = yearlyPackage?.product.currencyCode || 'USD';
-  const dailyPrice = calculateDailyPrice(yearlyPriceNumber, yearlyCurrencyCode);
-  
-  // Set default selection when packages are available
-  useEffect(() => {
-    if (yearlyPackage && !selectedPackageId) {
-      setSelectedPackageId(yearlyPackage.identifier);
-    } else if (monthlyPackage && !selectedPackageId) {
-      setSelectedPackageId(monthlyPackage.identifier);
-    }
-  }, [yearlyPackage, monthlyPackage, selectedPackageId]);
-  
-  // Track when offerings are loaded
-  useEffect(() => {
-    if (packages.length > 0) {
-      setOfferingsLoaded(true);
-    }
-  }, [packages]);
+
+  const selectedPackage = useMemo(() => {
+    if (selectedPlan === 'yearly') return yearlyPackage ?? null;
+    return monthlyPackage ?? null;
+  }, [monthlyPackage, selectedPlan, yearlyPackage]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Log paywall shown on mount
   // ─────────────────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
+  React.useEffect(() => {
     Analytics.paywallShown(source, contextScreen, accessInfo.status);
   }, [source, contextScreen, accessInfo.status]);
 
@@ -130,7 +121,7 @@ export const PaywallScreen: React.FC = () => {
   // If user already has premium, go back
   // ─────────────────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (accessInfo.isPremium) {
       navigation.goBack();
     }
@@ -141,15 +132,11 @@ export const PaywallScreen: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const handlePurchase = async () => {
-    // Find selected package by identifier or fallback to plan type
-    const packageToPurchase = 
-      (selectedPackageId && packages.find(pkg => pkg.identifier === selectedPackageId)) ||
-      (selectedPlanType === 'yearly' ? yearlyPackage : monthlyPackage) ||
-      yearlyPackage ||
-      monthlyPackage;
+    const packageToPurchase = selectedPackage ?? yearlyPackage ?? monthlyPackage ?? null;
     
     if (!packageToPurchase) {
-      Alert.alert('Error', 'No package available. Please try again later.');
+      // Calm handling: if we cannot purchase, we keep UI usable and allow retry.
+      Alert.alert('Purchases temporarily unavailable', 'Please try again in a moment.');
       return;
     }
 
@@ -193,7 +180,7 @@ export const PaywallScreen: React.FC = () => {
     navigation.goBack();
   };
   
-  const handlePlanSelect = (packageId: string | null, planType: 'yearly' | 'monthly') => {
+  const handlePlanSelect = (plan: PlanId) => {
     // Haptic feedback on selection (optional)
     if (Haptics) {
       try {
@@ -202,26 +189,14 @@ export const PaywallScreen: React.FC = () => {
         // Haptics not available, continue silently
       }
     }
-    // Always update selection, even if packageId is null
-    setSelectedPlanType(planType);
-    if (packageId) {
-      setSelectedPackageId(packageId);
-    }
+    setSelectedPlan(plan);
   };
   
   const handleRetry = async () => {
-    setOfferingsLoaded(false);
     // Re-fetch offerings
     if (refreshOfferings) {
       try {
         await refreshOfferings();
-        // After refresh, check if packages are available
-        // The packages will update via the hook, triggering the useEffect
-        setTimeout(() => {
-          if (packages.length > 0) {
-            setOfferingsLoaded(true);
-          }
-        }, 500);
       } catch (error) {
         console.error('[PaywallScreen] Retry failed:', error);
       }
@@ -242,8 +217,13 @@ export const PaywallScreen: React.FC = () => {
   // Get prices from RevenueCat packages
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const yearlyPrice = yearlyPackage?.product.priceString || '$29.99';
-  const monthlyPrice = monthlyPackage?.product.priceString || '$4.99';
+  const yearlyPrice = '$49.99';
+  const monthlyPrice = '$4.99';
+
+  const showPurchasesNotice = !isLoadingPackages && (!purchasesReady || !!revenueCatError);
+  const purchasesNoticeText = !isRevenueCatAvailable
+    ? 'Purchases available in TestFlight builds.'
+    : 'Purchases temporarily unavailable. Please try again.';
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Render
@@ -252,173 +232,143 @@ export const PaywallScreen: React.FC = () => {
   const isLoading = isLoadingPackages || isPurchasing || isRestoring;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <View style={styles.container}>
       <LinearGradient
         colors={HANGOVER_GRADIENT}
         locations={[0, 1]}
         style={StyleSheet.absoluteFillObject}
       />
+      {/* Subtle contrast overlay for improved readability */}
+      <View style={styles.contrastOverlay} />
 
       {/* Close Button */}
       <TouchableOpacity
-        style={[styles.closeButton, { top: insets.top + 16 }]}
+        style={[styles.closeButton, { top: insets.top + 12 }]}
         onPress={handleClose}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       >
-        <Ionicons name="close" size={24} color="rgba(0, 0, 0, 0.5)" />
+        <Ionicons name="close" size={24} color="rgba(10, 47, 48, 0.5)" />
       </TouchableOpacity>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + 72, paddingBottom: insets.bottom + 40 },
+        ]}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
         {/* Hero Section */}
-        <View style={styles.heroSection}>
+        <View style={styles.heroSection} pointerEvents="none">
           <View style={styles.iconContainer}>
             <View style={styles.iconGlow} />
-            <Ionicons name="shield-checkmark" size={64} color="#0F3D3E" />
+            <View style={styles.iconHalo} />
+            <Ionicons name="shield-checkmark" size={64} color="#0A2F30" />
           </View>
-          <Text style={styles.headline}>{copy.headline}</Text>
-          <Text style={styles.subheadline}>
-            {copy.subheadline}
-          </Text>
+        </View>
+
+        {/* Emotional Header */}
+        <View style={styles.emotionalHeader}>
+          <Text style={styles.eyebrow}>Finish today’s recovery — properly</Text>
+          <Text style={styles.emotionalTrigger}>You’re missing part{'\n'}of today’s recovery.</Text>
+          <Text style={styles.supportLine}>Your body responds best to a complete plan.</Text>
         </View>
 
         {/* Feature Highlights */}
-        <View style={styles.featuresCard}>
-          {PAYWALL_FEATURES.map((feature, index) => (
-            <FeatureRow
-              key={index}
-              icon={index === 0 ? 'sparkles-outline' : index === 1 ? 'moon-outline' : index === 2 ? 'stats-chart-outline' : 'water-outline'}
-              title={feature.title}
-              subtitle={feature.subtitle}
-            />
-          ))}
-        </View>
+        <BenefitsCard />
 
-        {/* Urgency Line */}
-        {!accessInfo.isPremium && (
-          <Text style={styles.urgencyLine}>{copy.urgencyLine}</Text>
-        )}
+        <IncludesCard expanded={includesExpanded} onToggle={() => setIncludesExpanded(v => !v)} />
+
+        {/* Contextual Urgency Line */}
+        {/* Spacer / divider before pricing */}
+        <View style={styles.pricingDivider}>
+          <View style={styles.pricingDividerLine} />
+        </View>
+        <Text style={styles.contextualUrgency}>Part of today’s recovery is locked.</Text>
 
         {/* Pricing Options */}
         <View style={styles.pricingSection}>
-          {/* Yearly Option - Highlighted */}
-          <Pressable
-            style={[
-              styles.pricingCard,
-              styles.pricingCardHighlighted,
-              (selectedPlanType === 'yearly' || (yearlyPackage && selectedPackageId === yearlyPackage.identifier)) && styles.pricingCardSelected,
-            ]}
-            onPress={() => handlePlanSelect(yearlyPackage?.identifier || null, 'yearly')}
-            disabled={isLoading}
+          <PlanCard
+            plan="yearly"
+            price={yearlyPrice}
+            period="/ year"
+            badge="BEST VALUE"
+            selected={selectedPlan === 'yearly'}
+            onSelect={handlePlanSelect}
           >
-            <View style={styles.badgeContainer} pointerEvents="none">
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>BEST VALUE</Text>
-              </View>
-            </View>
-            <View style={styles.radioContainer} pointerEvents="none">
-              <View style={[styles.radio, (selectedPlanType === 'yearly' || (yearlyPackage && selectedPackageId === yearlyPackage.identifier)) && styles.radioSelected]}>
-                {(selectedPlanType === 'yearly' || (yearlyPackage && selectedPackageId === yearlyPackage.identifier)) && <View style={styles.radioInner} />}
-              </View>
-            </View>
-            <Text style={styles.pricingAmount}>{yearlyPrice}</Text>
-            <Text style={styles.pricingPeriod}>/ year</Text>
-            <Text style={styles.pricingSubtext}>
-              Less than {dailyPrice}/day to recover properly.
-            </Text>
-          </Pressable>
+            <Text style={styles.pricingSubtext}>Save $9.89 compared to monthly</Text>
+            <Text style={styles.pricingSubtext}>Less than $0.14/day</Text>
+            <Text style={styles.pricingHint}>Most users choose this.</Text>
+          </PlanCard>
 
-          {/* Monthly Option */}
-          <Pressable
-            style={[
-              styles.pricingCard,
-              (selectedPlanType === 'monthly' || (monthlyPackage && selectedPackageId === monthlyPackage.identifier)) && styles.pricingCardSelected,
-            ]}
-            onPress={() => handlePlanSelect(monthlyPackage?.identifier || null, 'monthly')}
-            disabled={isLoading}
+          <PlanCard
+            plan="monthly"
+            price={monthlyPrice}
+            period="/ month"
+            selected={selectedPlan === 'monthly'}
+            onSelect={handlePlanSelect}
+            footerHint="Most users choose yearly."
           >
-            <View style={styles.radioContainer} pointerEvents="none">
-              <View style={[styles.radio, (selectedPlanType === 'monthly' || (monthlyPackage && selectedPackageId === monthlyPackage.identifier)) && styles.radioSelected]}>
-                {(selectedPlanType === 'monthly' || (monthlyPackage && selectedPackageId === monthlyPackage.identifier)) && <View style={styles.radioInner} />}
-              </View>
-            </View>
-            <Text style={styles.pricingAmount}>{monthlyPrice}</Text>
-            <Text style={styles.pricingPeriod}>/ month</Text>
             <Text style={styles.pricingSubtext}>Flexible — cancel anytime</Text>
-          </Pressable>
+          </PlanCard>
         </View>
 
-        {/* Error Message */}
-        {revenueCatError && (
-          <Text style={styles.errorText}>{revenueCatError}</Text>
-        )}
-        
-        {/* Purchases Unavailable Messages */}
-        {isRevenueCatAvailable && !offeringsLoaded && (
-          <View style={styles.sdkNotAvailableCard}>
-            <Ionicons name="information-circle-outline" size={20} color="rgba(0, 0, 0, 0.5)" />
-            <View style={styles.sdkNotAvailableTextContainer}>
-              <Text style={styles.sdkNotAvailableTitle}>Purchases temporarily unavailable</Text>
-              <Text style={styles.sdkNotAvailableSubtitle}>Please try again in a moment.</Text>
+        {/* Calm inline notice (no scary banners) */}
+        {showPurchasesNotice && (
+          <View style={styles.noticeCard}>
+            <Ionicons name="information-circle-outline" size={20} color="rgba(10, 47, 48, 0.55)" />
+            <View style={styles.noticeTextContainer}>
+              <Text style={styles.noticeText}>{purchasesNoticeText}</Text>
             </View>
-          </View>
-        )}
-        
-        {!isRevenueCatAvailable && __DEV__ && (
-          <View style={styles.devNoteCard}>
-            <Text style={styles.devNoteText}>Purchases available in TestFlight builds.</Text>
+            {isRevenueCatAvailable && (
+              <TouchableOpacity
+                style={styles.noticeButton}
+                onPress={handleRetry}
+                activeOpacity={0.8}
+                disabled={isLoading}
+              >
+                <Text style={styles.noticeButtonText}>Try Again</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
         {/* CTA Button */}
         <View style={styles.ctaSection}>
+          <Text style={styles.ctaPreline}>What you do today changes how you feel tomorrow.</Text>
           <TouchableOpacity
             style={[
-              styles.ctaButton, 
+              styles.ctaButton,
               (!purchasesReady || isLoading) && styles.ctaButtonDisabled
             ]}
-            onPress={!purchasesReady ? handleRetry : handlePurchase}
+            onPress={purchasesReady ? handlePurchase : handleRetry}
             activeOpacity={0.8}
-            disabled={isLoading || (!purchasesReady && !isPurchasing)}
+            disabled={isLoading || !purchasesReady}
           >
             {isPurchasing ? (
               <ActivityIndicator color="#FFFFFF" />
-            ) : !purchasesReady ? (
-              <Text style={styles.ctaText}>Try Again</Text>
             ) : (
               <Text style={styles.ctaText}>
-                {getCTAText(selectedPlanType === 'yearly' || selectedPackageId === yearlyPackage?.identifier, source)}
+                {getCTAText(selectedPlan === 'yearly', source)} {'\u2192'}
+                {'\n'}
+                Feel Better
               </Text>
             )}
           </TouchableOpacity>
-          {purchasesReady && (
-            <>
-              <Text style={styles.ctaSubtext}>
-                No risk. Cancel anytime.
-              </Text>
-              <Text style={styles.ctaSubtextSecondary}>
-                Most users cancel after they feel better.
-              </Text>
-            </>
-          )}
+          <Text style={styles.ctaSubtext}>No risk. Cancel anytime.</Text>
         </View>
 
         {/* Restore Purchases Button */}
-        {purchasesReady && (
-          <TouchableOpacity
-            style={styles.restoreButton}
-            onPress={handleRestore}
-            disabled={isRestoring || isLoading}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.restoreButtonText}>
-              {isRestoring ? 'Restoring...' : 'Restore Purchases'}
-            </Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={styles.restoreButton}
+          onPress={handleRestore}
+          disabled={isRestoring || isLoading}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.restoreButtonText}>
+            {isRestoring ? 'Restoring...' : 'Restore Purchases'}
+          </Text>
+        </TouchableOpacity>
 
         {/* Footer Links */}
         <View style={styles.footer}>
@@ -461,6 +411,168 @@ const FeatureRow: React.FC<FeatureRowProps> = ({ icon, title, subtitle }) => {
   );
 };
 
+const BenefitsCard: React.FC = () => {
+  return (
+    <View style={styles.card}>
+      <Text style={styles.preBenefitsLine}>Recovery doesn’t end in the morning.</Text>
+      {PAYWALL_FEATURES.map((feature, index) => (
+        <FeatureRow
+          key={index}
+          icon={
+            index === 0
+              ? 'sparkles-outline'
+              : index === 1
+                ? 'moon-outline'
+                : index === 2
+                  ? 'stats-chart-outline'
+                  : 'water-outline'
+          }
+          title={feature.title}
+          subtitle={feature.subtitle}
+        />
+      ))}
+    </View>
+  );
+};
+
+const IncludesCard: React.FC<{ expanded: boolean; onToggle: () => void }> = ({
+  expanded,
+  onToggle,
+}) => {
+  return (
+    <View style={[styles.card, styles.includesCard]}>
+      <View pointerEvents="none" style={styles.includesTopHighlight} />
+      <Text style={styles.includesTitle}>INCLUDES</Text>
+
+      <View style={styles.includesGroup}>
+        <View style={styles.includesGroupHeader}>
+          <View style={styles.includesGroupHeaderLeft}>
+            <Ionicons name="calendar-outline" size={16} color="rgba(10, 47, 48, 0.55)" />
+            <Text style={styles.includesGroupTitle}>Daily Recovery (Morning + Evening)</Text>
+          </View>
+          <View style={styles.includesPill}>
+            <Text style={styles.includesPillText}>PRO</Text>
+          </View>
+        </View>
+        {expanded ? (
+          <View style={styles.includesList}>
+            {PAYWALL_INCLUDES.daily.map((item, index) => (
+              <IncludesRow key={index} text={item} />
+            ))}
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.includesGroupDivider} />
+
+      <View style={styles.includesGroup}>
+        <View style={styles.includesGroupHeader}>
+          <View style={styles.includesGroupHeaderLeft}>
+            <Ionicons name="stats-chart-outline" size={16} color="rgba(10, 47, 48, 0.55)" />
+            <Text style={styles.includesGroupTitle}>Advanced Insights</Text>
+          </View>
+          <View style={styles.includesPill}>
+            <Text style={styles.includesPillText}>ADVANCED</Text>
+          </View>
+        </View>
+        {expanded ? (
+          <View style={styles.includesList}>
+            {PAYWALL_INCLUDES.insights.map((item, index) => (
+              <IncludesRow key={index} text={item} />
+            ))}
+          </View>
+        ) : null}
+      </View>
+
+      <TouchableOpacity
+        style={styles.includesToggle}
+        onPress={onToggle}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={expanded ? 'Hide everything included' : 'See everything included'}
+      >
+        <Text style={styles.includesToggleText}>
+          {expanded ? 'Hide everything included' : 'See everything included'}
+        </Text>
+        <Ionicons
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={18}
+          color="rgba(10, 47, 48, 0.55)"
+        />
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const IncludesRow: React.FC<{ text: string }> = ({ text }) => {
+  return (
+    <View style={styles.includesRow}>
+      <View style={styles.includesDot} />
+      <Text style={styles.includesItemText}>{text}</Text>
+    </View>
+  );
+};
+
+interface PlanCardProps {
+  plan: PlanId;
+  price: string;
+  period: string;
+  badge?: string;
+  selected: boolean;
+  onSelect: (plan: PlanId) => void;
+  children: React.ReactNode;
+  footerHint?: string;
+}
+
+const PlanCard: React.FC<PlanCardProps> = ({
+  plan,
+  price,
+  period,
+  badge,
+  selected,
+  onSelect,
+  children,
+  footerHint,
+}) => {
+  return (
+    <Pressable
+      style={[
+        styles.pricingCard,
+        plan === 'yearly' && styles.pricingCardHighlighted,
+        selected && styles.pricingCardSelected,
+      ]}
+      onPress={() => onSelect(plan)}
+      accessibilityRole="button"
+      accessibilityLabel={plan === 'yearly' ? 'Yearly plan' : 'Monthly plan'}
+    >
+      {badge ? (
+        <View style={styles.badgeContainer}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badge}</Text>
+          </View>
+        </View>
+      ) : null}
+
+      <Pressable
+        style={styles.radioContainer}
+        onPress={() => onSelect(plan)}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        accessibilityRole="radio"
+        accessibilityState={{ selected }}
+      >
+        <View style={[styles.radio, selected && styles.radioSelected]}>
+          {selected && <View style={styles.radioInner} />}
+        </View>
+      </Pressable>
+
+      <Text style={styles.pricingAmount}>{price}</Text>
+      <Text style={styles.pricingPeriod}>{period}</Text>
+      <View style={styles.pricingSubcopyStack}>{children}</View>
+      {footerHint ? <Text style={styles.socialProof}>{footerHint}</Text> : null}
+    </Pressable>
+  );
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Styles
 // ─────────────────────────────────────────────────────────────────────────────
@@ -469,27 +581,72 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  contrastOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
   closeButton: {
     position: 'absolute',
-    right: 20,
+    right: 18,
     zIndex: 10,
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
   },
   heroSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 18,
     paddingHorizontal: 16,
+  },
+  emotionalHeader: {
+    alignItems: 'center',
+    marginBottom: 26,
+    paddingHorizontal: 16,
+  },
+  eyebrow: {
+    ...typography.labelSmall,
+    fontSize: 13,
+    color: 'rgba(10, 47, 48, 0.45)',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontWeight: '600',
+    textTransform: 'none',
+  },
+  emotionalTrigger: {
+    ...typography.sectionTitle,
+    fontSize: 35,
+    color: 'rgba(10, 47, 48, 0.98)',
+    textAlign: 'center',
+    marginBottom: 14,
+    lineHeight: 40,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+  },
+  supportLine: {
+    ...typography.bodyMedium,
+    fontSize: 14.5,
+    color: 'rgba(10, 47, 48, 0.58)',
+    textAlign: 'center',
+    lineHeight: 21,
+    maxWidth: 320,
+    marginTop: 6,
+  },
+  preBenefitsLine: {
+    ...typography.bodyMedium,
+    fontSize: 13.5,
+    color: 'rgba(10, 47, 48, 0.58)',
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    fontWeight: '600',
   },
   iconContainer: {
     width: 100,
@@ -511,6 +668,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 61, 62, 0.08)',
     zIndex: -1,
   },
+  iconHalo: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    zIndex: -1,
+  },
   headline: {
     ...typography.sectionTitle,
     fontSize: 28,
@@ -527,23 +692,40 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     maxWidth: '90%',
   },
-  featuresCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
     borderRadius: 20,
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 20,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 76, 68, 0.08)',
     shadowColor: 'rgba(0, 0, 0, 0.06)',
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 16,
     shadowOpacity: 1,
     elevation: 6,
   },
+  includesCard: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+  },
+  includesTopHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 44,
+    backgroundColor: 'rgba(15, 76, 68, 0.035)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 18,
   },
   featureIconContainer: {
     width: 32,
@@ -561,16 +743,17 @@ const styles = StyleSheet.create({
   featureText: {
     ...typography.body,
     fontSize: 15,
-    color: 'rgba(0, 0, 0, 0.8)',
+    color: 'rgba(10, 47, 48, 0.9)',
     lineHeight: 22,
     marginBottom: 2,
+    fontWeight: '600',
   },
   featureSubtext: {
     ...typography.bodySmall,
     fontSize: 13,
-    color: 'rgba(0, 0, 0, 0.6)',
+    color: 'rgba(10, 47, 48, 0.6)',
     lineHeight: 18,
-    fontStyle: 'italic',
+    fontStyle: 'normal',
   },
   urgencyLine: {
     ...typography.bodySmall,
@@ -579,6 +762,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
     fontStyle: 'italic',
+  },
+  contextualUrgency: {
+    ...typography.bodySmall,
+    fontSize: 14,
+    color: '#5F6B6A',
+    textAlign: 'center',
+    marginBottom: 10,
+    fontStyle: 'normal',
+  },
+  pricingDivider: {
+    marginTop: 8,
+    marginBottom: 18,
+    alignItems: 'center',
+  },
+  pricingDividerLine: {
+    height: 1,
+    width: '70%',
+    backgroundColor: 'rgba(10, 47, 48, 0.10)',
   },
   pricingSection: {
     marginBottom: 24,
@@ -608,6 +809,7 @@ const styles = StyleSheet.create({
   pricingCardSelected: {
     borderColor: '#0A3F37',
     borderWidth: 3,
+    backgroundColor: 'rgba(15, 76, 68, 0.04)',
   },
   badgeContainer: {
     position: 'absolute',
@@ -617,13 +819,13 @@ const styles = StyleSheet.create({
   },
   badge: {
     backgroundColor: '#0F4C44',
-    paddingVertical: 3,
-    paddingHorizontal: 10,
+    paddingVertical: 2,
+    paddingHorizontal: 9,
     borderRadius: 10,
   },
   badgeText: {
     ...typography.labelSmall,
-    fontSize: 10,
+    fontSize: 9.5,
     color: '#FFFFFF',
     letterSpacing: 0.3,
   },
@@ -667,51 +869,117 @@ const styles = StyleSheet.create({
   pricingSubtext: {
     ...typography.bodySmall,
     fontSize: 13,
-    color: 'rgba(0, 0, 0, 0.6)',
+    color: 'rgba(10, 47, 48, 0.64)',
     lineHeight: 18,
   },
-  includesSection: {
-    marginBottom: 24,
-    paddingHorizontal: 4,
+  pricingHint: {
+    ...typography.bodySmall,
+    fontSize: 12.5,
+    color: 'rgba(10, 47, 48, 0.55)',
+    lineHeight: 17,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  pricingSubcopyStack: {
+    gap: 2,
+  },
+  socialProof: {
+    ...typography.bodySmall,
+    fontSize: 12,
+    color: 'rgba(0, 0, 0, 0.5)',
+    lineHeight: 16,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   includesTitle: {
     ...typography.labelSmall,
     fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.5)',
+    color: 'rgba(10, 47, 48, 0.70)',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
+    letterSpacing: 1.2,
+    fontWeight: '700',
+    marginBottom: 14,
+  },
+  includesGroup: {
+    marginBottom: 16,
+  },
+  includesGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  includesGroupHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  includesGroupTitle: {
+    ...typography.body,
+    fontSize: 15,
+    color: 'rgba(10, 47, 48, 0.92)',
+    fontWeight: '700',
+  },
+  includesPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(15, 76, 68, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 76, 68, 0.10)',
+  },
+  includesPillText: {
+    ...typography.labelSmall,
+    fontSize: 11,
+    color: 'rgba(10, 47, 48, 0.65)',
+    letterSpacing: 0.9,
+    fontWeight: '700',
+  },
+  includesGroupDivider: {
+    height: 1,
+    backgroundColor: 'rgba(10, 47, 48, 0.08)',
+    marginVertical: 14,
+  },
+  includesToggle: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(10, 47, 48, 0.06)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  includesToggleText: {
+    ...typography.bodySmall,
+    fontSize: 13.5,
+    color: 'rgba(10, 47, 48, 0.72)',
+    fontWeight: '600',
   },
   includesList: {
-    gap: 4,
+    gap: 10,
   },
-  includesItem: {
+  includesRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  includesDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    marginTop: 7,
+    backgroundColor: 'rgba(15, 76, 68, 0.45)',
+  },
+  includesItemText: {
     ...typography.bodySmall,
-    fontSize: 13,
-    color: 'rgba(0, 0, 0, 0.65)',
+    flex: 1,
+    fontSize: 14.5,
+    color: 'rgba(10, 47, 48, 0.80)',
     lineHeight: 20,
+    fontWeight: '500',
   },
-  devNoteCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  devNoteText: {
-    ...typography.bodySmall,
-    fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.5)',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  errorText: {
-    ...typography.bodySmall,
-    fontSize: 14,
-    color: '#E74C3C',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  sdkNotAvailableCard: {
+  noticeCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -720,31 +988,40 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 12,
   },
-  sdkNotAvailableTextContainer: {
+  noticeTextContainer: {
     flex: 1,
   },
-  sdkNotAvailableTitle: {
-    ...typography.bodyMedium,
-    fontSize: 14,
-    color: 'rgba(0, 0, 0, 0.7)',
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  sdkNotAvailableSubtitle: {
-    ...typography.bodySmall,
-    fontSize: 13,
-    color: 'rgba(0, 0, 0, 0.5)',
-    lineHeight: 18,
-  },
-  sdkNotAvailableText: {
+  noticeText: {
     ...typography.bodySmall,
     fontSize: 14,
     color: 'rgba(0, 0, 0, 0.6)',
     flex: 1,
     lineHeight: 20,
   },
+  noticeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(15, 76, 68, 0.08)',
+  },
+  noticeButtonText: {
+    ...typography.labelSmall,
+    fontSize: 13,
+    color: '#0F4C44',
+    fontWeight: '600',
+  },
   ctaSection: {
     marginBottom: 24,
+  },
+  ctaPreline: {
+    ...typography.bodySmall,
+    fontSize: 13.5,
+    color: 'rgba(10, 47, 48, 0.68)',
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 10,
+    paddingHorizontal: 12,
+    fontWeight: '600',
   },
   ctaButton: {
     backgroundColor: '#0A3F37',
@@ -769,6 +1046,9 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#FFFFFF',
     fontWeight: '600',
+    textAlign: 'center',
+    width: '100%',
+    lineHeight: 22,
   },
   ctaSubtext: {
     ...typography.bodySmall,
@@ -785,6 +1065,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     fontStyle: 'italic',
+  },
+  restoreButton: {
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignSelf: 'center',
+  },
+  restoreButtonText: {
+    ...typography.labelSmall,
+    fontSize: 14,
+    color: 'rgba(0, 0, 0, 0.6)',
+    textDecorationLine: 'underline',
   },
   footer: {
     flexDirection: 'row',

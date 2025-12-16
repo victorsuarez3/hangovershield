@@ -11,7 +11,6 @@ export interface PaywallCopy {
   headline: string;
   subheadline: string;
   urgencyLine: string;
-  primaryCTAOverride?: string; // Optional override for CTA text
 }
 
 const COPY_MAP: Record<PaywallSourceType | 'default', PaywallCopy> = {
@@ -19,12 +18,11 @@ const COPY_MAP: Record<PaywallSourceType | 'default', PaywallCopy> = {
     headline: 'Protect your night. Improve tomorrow.',
     subheadline: 'Evening habits make the biggest difference.',
     urgencyLine: 'Evening reset is locked without Premium.',
-    primaryCTAOverride: 'Unlock Evening Reset',
   },
   recovery_plan_soft_gate: {
-    headline: "Finish today's recovery — properly",
+    headline: 'Finish today’s recovery — properly',
     subheadline: 'Your body responds best to a complete plan.',
-    urgencyLine: "Part of today's recovery is locked.",
+    urgencyLine: 'Part of today’s recovery is locked.',
   },
   progress_overview_soft_gate: {
     headline: 'Understand your recovery patterns',
@@ -74,20 +72,20 @@ export function getPaywallCopy(source?: PaywallSourceType): PaywallCopy {
 }
 
 /**
- * Feature list copy (outcome-driven)
+ * Feature list copy (cause → effect format)
  */
 export const PAYWALL_FEATURES = [
   {
     title: 'Wake up feeling better tomorrow',
-    subtitle: 'Not just "less bad"',
+    subtitle: 'Because recovery doesn’t end in the morning',
   },
   {
     title: 'Protect your sleep & recovery rhythm',
-    subtitle: 'Even after a long night',
+    subtitle: 'Alcohol delays recovery into the night',
   },
   {
     title: 'See patterns your body repeats',
-    subtitle: "So you don't guess anymore",
+    subtitle: 'So you stop guessing',
   },
   {
     title: 'Hydrate with intention, not hope',
@@ -96,23 +94,14 @@ export const PAYWALL_FEATURES = [
 ] as const;
 
 /**
- * Get CTA text based on selected plan and source
+ * Get CTA text - always returns the same text for consistency
  */
 export function getCTAText(
   isYearly: boolean,
   source?: PaywallSourceType
 ): string {
-  // Source-specific override takes priority
-  const copy = getPaywallCopy(source);
-  if (copy.primaryCTAOverride) {
-    return copy.primaryCTAOverride;
-  }
-
-  // Plan-based CTAs
-  if (isYearly) {
-    return 'Start Full Recovery';
-  }
-  return 'Recover Properly';
+  // Consistent CTA text
+  return 'Complete Today’s Recovery';
 }
 
 /**
