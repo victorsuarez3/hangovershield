@@ -15,7 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { Button } from '../components/Button';
 
@@ -105,8 +105,13 @@ export const PlanCompleteScreen: React.FC = () => {
   }, []);
 
   const handleDone = () => {
-    // Navigate back to the recovery plan (or main screen)
-    navigation.goBack();
+    // Navigate to HomeScreen and reset navigation stack
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      })
+    );
   };
 
   const rotateInterpolate = iconRotate.interpolate({
