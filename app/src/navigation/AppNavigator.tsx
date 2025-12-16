@@ -36,7 +36,9 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({ allowGuestMode = fal
       <Stack.Navigator 
         screenOptions={{ 
           headerShown: false,
+          // Let each screen control its own background
           contentStyle: { backgroundColor: 'transparent' },
+          animation: 'fade',
         }}
         initialRouteName="HomeMain"
       >
