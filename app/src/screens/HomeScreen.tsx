@@ -40,7 +40,7 @@ import {
   deleteTodayDailyCheckIn,
 } from '../services/dailyCheckIn';
 import { getLocalDailyCheckIn, deleteLocalDailyCheckIn } from '../services/dailyCheckInStorage';
-import { getTodayId } from '../utils/dateUtils';
+import { getTodayId, getDateId } from '../utils/dateUtils';
 import { typography } from '../design-system/typography';
 import { generatePlan } from '../domain/recovery/planGenerator';
 
@@ -103,6 +103,14 @@ export const HomeScreen: React.FC = () => {
   // Micro-action and recovery score
   const [microAction, setMicroAction] = useState<{ title: string; body: string } | null>(null);
   const [recoveryScore, setRecoveryScore] = useState<number | null>(null);
+
+  // Progress snapshot data (last 7 days)
+  const [last7DaysData, setLast7DaysData] = useState<Array<{
+    dateId: string;
+    dayLabel: string;
+    isCompleted: boolean;
+    isToday: boolean;
+  }>>([]);
 
   // Load hydration data
   useEffect(() => {
