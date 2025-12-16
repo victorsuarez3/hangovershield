@@ -53,10 +53,40 @@ function AppContent() {
   const [dailyCheckInStatus, setDailyCheckInStatus] = React.useState<'loading' | 'needs_checkin' | 'completed'>('loading');
   const [checkingDailyStatus, setCheckingDailyStatus] = React.useState(false);
 
-  // Identify user to RevenueCat when authenticated
+  // Check if we're in a real device environment (not Expo Go / dev overlay)
+  const isRealDevice = React.useMemo(() => {
+    return Constants.appOwnership !== 'expo' && 
+           Constants.executionEnvironment !== 'storeClient';
+  }, []);
+
+  // Initialize RevenueCat SDK ONLY when:
+  // 1. User is authenticated
+  // 2. Running on real device (not Expo Go / dev environment)
+  React.useEffect(() => {
+    if (!user?.uid) {
+      return;
+    }
+
+    if (!isRealDevice) {
+      console.log('[App] RevenueCat: Skipping init (Expo / Dev environment)');
+      return;
+    }
+
+    const initRC = async () => {
+      try {
+        await initializeRevenueCat(user.uid);
+        console.log('[App] RevenueCat initialized');
+      } catch (error) {
+        console.error('[App] RevenueCat init error:', error);
+      }
+    };
+    initRC();
+  }, [user?.uid, isRealDevice]);
+
+  // Identify user to RevenueCat when authenticated (after initialization)
   React.useEffect(() => {
     const identifyToRevenueCat = async () => {
-      if (user?.uid) {
+      if (user?.uid && isRealDevice) {
         try {
           await identifyUser(user.uid);
           console.log('[AppContent] User identified to RevenueCat:', user.uid);
@@ -66,7 +96,7 @@ function AppContent() {
       }
     };
     identifyToRevenueCat();
-  }, [user?.uid]);
+  }, [user?.uid, isRealDevice]);
 
   // Check if onboarding has been completed
   React.useEffect(() => {
@@ -353,35 +383,6 @@ export default function App() {
     Inter_700Bold: require('./assets/fonts/Inter_700Bold.ttf'),
   });
 
-  // Check if we're in a real device environment (not Expo Go / dev overlay)
-  const isRealDevice = React.useMemo(() => {
-    return Constants.appOwnership !== 'expo' && 
-           Constants.executionEnvironment !== 'storeClient';
-  }, []);
-
-  // Initialize RevenueCat SDK ONLY when:
-  // 1. User is authenticated
-  // 2. Running on real device (not Expo Go / dev environment)
-  React.useEffect(() => {
-    if (!user?.uid) {
-      return;
-    }
-
-    if (!isRealDevice) {
-      console.log('[App] RevenueCat: Skipping init (Expo / Dev environment)');
-      return;
-    }
-
-    const initRC = async () => {
-      try {
-        await initializeRevenueCat(user.uid);
-        console.log('[App] RevenueCat initialized');
-      } catch (error) {
-        console.error('[App] RevenueCat init error:', error);
-      }
-    };
-    initRC();
-  }, [user?.uid, isRealDevice]);
 
   // Hide native splash once fonts are loaded
   React.useEffect(() => {
