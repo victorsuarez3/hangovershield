@@ -48,6 +48,11 @@ export const EveningCheckInLockedScreen: React.FC = () => {
     navigation.goBack();
   };
 
+  const handleSkip = () => {
+    // Dev skip: navigate directly to Evening Check-In flow
+    navigation.navigate('EveningCheckIn' as any);
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <LinearGradient
@@ -243,6 +248,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginTop: 8,
+  },
+  skipButton: {
+    marginTop: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(15, 76, 68, 0.3)',
+    shadowColor: 'rgba(15, 76, 68, 0.1)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    shadowOpacity: 1,
+    elevation: 2,
+  },
+  skipButtonText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: 'rgba(15, 61, 62, 0.8)',
+    textAlign: 'center',
   },
 });
 

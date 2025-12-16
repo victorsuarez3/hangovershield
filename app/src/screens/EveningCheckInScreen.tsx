@@ -589,14 +589,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   skipButton: {
-    marginTop: 20,
-    paddingVertical: 12,
+    marginTop: 24,
+    paddingVertical: 14,
     paddingHorizontal: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(15, 76, 68, 0.3)',
+    shadowColor: 'rgba(15, 76, 68, 0.1)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    shadowOpacity: 1,
+    elevation: 2,
   },
   skipButtonText: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Inter_500Medium',
     fontSize: 14,
-    color: 'rgba(15, 61, 62, 0.5)',
+    color: 'rgba(15, 61, 62, 0.8)',
+    textAlign: 'center',
   },
 
   // Step Screens
