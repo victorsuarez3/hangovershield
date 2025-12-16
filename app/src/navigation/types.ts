@@ -8,6 +8,7 @@ import { PaywallSourceType } from '../constants/paywallSources';
 export type RootStackParamList = {
   HomeMain: undefined;
   CheckIn: undefined;
+  CheckInComplete: undefined;
   SmartPlan: undefined;
   Tools: undefined;
   Progress: undefined;

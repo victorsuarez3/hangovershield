@@ -31,6 +31,9 @@ export interface DailyCheckInData {
   severityLabel: string;
   symptoms: string[];
   isHungover: boolean;
+  // Alcohol flags (optional for backward compatibility)
+  drankLastNight?: boolean;
+  drinkingToday?: boolean;
   // Plan completion tracking
   planCompleted?: boolean;
   completedAt?: Timestamp | null;
@@ -42,6 +45,8 @@ export interface DailyCheckInInput {
   severity: DailyCheckInSeverity;
   severityLabel: string;
   symptoms: string[];
+  drankLastNight?: boolean;
+  drinkingToday?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -131,6 +136,8 @@ export const saveDailyCheckIn = async (
       severityLabel: input.severityLabel,
       symptoms: input.symptoms,
       isHungover: input.severity !== 'none',
+      drankLastNight: input.drankLastNight,
+      drinkingToday: input.drinkingToday,
     };
 
     await setDoc(docRef, data);

@@ -1,0 +1,411 @@
+/**
+ * Check-In Complete Screen - Hangover Shield
+ * Post-check-in celebration with micro-action and summary
+ */
+
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Dimensions,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { HANGOVER_GRADIENT } from '../theme/gradients';
+import { getLocalDailyCheckIn } from '../services/dailyCheckInStorage';
+import { SEVERITY_LABELS, SYMPTOM_OPTIONS } from '../services/dailyCheckIn';
+import { generatePlan } from '../domain/recovery/planGenerator';
+import { FeelingOption, SymptomKey } from '../navigation/OnboardingNavigator';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Optional haptics
+let Haptics: any = null;
+try {
+  Haptics = require('expo-haptics');
+} catch {
+  // Haptics not available
+}
+
+export const CheckInCompleteScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
+  const [checkIn, setCheckIn] = useState<any>(null);
+  const [microAction, setMicroAction] = useState<any>(null);
+  const [symptomLabels, setSymptomLabels] = useState<string[]>([]);
+
+  // Load check-in data and generate micro-action
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const localCheckIn = await getLocalDailyCheckIn();
+        if (!localCheckIn) {
+          // No check-in found, navigate back to check-in
+          navigation.replace('CheckIn');
+          return;
+        }
+
+        setCheckIn(localCheckIn);
+
+        // Generate plan to get micro-action
+        const feeling = localCheckIn.level as FeelingOption;
+        const symptomKeys = localCheckIn.symptoms.filter((s: string): s is SymptomKey => {
+          return [
+            'headache',
+            'nausea',
+            'dryMouth',
+            'dizziness',
+            'fatigue',
+            'anxiety',
+            'brainFog',
+            'poorSleep',
+            'noSymptoms',
+          ].includes(s);
+        }) as SymptomKey[];
+
+        const plan = generatePlan({
+          level: feeling,
+          symptoms: symptomKeys,
+          drankLastNight: localCheckIn.drankLastNight,
+          drinkingToday: localCheckIn.drinkingToday,
+        });
+
+        setMicroAction(plan.microAction);
+        setSymptomLabels(plan.symptomLabels);
+
+        // Haptic feedback
+        if (Haptics) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      } catch (error) {
+        console.error('[CheckInCompleteScreen] Error loading data:', error);
+        navigation.replace('CheckIn');
+      }
+    };
+
+    loadData();
+  }, [navigation]);
+
+  const handleViewPlan = useCallback(() => {
+    navigation.navigate('SmartPlan');
+  }, [navigation]);
+
+  if (!checkIn || !microAction) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={HANGOVER_GRADIENT}
+          locations={[0, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const severityLabel = SEVERITY_LABELS[checkIn.level];
+  const symptomsCount = checkIn.symptoms.filter((s: string) => s !== 'noSymptoms').length;
+  const displayedSymptoms = checkIn.symptoms
+    .filter((s: string) => s !== 'noSymptoms')
+    .slice(0, 3);
+  const remainingSymptoms = Math.max(0, symptomsCount - 3);
+
+  // Get symptom labels
+  const symptomDisplayLabels = displayedSymptoms.map((key: string) => {
+    const option = SYMPTOM_OPTIONS.find((opt) => opt.key === key);
+    return option?.label || key;
+  });
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={HANGOVER_GRADIENT}
+        locations={[0, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Success Icon */}
+        <View style={styles.iconCircle}>
+          <Ionicons name="checkmark-circle" size={64} color="#7AB48B" />
+        </View>
+
+        {/* Title */}
+        <Text style={styles.title}>You're checked in for today.</Text>
+        <Text style={styles.subtitle}>
+          Nice work. Your plan is ready — and your next step is simple.
+        </Text>
+
+        {/* Summary Card */}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryCardTitle}>Today</Text>
+          
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Level</Text>
+            <Text style={styles.summaryValue}>{severityLabel}</Text>
+          </View>
+
+          {symptomsCount > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Symptoms</Text>
+              <View style={styles.symptomsChips}>
+                {symptomDisplayLabels.map((label, idx) => (
+                  <View key={idx} style={styles.symptomChip}>
+                    <Text style={styles.symptomChipText}>{label}</Text>
+                  </View>
+                ))}
+                {remainingSymptoms > 0 && (
+                  <View style={styles.symptomChip}>
+                    <Text style={styles.symptomChipText}>+{remainingSymptoms}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Alcohol info */}
+          {(checkIn.drankLastNight !== undefined || checkIn.drinkingToday !== undefined) && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Alcohol</Text>
+              <View style={styles.alcoholInfo}>
+                {checkIn.drankLastNight !== undefined && (
+                  <Text style={styles.alcoholText}>
+                    Last night: {checkIn.drankLastNight ? 'Yes' : 'No'}
+                  </Text>
+                )}
+                {checkIn.drinkingToday !== undefined && (
+                  <Text style={styles.alcoholText}>
+                    {checkIn.drankLastNight !== undefined ? ' · ' : ''}
+                    Today: {checkIn.drinkingToday ? 'Yes' : 'No'}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Micro-Action Card */}
+        <View style={styles.microActionCard}>
+          <View style={styles.microActionHeader}>
+            <Text style={styles.microActionTitle}>Do this first</Text>
+            <Text style={styles.microActionSubtitle}>Takes ~{microAction.seconds} seconds</Text>
+          </View>
+          <Text style={styles.microActionBody}>{microAction.body}</Text>
+        </View>
+
+        {/* CTA */}
+        <TouchableOpacity
+          style={styles.ctaButton}
+          onPress={handleViewPlan}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#0F4C44', '#0A3F37']}
+            style={styles.ctaGradient}
+          >
+            <Text style={styles.ctaText}>View Today's Plan</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* Footer Text */}
+        <Text style={styles.footerText}>
+          Next check-in unlocks tomorrow. You're building the habit.
+        </Text>
+      </ScrollView>
+    </View>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Styles
+// ─────────────────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 16,
+    color: 'rgba(15, 61, 62, 0.7)',
+  },
+
+  // Icon
+  iconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(122, 180, 139, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+
+  // Title
+  title: {
+    fontFamily: 'CormorantGaramond_600SemiBold',
+    fontSize: 28,
+    color: '#0F3D3E',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  subtitle: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 16,
+    color: 'rgba(15, 61, 62, 0.7)',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+    maxWidth: SCREEN_WIDTH * 0.85,
+  },
+
+  // Summary Card
+  summaryCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 76, 68, 0.08)',
+  },
+  summaryCardTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    color: '#0F3D3E',
+    marginBottom: 16,
+  },
+  summaryRow: {
+    marginBottom: 16,
+  },
+  summaryLabel: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: 'rgba(15, 61, 62, 0.6)',
+    marginBottom: 6,
+  },
+  summaryValue: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 15,
+    color: '#0F4C44',
+  },
+  symptomsChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  symptomChip: {
+    backgroundColor: 'rgba(15, 76, 68, 0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  symptomChipText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: '#0F4C44',
+  },
+  alcoholInfo: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  alcoholText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.7)',
+  },
+
+  // Micro-Action Card
+  microActionCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 32,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 76, 68, 0.12)',
+    shadowColor: 'rgba(15, 76, 68, 0.1)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 1,
+    elevation: 4,
+  },
+  microActionHeader: {
+    marginBottom: 12,
+  },
+  microActionTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 18,
+    color: '#0F3D3E',
+    marginBottom: 4,
+  },
+  microActionSubtitle: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.6)',
+  },
+  microActionBody: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    color: 'rgba(15, 61, 62, 0.8)',
+    lineHeight: 22,
+  },
+
+  // CTA
+  ctaButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+    width: '100%',
+  },
+  ctaGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    gap: 8,
+  },
+  ctaText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 17,
+    color: '#FFFFFF',
+  },
+
+  // Footer
+  footerText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.6)',
+    textAlign: 'center',
+  },
+});
+

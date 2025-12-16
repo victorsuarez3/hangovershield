@@ -21,6 +21,7 @@ import { AppHeader } from '../components/AppHeader';
 import { useAccessStatus } from '../hooks/useAccessStatus';
 import { useDailyCheckIn } from '../hooks/useDailyCheckIn';
 import { useAuth } from '../providers/AuthProvider';
+import { useUserDataStore } from '../stores/useUserDataStore';
 import { useAppNavigation } from '../contexts/AppNavigationContext';
 import { WelcomeCountdownBanner } from '../components/WelcomeCountdownBanner';
 import { PaywallSource } from '../constants/paywallSources';
@@ -52,16 +53,47 @@ type WidgetType =
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Rotating motivational messages (12 phrases)
+const MOTIVATIONAL_MESSAGES = [
+  "Small steps. Big recovery.",
+  "Your future self will thank you tonight.",
+  "Hydration now = easier morning later.",
+  "Consistency beats intensity.",
+  "You're building the habit.",
+  "Recovery loves a plan.",
+  "One good decision at a time.",
+  "Today is a reset.",
+  "Keep it gentle. Keep it steady.",
+  "You're doing the right thing.",
+  "Your body responds to rhythm.",
+  "Show up today. Feel it tomorrow.",
+];
+
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { user } = useAuth();
+  const { user, userDoc } = useAuth();
   const accessInfo = useAccessStatus();
   const appNav = useAppNavigation();
   
   // Menu state
   const [menuVisible, setMenuVisible] = useState(false);
   const [currentScreen] = useState<CurrentScreen>('home');
+  
+  // Rotating message (stable per session)
+  const [motivationalMessage] = useState(() => {
+    const randomIndex = Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length);
+    return MOTIVATIONAL_MESSAGES[randomIndex];
+  });
+  
+  // Get user's first name
+  const firstName = useMemo(() => {
+    const displayName = userDoc?.displayName || '';
+    if (displayName) {
+      return displayName.split(' ')[0];
+    }
+    return null;
+  }, [userDoc]);
 
   // Daily check-in status
   const dailyCheckIn = useDailyCheckIn(user?.uid || null);
@@ -276,6 +308,14 @@ export const HomeScreen: React.FC = () => {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Premium Header */}
+        <View style={styles.premiumHeader}>
+          <Text style={styles.welcomeText}>
+            Welcome back{firstName ? `, ${firstName}` : ''}
+          </Text>
+          <Text style={styles.motivationalText}>{motivationalMessage}</Text>
+        </View>
+
         {/* Welcome Banner (only for welcome users, small) */}
         {accessInfo.isWelcome && (
           <View style={styles.welcomeBannerContainer}>
@@ -502,6 +542,24 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 8,
+  },
+  premiumHeader: {
+    marginBottom: 24,
+    paddingTop: 8,
+  },
+  welcomeText: {
+    ...typography.sectionTitle,
+    fontSize: 24,
+    color: '#0F3D3E',
+    marginBottom: 8,
+    letterSpacing: -0.3,
+  },
+  motivationalText: {
+    ...typography.body,
+    fontSize: 15,
+    color: 'rgba(15, 61, 62, 0.75)',
+    lineHeight: 22,
+    fontStyle: 'italic',
   },
   welcomeBannerContainer: {
     marginBottom: 16,

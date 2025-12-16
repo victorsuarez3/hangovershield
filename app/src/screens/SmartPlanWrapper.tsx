@@ -9,10 +9,10 @@ import { useAuth } from '../providers/AuthProvider';
 import { TodayRecoveryPlanScreen, RecoveryAction } from './TodayRecoveryPlanScreen';
 import { getTodayDailyCheckIn } from '../services/dailyCheckIn';
 import { getLocalDailyCheckIn } from '../services/dailyCheckInStorage';
-import { getRecoveryAnalysis, getKeySymptomLabels } from '../utils/recoveryAnalysis';
 import { getTodayId } from '../utils/dateUtils';
 import { markPlanCompletedForToday } from '../services/dailyCheckIn';
 import { FeelingOption, SymptomKey } from '../navigation/OnboardingNavigator';
+import { generatePlan } from '../domain/recovery/planGenerator';
 
 const FEELING_DISPLAY_LABELS: Record<FeelingOption, string> = {
   mild: 'Mild hangover',
@@ -52,6 +52,8 @@ export const SmartPlanWrapper: React.FC = () => {
               severity: localCheckIn.level,
               severityLabel: '', // Will be set below
               symptoms: localCheckIn.symptoms,
+              drankLastNight: localCheckIn.drankLastNight,
+              drinkingToday: localCheckIn.drinkingToday,
             };
           }
         }
@@ -62,7 +64,7 @@ export const SmartPlanWrapper: React.FC = () => {
           // For now, generate a default "none" plan as fallback
           const feeling: FeelingOption = 'none';
           const symptoms: SymptomKey[] = [];
-          generatePlan(feeling, symptoms);
+          generatePlanData(feeling, symptoms);
           return;
         }
 
@@ -82,11 +84,11 @@ export const SmartPlanWrapper: React.FC = () => {
           ].includes(s);
         }) as SymptomKey[];
 
-        generatePlan(feeling, symptomKeys);
+        generatePlanData(feeling, symptomKeys, checkIn.drankLastNight, checkIn.drinkingToday);
       } catch (error) {
         console.error('[SmartPlanWrapper] Error loading plan:', error);
         // Fallback to default plan
-        generatePlan('none', []);
+        generatePlanData('none', []);
       } finally {
         setIsLoading(false);
       }
@@ -95,133 +97,14 @@ export const SmartPlanWrapper: React.FC = () => {
     loadPlan();
   }, [user?.uid]);
 
-  const generatePlan = (feeling: FeelingOption, symptoms: SymptomKey[]) => {
-    // Generate recovery analysis
-    const analysis = getRecoveryAnalysis(feeling, symptoms);
-    const baseSymptomLabels = getKeySymptomLabels(symptoms);
-    
-    // Add feeling label at the start
-    const symptomLabels = feeling !== 'none' 
-      ? [FEELING_DISPLAY_LABELS[feeling], ...baseSymptomLabels]
-      : baseSymptomLabels.length > 0 
-        ? baseSymptomLabels 
-        : ['Feeling okay'];
-
-    // Check if user reported poor sleep
-    const hasPoorSleep = symptoms.includes('poorSleep');
-
-    // Base actions - ordered by importance for recovery
-    const allActions: RecoveryAction[] = [
-      {
-        id: 'morning-1',
-        timeOfDay: 'morning',
-        time: '6:00 AM',
-        title: 'Soft light & breathing',
-        description: 'Gentle light exposure and slow breathing help calm the nervous system and reduce early morning hangover stress.',
-        durationMinutes: 2,
-        icon: 'sunny-outline',
-        completed: false,
-      },
-      {
-        id: 'morning-2',
-        timeOfDay: 'morning',
-        time: '8:00 AM',
-        title: 'Water + electrolytes',
-        description: 'Rehydrate early to support liver detox and reduce symptoms.',
-        durationMinutes: 1,
-        icon: 'water-outline',
-        completed: false,
-      },
-      {
-        id: 'morning-3',
-        timeOfDay: 'morning',
-        time: '9:00 AM',
-        title: 'Light breakfast',
-        description: 'Easy-to-digest foods stabilize blood sugar and ease nausea (toast, banana, eggs).',
-        durationMinutes: 15,
-        icon: 'cafe-outline',
-        completed: false,
-      },
-      {
-        id: 'midday-1',
-        timeOfDay: 'midday',
-        time: '11:00 AM',
-        title: 'Short walk & check-in',
-        description: 'Light movement boosts circulation and improves cognitive clarity.',
-        durationMinutes: 15,
-        icon: 'walk-outline',
-        completed: false,
-      },
-      {
-        id: 'afternoon-1',
-        timeOfDay: 'afternoon',
-        time: '2:00 PM',
-        title: 'Light meal + rest',
-        description: 'Refuel gently; avoid heavy or greasy foods.',
-        durationMinutes: 20,
-        icon: 'restaurant-outline',
-        completed: false,
-      },
-    ];
-
-    // Power nap action
-    const powerNapAction: RecoveryAction = hasPoorSleep
-      ? {
-          id: 'midday-nap',
-          timeOfDay: 'midday',
-          time: '1:00 PM',
-          title: 'Restorative power nap',
-          description: 'Your sleep was disrupted; a short nap helps your body catch up.',
-          durationMinutes: 25,
-          icon: 'moon-outline',
-          completed: false,
-        }
-      : {
-          id: 'midday-nap',
-          timeOfDay: 'midday',
-          time: '11:30 AM',
-          title: 'Power nap',
-          description: 'Short rest helps reset your nervous system and reduce brain fog.',
-          durationMinutes: 15,
-          icon: 'moon-outline',
-          completed: false,
-        };
-
-    // Build actions based on severity
-    let actions: RecoveryAction[] = [];
-    
-    if (feeling === 'severe') {
-      actions = [
-        ...allActions.slice(0, 4),
-        powerNapAction,
-        allActions[4],
-      ];
-    } else if (feeling === 'moderate') {
-      actions = [
-        ...allActions.slice(0, 4),
-        powerNapAction,
-        allActions[4],
-      ];
-    } else if (feeling === 'mild') {
-      if (hasPoorSleep) {
-        actions = [
-          ...allActions.slice(0, 4),
-          powerNapAction,
-          allActions[4],
-        ];
-      } else {
-        actions = [...allActions];
-      }
-    } else {
-      if (hasPoorSleep) {
-        actions = [
-          ...allActions.slice(0, 3),
-          powerNapAction,
-        ];
-      } else {
-        actions = allActions.slice(0, 4);
-      }
-    }
+  const generatePlanData = (feeling: FeelingOption, symptoms: SymptomKey[], drankLastNight?: boolean, drinkingToday?: boolean) => {
+    // Use centralized plan generator
+    const plan = generatePlan({
+      level: feeling,
+      symptoms,
+      drankLastNight,
+      drinkingToday,
+    });
 
     // Get today's date
     const today = new Date();
@@ -231,15 +114,11 @@ export const SmartPlanWrapper: React.FC = () => {
       day: 'numeric',
     });
 
-    // Convert recovery hours range object to string
-    const { min, max } = analysis.estimatedRecoveryHoursRange;
-    const recoveryWindowLabel = `${min}–${max} hours`;
-
     setPlanData({
       date: dateString,
-      recoveryWindowLabel,
-      symptomLabels,
-      actions,
+      recoveryWindowLabel: plan.recoveryWindowLabel,
+      symptomLabels: plan.symptomLabels,
+      actions: plan.steps,
     });
   };
 

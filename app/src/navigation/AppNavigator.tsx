@@ -11,6 +11,7 @@ import { ProtectedRoute } from '../components/ProtectedRoute';
 // Screens
 import { HomeScreen } from '../screens/HomeScreen';
 import { CheckInScreen } from '../screens/CheckInScreen';
+import { CheckInCompleteScreen } from '../screens/CheckInCompleteScreen';
 import { SmartPlanWrapper } from '../screens/SmartPlanWrapper';
 import { ToolsScreen } from '../screens/ToolsScreen';
 import { ProgressScreen } from '../screens/ProgressScreen';
@@ -51,6 +52,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({ allowGuestMode = fal
         
         {/* Nested screens */}
         <Stack.Screen name="CheckIn" component={CheckInScreen} />
+        <Stack.Screen name="CheckInComplete" component={CheckInCompleteScreen} />
         <Stack.Screen name="Paywall" component={PaywallScreen} />
         <Stack.Screen name="EveningCheckIn" component={EveningCheckInScreen} />
         <Stack.Screen name="DailyWaterLog" component={DailyWaterLogScreen} />

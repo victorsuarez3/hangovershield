@@ -205,6 +205,8 @@ export const CheckInScreen: React.FC = () => {
   
   const [selectedSeverity, setSelectedSeverity] = useState<DailyCheckInSeverity | null>(null);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+  const [drankLastNight, setDrankLastNight] = useState<boolean | undefined>(undefined);
+  const [drinkingToday, setDrinkingToday] = useState<boolean | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [todayCheckIn, setTodayCheckIn] = useState<LocalDailyCheckIn | null>(null);
@@ -333,6 +335,8 @@ export const CheckInScreen: React.FC = () => {
         level: selectedSeverity,
         symptoms: selectedSymptoms,
         source: 'daily_checkin',
+        drankLastNight: drankLastNight,
+        drinkingToday: drinkingToday,
       };
 
       await saveLocalDailyCheckIn(localCheckIn);
@@ -352,6 +356,8 @@ export const CheckInScreen: React.FC = () => {
             severity: selectedSeverity,
             severityLabel: SEVERITY_LABELS[selectedSeverity],
             symptoms: selectedSymptoms,
+            drankLastNight: drankLastNight,
+            drinkingToday: drinkingToday,
           });
         } catch (error) {
           console.error('[CheckInScreen] Error saving to Firestore:', error);
@@ -362,15 +368,15 @@ export const CheckInScreen: React.FC = () => {
       // Small delay to show "Preparing..." state
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Navigate to recovery plan
-      navigation.navigate('SmartPlan');
+      // Navigate to CheckInComplete screen
+      navigation.navigate('CheckInComplete');
     } catch (error) {
       console.error('[CheckInScreen] Error in check-in flow:', error);
       setValidationError('Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedSeverity, selectedSymptoms, user?.uid, navigation, isSubmitting]);
+  }, [selectedSeverity, selectedSymptoms, drankLastNight, drinkingToday, user?.uid, navigation, isSubmitting]);
 
   const handleViewPlan = useCallback(() => {
     navigation.navigate('SmartPlan');
@@ -478,6 +484,125 @@ export const CheckInScreen: React.FC = () => {
                 />
               ))}
             </View>
+          </View>
+        )}
+
+        {/* Alcohol Section */}
+        {selectedSeverity && (
+          <View style={styles.alcoholSection}>
+            {selectedSeverity !== 'none' ? (
+              <>
+                <Text style={styles.alcoholLabel}>Alcohol</Text>
+                <View style={styles.alcoholQuestions}>
+                  <View style={styles.alcoholQuestion}>
+                    <Text style={styles.alcoholQuestionText}>Did you drink last night?</Text>
+                    <View style={styles.alcoholButtons}>
+                      <TouchableOpacity
+                        style={[
+                          styles.alcoholButton,
+                          drankLastNight === true && styles.alcoholButtonSelected,
+                        ]}
+                        onPress={() => setDrankLastNight(true)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.alcoholButtonText,
+                          drankLastNight === true && styles.alcoholButtonTextSelected,
+                        ]}>
+                          Yes
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.alcoholButton,
+                          drankLastNight === false && styles.alcoholButtonSelected,
+                        ]}
+                        onPress={() => setDrankLastNight(false)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.alcoholButtonText,
+                          drankLastNight === false && styles.alcoholButtonTextSelected,
+                        ]}>
+                          No
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  <View style={styles.alcoholQuestion}>
+                    <Text style={styles.alcoholQuestionText}>Are you planning to drink today?</Text>
+                    <View style={styles.alcoholButtons}>
+                      <TouchableOpacity
+                        style={[
+                          styles.alcoholButton,
+                          drinkingToday === true && styles.alcoholButtonSelected,
+                        ]}
+                        onPress={() => setDrinkingToday(true)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.alcoholButtonText,
+                          drinkingToday === true && styles.alcoholButtonTextSelected,
+                        ]}>
+                          Yes
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.alcoholButton,
+                          drinkingToday === false && styles.alcoholButtonSelected,
+                        ]}
+                        onPress={() => setDrinkingToday(false)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.alcoholButtonText,
+                          drinkingToday === false && styles.alcoholButtonTextSelected,
+                        ]}>
+                          No
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </>
+            ) : (
+              <View style={styles.alcoholQuestion}>
+                <Text style={styles.alcoholQuestionText}>Planning to drink later?</Text>
+                <View style={styles.alcoholButtons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.alcoholButton,
+                      drinkingToday === true && styles.alcoholButtonSelected,
+                    ]}
+                    onPress={() => setDrinkingToday(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.alcoholButtonText,
+                      drinkingToday === true && styles.alcoholButtonTextSelected,
+                    ]}>
+                      Yes
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.alcoholButton,
+                      drinkingToday === false && styles.alcoholButtonSelected,
+                    ]}
+                    onPress={() => setDrinkingToday(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.alcoholButtonText,
+                      drinkingToday === false && styles.alcoholButtonTextSelected,
+                    ]}>
+                      No
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -820,5 +945,54 @@ const styles = StyleSheet.create({
     color: 'rgba(15, 61, 62, 0.5)',
     fontStyle: 'italic',
     textAlign: 'center',
+  },
+
+  // Alcohol Section
+  alcoholSection: {
+    marginBottom: 24,
+  },
+  alcoholLabel: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: 'rgba(15, 61, 62, 0.7)',
+    marginBottom: 14,
+  },
+  alcoholQuestions: {
+    gap: 16,
+  },
+  alcoholQuestion: {
+    gap: 10,
+  },
+  alcoholQuestionText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: 'rgba(15, 61, 62, 0.8)',
+  },
+  alcoholButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  alcoholButton: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    alignItems: 'center',
+  },
+  alcoholButtonSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 1)',
+    borderColor: '#0F4C44',
+  },
+  alcoholButtonText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: 'rgba(15, 61, 62, 0.7)',
+  },
+  alcoholButtonTextSelected: {
+    color: '#0F4C44',
+    fontFamily: 'Inter_600SemiBold',
   },
 });

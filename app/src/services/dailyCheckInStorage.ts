@@ -18,6 +18,9 @@ export interface LocalDailyCheckIn {
   symptoms: string[];
   source: 'daily_checkin' | 'other';
   version: number;
+  // Alcohol flags (optional for backward compatibility)
+  drankLastNight?: boolean;
+  drinkingToday?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
