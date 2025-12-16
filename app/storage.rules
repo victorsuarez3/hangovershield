@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for Casa Latina
+// Allows authenticated users to upload profile photos
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Profile photos - users can only upload/read their own
+    match /profiles/{userId}/{allPaths=**} {
+      // Anyone can read profile photos (for viewing other members)
+      allow read: if request.auth != null;
+
+      // Only the owner can upload/update their photos
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId
+                            && request.resource.size < 5 * 1024 * 1024 // Max 5MB
+                            && request.resource.contentType.matches('image/.*'); // Must be image
+
+      // Only the owner can delete their photos (no size/type check needed for delete)
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Event images - only admins can upload
+    match /events/{eventId}/{allPaths=**} {
+      // All authenticated users can read event images
+      allow read: if request.auth != null;
+
+      // Only authenticated users can upload (admin check done in Firestore)
+      // For now, allow all authenticated users - can add admin check via custom claims later
+      allow create, update: if request.auth != null
+                            && request.resource.size < 5 * 1024 * 1024 // Max 5MB
+                            && request.resource.contentType.matches('image/.*'); // Must be image
+
+      // Allow deletion by authenticated users (can add admin check later)
+      allow delete: if request.auth != null;
+    }
+    
+    // Default: deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

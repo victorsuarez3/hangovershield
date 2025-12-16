@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "251175596798",
+    "project_id": "xxx-test-f2f64",
+    "storage_bucket": "xxx-test-f2f64.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:251175596798:android:80c9360dc232c145342baf",
+        "android_client_info": {
+          "package_name": "com.versaluna.hangovershield"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "251175596798-7gm1psc5s4ls18kdqq5v85hmc3rq5cf5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDzu9r7PyuDW0S7T13sEHYTirV_7JYtNw8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "251175596798-7gm1psc5s4ls18kdqq5v85hmc3rq5cf5.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "251175596798-i2k3l2od98f1rucpuuvgcple05t4cv13.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.versaluna.hangovershield"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,16 +1,14 @@
-
 /**
  * Auth Navigator - Hangover Shield
- * Handles authentication flow routing with Google and Apple sign-in
+ * Handles authentication flow routing with Apple sign-in
+ * Note: Google Sign-In temporarily disabled
  */
 
 import React, { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { showAlert } from '../utils/alert';
 import { LoginScreen } from '../screens/Auth/LoginScreen';
-import { signInWithGoogleCredential, signInWithApple } from '../services/auth';
-import * as Google from 'expo-auth-session/providers/google';
-import Constants from 'expo-constants';
+import { signInWithApple } from '../services/auth';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -27,8 +25,7 @@ const LoginScreenContainer: React.FC<{
   onAuthSuccess: () => void;
   loading: boolean;
   setLoading: (loading: boolean) => void;
-  promptAsync: () => void;
-}> = ({ onAuthSuccess, loading, setLoading, promptAsync }) => {
+}> = ({ onAuthSuccess, loading, setLoading }) => {
   
   const handleAppleSignIn = async () => {
     try {
@@ -44,9 +41,13 @@ const LoginScreenContainer: React.FC<{
     }
   };
 
+  const handleGoogleSignIn = () => {
+    showAlert('Coming Soon', 'Google Sign-In will be available soon.', 'info');
+  };
+
   return (
     <LoginScreen
-      onGoogleSignIn={promptAsync}
+      onGoogleSignIn={handleGoogleSignIn}
       onAppleSignIn={handleAppleSignIn}
       loading={loading}
     />
@@ -55,36 +56,6 @@ const LoginScreenContainer: React.FC<{
 
 export const AuthNavigator: React.FC<AuthNavigatorProps> = ({ onAuthSuccess }) => {
   const [loading, setLoading] = useState(false);
-  const extra = Constants.expoConfig?.extra || {};
-
-  // Google Auth Request hook
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    iosClientId: extra.googleIosClientId,
-    androidClientId: extra.googleAndroidClientId,
-    webClientId: extra.googleWebClientId,
-  });
-
-  // Handle Google Sign-In response
-  React.useEffect(() => {
-    if (response?.type === 'success') {
-      const { idToken } = response.params;
-      if (idToken) {
-        handleGoogleSignIn(idToken);
-      }
-    }
-  }, [response]);
-
-  const handleGoogleSignIn = async (idToken: string) => {
-    try {
-      setLoading(true);
-      await signInWithGoogleCredential(idToken);
-      onAuthSuccess();
-    } catch (error: any) {
-      setLoading(false);
-      const errorMessage = error.message || 'Failed to sign in with Google. Please try again.';
-      showAlert('Sign In Error', errorMessage, 'error');
-    }
-  };
 
   return (
     <Stack.Navigator
@@ -100,7 +71,6 @@ export const AuthNavigator: React.FC<AuthNavigatorProps> = ({ onAuthSuccess }) =
             onAuthSuccess={onAuthSuccess}
             loading={loading}
             setLoading={setLoading}
-            promptAsync={() => promptAsync()}
           />
         )}
       </Stack.Screen>
