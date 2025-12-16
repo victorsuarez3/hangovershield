@@ -10,6 +10,7 @@ import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut } 
 import { doc, setDoc, updateDoc, serverTimestamp, onSnapshot, Unsubscribe, waitForPendingWrites } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 import { UserDoc, MembershipStatus } from '../models/firestore';
+import { logOutRevenueCat } from '../services/revenuecat';
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -232,6 +233,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         clearTimeout(loadingTimeoutRef.current);
         loadingTimeoutRef.current = null;
       }
+      
+      // Logout from RevenueCat
+      await logOutRevenueCat();
+      
+      // Logout from Firebase
       await firebaseSignOut(auth);
       setUser(null);
       setUserDoc(null);

@@ -25,6 +25,7 @@ import { AlertManager } from './src/utils/alert';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { getTodayDailyCheckIn } from './src/services/dailyCheckIn';
 import { getTodayId } from './src/utils/dateUtils';
+import { initializeRevenueCat, identifyUser, logOutRevenueCat } from './src/services/revenuecat';
 
 // Async storage keys for onboarding state
 const INTRO_ONBOARDING_KEY = '@hangovershield_intro_onboarding_completed'; // NEW pre-auth intro
@@ -43,6 +44,21 @@ function AppContent() {
   // Daily check-in status for returning users
   const [dailyCheckInStatus, setDailyCheckInStatus] = React.useState<'loading' | 'needs_checkin' | 'completed'>('loading');
   const [checkingDailyStatus, setCheckingDailyStatus] = React.useState(false);
+
+  // Identify user to RevenueCat when authenticated
+  React.useEffect(() => {
+    const identifyToRevenueCat = async () => {
+      if (user?.uid) {
+        try {
+          await identifyUser(user.uid);
+          console.log('[AppContent] User identified to RevenueCat:', user.uid);
+        } catch (error) {
+          console.error('[AppContent] Error identifying user to RevenueCat:', error);
+        }
+      }
+    };
+    identifyToRevenueCat();
+  }, [user?.uid]);
 
   // Check if onboarding has been completed
   React.useEffect(() => {
@@ -284,6 +300,19 @@ export default function App() {
     Inter_600SemiBold: require('./assets/fonts/Inter_600SemiBold.ttf'),
     Inter_700Bold: require('./assets/fonts/Inter_700Bold.ttf'),
   });
+
+  // Initialize RevenueCat SDK on app launch
+  React.useEffect(() => {
+    const initRC = async () => {
+      try {
+        await initializeRevenueCat();
+        console.log('[App] RevenueCat initialized');
+      } catch (error) {
+        console.error('[App] RevenueCat init error:', error);
+      }
+    };
+    initRC();
+  }, []);
 
   // Hide native splash once fonts are loaded
   React.useEffect(() => {

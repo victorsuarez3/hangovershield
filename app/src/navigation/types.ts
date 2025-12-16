@@ -4,6 +4,7 @@
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { PaywallSourceType } from '../constants/paywallSources';
 
 export type RootStackParamList = {
   HomeMain: undefined;
@@ -13,6 +14,14 @@ export type RootStackParamList = {
   Progress: undefined;
   ProfileMain: undefined;
   Settings: undefined;
+  Paywall: {
+    source: PaywallSourceType;
+    contextScreen?: string;
+  };
+  PurchaseSuccess: undefined;
+  EveningCheckIn: undefined;
+  EveningCheckInLocked: undefined;
+  DailyWaterLog: undefined;
 };
 
 export type TabParamList = {
