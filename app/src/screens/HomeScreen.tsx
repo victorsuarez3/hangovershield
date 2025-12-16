@@ -242,9 +242,30 @@ export const HomeScreen: React.FC = () => {
         }
 
         // Calculate recovery score
-        const { computeRecoveryScore } = useUserDataStore.getState();
-        const score = computeRecoveryScore();
-        setRecoveryScore(score);
+        let score = 60; // Base score
+        
+        // Completed today's check-in
+        if (isCheckInCompleted) {
+          score += 20;
+        }
+        
+        // Logged at least 50% hydration
+        const halfGoal = hydrationGoal * 0.5;
+        if (hydrationLogged >= halfGoal) {
+          score += 10;
+        }
+        
+        // Reached daily hydration goal
+        if (hydrationLogged >= hydrationGoal) {
+          score += 10;
+        }
+        
+        // Streak ≥ 2
+        if (streak >= 2) {
+          score += 3;
+        }
+        
+        setRecoveryScore(Math.min(score, 100)); // Cap at 100
       } catch (error) {
         console.error('[HomeScreen] Error loading micro-action and score:', error);
       }
