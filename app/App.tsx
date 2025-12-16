@@ -373,6 +373,44 @@ function AppContent() {
 
   // Unauthenticated: show auth navigator (login)
   if (!user) {
+    // Guest/Test mode: enabled only after pressing "Skip OAuth"
+    // Allows exploring the app and navigation without being logged in.
+    if (skipAuthMode) {
+      const hasCompletedFeelingOnboarding = feelingOnboardingCompleted;
+
+      if (!hasCompletedFeelingOnboarding) {
+        return (
+          <AppNavigationProvider
+            currentContext="onboarding"
+            goToHome={handleGoToHome}
+            goToToday={handleGoToToday}
+            goToProgress={handleGoToProgress}
+            goToDailyCheckIn={handleGoToDailyCheckIn}
+            goToWaterLog={handleGoToWaterLog}
+            goToEveningCheckIn={handleGoToEveningCheckIn}
+            goToSubscription={handleGoToSubscription}
+          >
+            <OnboardingNavigator />
+          </AppNavigationProvider>
+        );
+      }
+
+      return (
+        <AppNavigationProvider
+          currentContext="app"
+          goToHome={handleGoToHome}
+          goToToday={handleGoToToday}
+          goToProgress={handleGoToProgress}
+          goToDailyCheckIn={handleGoToDailyCheckIn}
+          goToWaterLog={handleGoToWaterLog}
+          goToEveningCheckIn={handleGoToEveningCheckIn}
+          goToSubscription={handleGoToSubscription}
+        >
+          <AppNavigator />
+        </AppNavigationProvider>
+      );
+    }
+
     return (
       <SkipAuthProvider onSkipAuth={async () => {
         // Reset the feeling onboarding flag so the user goes to OnboardingNavigator
