@@ -22,6 +22,9 @@ import { useAccessStatus } from '../hooks/useAccessStatus';
 import { useDailyCheckIn } from '../hooks/useDailyCheckIn';
 import { useAuth } from '../providers/AuthProvider';
 import { useUserDataStore } from '../stores/useUserDataStore';
+import { getTodayDailyCheckIn } from '../services/dailyCheckIn';
+import { getLocalDailyCheckIn } from '../services/dailyCheckInStorage';
+import { generatePlan } from '../domain/recovery/planGenerator';
 import { useAppNavigation } from '../contexts/AppNavigationContext';
 import { WelcomeCountdownBanner } from '../components/WelcomeCountdownBanner';
 import { PaywallSource } from '../constants/paywallSources';
@@ -98,6 +101,10 @@ export const HomeScreen: React.FC = () => {
     drankLastNight?: boolean;
     drinkingToday?: boolean;
   } | null>(null);
+
+  // Micro-action and recovery score
+  const [microAction, setMicroAction] = useState<{ title: string; body: string } | null>(null);
+  const [recoveryScore, setRecoveryScore] = useState<number | null>(null);
 
   // Load hydration data
   useEffect(() => {
