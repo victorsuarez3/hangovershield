@@ -33,7 +33,7 @@ export const HomeScreen: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const handleGoToHome = useCallback(() => {
-    // Reset to Home root
+    // Reset to Home tab root
     navigation.dispatch(
       CommonActions.reset({
         index: 0,
@@ -43,31 +43,33 @@ export const HomeScreen: React.FC = () => {
   }, [navigation]);
 
   const handleGoToToday = useCallback(() => {
+    // Navigate to SmartPlan tab
     navigation.navigate('SmartPlan');
   }, [navigation]);
 
-  const handleGoToProgress = useCallback(() => {
-    navigation.navigate('Progress');
-  }, [navigation]);
-
   const handleGoToCheckIn = useCallback(() => {
+    // Navigate to CheckIn screen in Home stack
     navigation.navigate('CheckIn');
   }, [navigation]);
 
   const handleGoToWaterLog = useCallback(() => {
-    // Navigate to water log screen (if it exists in your navigation)
+    // Navigate to DailyWaterLog screen in Home stack
     navigation.navigate('DailyWaterLog');
   }, [navigation]);
 
   const handleGoToEveningCheckIn = useCallback(() => {
+    // Navigate to EveningCheckIn screen in Home stack
+    // Screen will redirect to paywall if no access
     navigation.navigate('EveningCheckIn');
   }, [navigation]);
 
   const handleGoToEveningCheckInLocked = useCallback(() => {
-    navigation.navigate('EveningCheckInLocked');
+    // Not used anymore - EveningCheckIn handles paywall redirect
+    navigation.navigate('EveningCheckIn');
   }, [navigation]);
 
   const handleGoToSubscription = useCallback((source: string) => {
+    // Navigate to Paywall screen in Home stack
     navigation.navigate('Paywall', { source });
   }, [navigation]);
 

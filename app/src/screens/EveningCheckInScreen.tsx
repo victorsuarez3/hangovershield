@@ -21,6 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../providers/AuthProvider';
 import { useAccessStatus } from '../hooks/useAccessStatus';
+import { PaywallSource } from '../constants/paywallSources';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -58,10 +59,13 @@ export const EveningCheckInScreen: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Redirect free users to locked screen
+  // Redirect free users to paywall
   useEffect(() => {
     if (!accessInfo.hasFullAccess) {
-      navigation.replace('EveningCheckInLocked');
+      navigation.replace('Paywall', {
+        source: PaywallSource.EVENING_CHECKIN_LOCKED,
+        contextScreen: 'EveningCheckIn',
+      });
     }
   }, [accessInfo.hasFullAccess, navigation]);
 

@@ -18,6 +18,9 @@ import { ToolsScreen } from '../screens/ToolsScreen';
 import { ProgressScreen } from '../screens/ProgressScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { PaywallScreen } from '../screens/PaywallScreen';
+import { EveningCheckInScreen } from '../screens/EveningCheckInScreen';
+import { DailyWaterLogScreen } from '../screens/DailyWaterLogScreen';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -27,6 +30,9 @@ const HomeStack = () => {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} />
       <Stack.Screen name="CheckIn" component={CheckInScreen} />
+      <Stack.Screen name="Paywall" component={PaywallScreen} />
+      <Stack.Screen name="EveningCheckIn" component={EveningCheckInScreen} />
+      <Stack.Screen name="DailyWaterLog" component={DailyWaterLogScreen} />
     </Stack.Navigator>
   );
 };

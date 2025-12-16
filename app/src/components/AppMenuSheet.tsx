@@ -237,13 +237,10 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
     setTimeout(callback, 200);
   };
 
-  // Handle Evening Check-in navigation based on access
+  // Handle Evening Check-in navigation - always navigate, but screen will show paywall if no access
   const handleEveningCheckIn = () => {
-    if (accessInfo.hasFullAccess) {
-      navigateAfterClose(onGoToEveningCheckIn);
-    } else {
-      navigateAfterClose(onGoToEveningCheckInLocked);
-    }
+    // Always navigate to EveningCheckIn - the screen itself will redirect to paywall if needed
+    navigateAfterClose(onGoToEveningCheckIn);
   };
 
   // Handle subscription/upgrade
@@ -319,16 +316,7 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
               onPress={() => navigateAfterClose(onGoToToday)}
             />
 
-            {/* 2. Progress & history */}
-            <MenuItem
-              icon="stats-chart-outline"
-              label="Progress & history"
-              subtitle="Track your streak and recent days."
-              isActive={currentScreen === 'progress'}
-              onPress={() => navigateAfterClose(onGoToProgress)}
-            />
-
-            {/* 3. Daily check-in */}
+            {/* 2. Daily check-in */}
             <MenuItem
               icon="clipboard-outline"
               label="Daily check-in"
@@ -346,15 +334,12 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
               onPress={() => navigateAfterClose(onGoToWaterLog)}
             />
 
-            {/* 5. Evening check-in (always visible) */}
+            {/* 5. Evening check-in (always visible, always active) */}
             <MenuItem
               icon="moon-outline"
               label="Evening check-in"
-              subtitle={accessInfo.hasFullAccess 
-                ? "Reflect on your day's recovery." 
-                : "Unlock with Premium or Welcome access."}
+              subtitle="Reflect on your day's recovery."
               isActive={currentScreen === 'evening'}
-              isLocked={!accessInfo.hasFullAccess}
               onPress={handleEveningCheckIn}
             />
           </View>
