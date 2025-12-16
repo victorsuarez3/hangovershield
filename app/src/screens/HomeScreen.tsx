@@ -284,50 +284,45 @@ export const HomeScreen: React.FC = () => {
         }
 
         // Calculate recovery score
+        // This is a BEHAVIOR score, not a medical health score
         // Score should NOT depend on alcohol consumption
         let score = 0; // Start from 0, build up
         
-        // 1. Daily check-in completed (20 points)
+        // 1. Daily check-in completed (30 points)
         if (isCheckInCompleted) {
-          score += 20;
+          score += 30;
         }
         
         // 2. Hydration progress (up to 30 points)
-        // 50% of goal = 15 points, 100% of goal = 30 points
+        // Proportional to goal: 0% = 0 pts, 100% = 30 pts
         const hydrationProgress = Math.min(hydrationLogged / hydrationGoal, 1);
         score += Math.round(hydrationProgress * 30);
         
-        // 3. Micro-step completed (if check-in exists, micro-action is available) (15 points)
+        // 3. Micro-steps completed (up to 30 points)
+        // If check-in exists and micro-action is available, user gets points
+        // In future, we could track if user actually completed the micro-action
         if (checkIn && plan?.microAction) {
-          // Micro-step is considered "completed" if user has checked in
-          // In future, we could track if user actually completed the micro-action
-          score += 15;
+          // For now, if micro-action exists, give full points
+          // Later: track actual completion for partial points
+          score += 30;
         }
         
-        // 4. Today's plan steps completed (up to 30 points)
-        if (checkIn && user?.uid) {
-          const todayCheckIn = await getTodayDailyCheckIn(user.uid);
-          if (todayCheckIn?.planCompleted) {
-            score += 30; // Full plan completed
-          } else if (todayCheckIn?.stepsCompleted && todayCheckIn?.totalSteps) {
-            // Partial completion based on steps
-            const stepsProgress = todayCheckIn.stepsCompleted / todayCheckIn.totalSteps;
-            score += Math.round(stepsProgress * 30);
-          }
-        }
-        
-        // 5. (Premium) Evening check-in (5 points)
-        // Check if evening check-in exists for today
+        // 4. Bonus consistency (evening check-in) (10 points)
+        // Premium feature: evening check-in shows consistency
         if (accessInfo.hasFullAccess && user?.uid) {
           try {
             // Try to fetch evening check-in for today
             // For now, we'll skip this as it requires evening check-in service
             // In future: const eveningCheckIn = await getTodayEveningCheckIn(user.uid);
-            // if (eveningCheckIn) score += 5;
+            // if (eveningCheckIn) score += 10;
           } catch (error) {
             // Evening check-in not available, skip
           }
         }
+        
+        // Note: Plan steps completion is NOT included in score
+        // Score focuses on: check-in, hydration, micro-actions, consistency
+        // Plan completion is tracked separately and shown in plan screen
         
         // Ensure score is between 0-100
         score = Math.min(Math.max(score, 0), 100);
@@ -716,6 +711,50 @@ export const HomeScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
 
+        {/* Today's Recovery Score Card - Moved up for immediate feedback */}
+        {recoveryScore !== null && (
+          <View style={styles.recoveryScoreCard}>
+            <Text style={styles.recoveryScoreTitle}>Today's Recovery Score</Text>
+            <Text style={styles.recoveryScoreSubtitle}>
+              Based on how you checked in, hydrated, and completed recovery actions today.
+            </Text>
+            <View style={styles.recoveryScoreCircle}>
+              <Text style={styles.recoveryScoreNumber}>{recoveryScore}</Text>
+              <Text style={styles.recoveryScoreMax}>/100</Text>
+            </View>
+            <View style={styles.recoveryScoreBar}>
+              <View 
+                style={[
+                  styles.recoveryScoreBarFill,
+                  { width: `${recoveryScore}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.recoveryScoreHelper}>
+              Complete today's plan to improve your score.
+            </Text>
+            <TouchableOpacity
+              onPress={handleRecoveryPlanPress}
+              activeOpacity={0.7}
+              style={styles.recoveryScoreCTA}
+            >
+              <Text style={styles.recoveryScoreCTAText}>View today's full plan →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Today's Micro-step Card */}
+        {microAction && (
+          <View style={styles.microStepCard}>
+            <View style={styles.microStepHeader}>
+              <Ionicons name="bulb-outline" size={20} color="#0F4C44" />
+              <Text style={styles.microStepTitle}>Today's micro-step</Text>
+            </View>
+            <Text style={styles.microStepText}>{microAction.title}</Text>
+            <Text style={styles.microStepBody}>{microAction.body}</Text>
+          </View>
+        )}
+
         {/* Water Log Widget Card */}
         <View style={styles.waterLogCard}>
           {/* Header */}
@@ -771,18 +810,6 @@ export const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Today's Micro-step Card */}
-        {microAction && (
-          <View style={styles.microStepCard}>
-            <View style={styles.microStepHeader}>
-              <Ionicons name="bulb-outline" size={20} color="#0F4C44" />
-              <Text style={styles.microStepTitle}>Today's micro-step</Text>
-            </View>
-            <Text style={styles.microStepText}>{microAction.title}</Text>
-            <Text style={styles.microStepBody}>{microAction.body}</Text>
-          </View>
-        )}
-
         {/* Progress Snapshot Card */}
         <View style={styles.progressSnapshotCard}>
           <View style={styles.progressSnapshotHeader}>
@@ -835,38 +862,6 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.progressCTAText}>View full progress →</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Today's Recovery Score Card */}
-        {recoveryScore !== null && (
-          <View style={styles.recoveryScoreCard}>
-            <Text style={styles.recoveryScoreTitle}>Today's Recovery Score</Text>
-            <Text style={styles.recoveryScoreSubtitle}>
-              Based on today's check-in, hydration, and recovery actions.
-            </Text>
-            <View style={styles.recoveryScoreCircle}>
-              <Text style={styles.recoveryScoreNumber}>{recoveryScore}</Text>
-              <Text style={styles.recoveryScoreMax}>/100</Text>
-            </View>
-            <View style={styles.recoveryScoreBar}>
-              <View 
-                style={[
-                  styles.recoveryScoreBarFill,
-                  { width: `${recoveryScore}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.recoveryScoreHelper}>
-              Complete today's plan to improve your score.
-            </Text>
-            <TouchableOpacity
-              onPress={handleRecoveryPlanPress}
-              activeOpacity={0.7}
-              style={styles.recoveryScoreCTA}
-            >
-              <Text style={styles.recoveryScoreCTAText}>View today's full plan →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Quick Widgets Grid - 2x2 */}
         <View style={styles.widgetsGrid}>
