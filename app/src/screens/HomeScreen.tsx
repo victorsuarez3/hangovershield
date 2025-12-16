@@ -1,7 +1,7 @@
 /**
  * Home Screen - Hangover Shield
- * Main dashboard with widgets for daily check-in, water log, progress, recovery plan, and evening check-in
- * Premium design consistent with app's calm, soothing aesthetic
+ * Premium dashboard with hero card and widget grid
+ * Consistent with app's calm, premium aesthetic
  */
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
@@ -13,7 +13,6 @@ import {
   ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +35,7 @@ import {
   countCompletedInLastDays,
 } from '../services/dailyCheckIn';
 import { getTodayId } from '../utils/dateUtils';
+import { typography } from '../design-system/typography';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -53,7 +53,6 @@ type WidgetType =
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const HomeScreen: React.FC = () => {
-  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { user } = useAuth();
@@ -154,7 +153,6 @@ export const HomeScreen: React.FC = () => {
   }, [navigation]);
 
   const handleGoToCheckIn = useCallback(() => {
-    // Use global navigation to ensure it works from any context
     appNav.goToDailyCheckIn();
   }, [appNav]);
 
@@ -218,25 +216,28 @@ export const HomeScreen: React.FC = () => {
   const hydrationProgressText = useMemo(() => {
     const liters = (hydrationLogged / 1000).toFixed(1);
     const goalLiters = (hydrationGoal / 1000).toFixed(1);
-    return `${liters}L of ${goalLiters}L`;
+    return `${liters}L / ${goalLiters}L`;
   }, [hydrationLogged, hydrationGoal]);
 
   const isCheckInCompleted = dailyCheckIn.status === 'completed_today';
+  const hydrationPercent = hydrationGoal > 0 ? (hydrationLogged / hydrationGoal) * 100 : 0;
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.colors.background }]}>
+    <View style={styles.container}>
+      {/* Premium gradient background - matching TodayRecoveryPlanScreen */}
       <LinearGradient
-        colors={[theme.colors.deepTeal + '20', 'transparent']}
+        colors={['#E4F2EF', '#D8EBE7', '#CEE5E1']}
+        locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFillObject}
       />
 
       {/* App Header with Menu */}
       <AppHeader
-        title="Hangover Shield"
+        title="Today"
         showMenuButton
         onMenuPress={() => setMenuVisible(true)}
       />
@@ -249,150 +250,179 @@ export const HomeScreen: React.FC = () => {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Welcome 24h Banner */}
-        <WelcomeCountdownBanner />
+        {/* Welcome Banner (only for welcome users, small) */}
+        {accessInfo.isWelcome && (
+          <View style={styles.welcomeBannerContainer}>
+            <WelcomeCountdownBanner />
+          </View>
+        )}
 
-        {/* Quick Actions Section */}
-        <View style={styles.quickActionsSection}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
-            QUICK ACTIONS
-          </Text>
-
-          {/* Daily Check-In Widget */}
-          <TouchableOpacity
-            style={[styles.widgetCard, { backgroundColor: theme.colors.surfaceElevated }]}
-            onPress={handleDailyCheckInPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.widgetIconContainer}>
-              <Ionicons name="heart-outline" size={24} color={theme.colors.deepTeal} />
-            </View>
-            <View style={styles.widgetContent}>
-              <Text style={[styles.widgetTitle, { color: theme.colors.text }]}>
-                Daily check-in
+        {/* Hero Card - Main Focus */}
+        <TouchableOpacity
+          style={styles.heroCard}
+          onPress={isCheckInCompleted ? handleRecoveryPlanPress : handleDailyCheckInPress}
+          activeOpacity={0.9}
+        >
+          <View style={styles.heroContent}>
+            <View style={styles.heroHeader}>
+              <Text style={styles.heroTitle}>
+                {isCheckInCompleted ? "Your plan for today" : "Start your recovery"}
               </Text>
-              <Text style={[styles.widgetSubtitle, { color: theme.colors.textSecondary }]}>
-                Update how you're feeling today.
+              <Text style={styles.heroSubtitle}>
+                {isCheckInCompleted
+                  ? "Follow your personalized steps to feel better faster."
+                  : "Complete your daily check-in to get your personalized recovery plan."}
               </Text>
             </View>
-            {isCheckInCompleted ? (
-              <View style={styles.statusPill}>
-                <Text style={styles.statusPillText}>Completed</Text>
+
+            {/* Status Chips */}
+            <View style={styles.heroChips}>
+              <View style={styles.chip}>
+                <Ionicons
+                  name={isCheckInCompleted ? 'checkmark-circle' : 'time-outline'}
+                  size={14}
+                  color={isCheckInCompleted ? '#7AB48B' : 'rgba(15,76,68,0.5)'}
+                />
+                <Text style={[
+                  styles.chipText,
+                  isCheckInCompleted && styles.chipTextCompleted
+                ]}>
+                  Check-in: {isCheckInCompleted ? 'Completed' : 'Pending'}
+                </Text>
               </View>
-            ) : (
-              <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
-            )}
-          </TouchableOpacity>
+              {hydrationLogged > 0 && (
+                <View style={styles.chip}>
+                  <Ionicons name="water" size={14} color="rgba(15,76,68,0.5)" />
+                  <Text style={styles.chipText}>{hydrationProgressText}</Text>
+                </View>
+              )}
+            </View>
 
+            {/* Primary CTA Button */}
+            <TouchableOpacity
+              style={styles.heroButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                if (isCheckInCompleted) {
+                  handleRecoveryPlanPress();
+                } else {
+                  handleDailyCheckInPress();
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#0F4C44', '#0A3F37']}
+                style={styles.heroButtonGradient}
+              >
+                <Text style={styles.heroButtonText}>
+                  {isCheckInCompleted ? "View today's recovery plan" : "Complete daily check-in"}
+                </Text>
+                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+
+        {/* Quick Widgets Grid - 2x2 */}
+        <View style={styles.widgetsGrid}>
           {/* Water Log Widget */}
           <TouchableOpacity
-            style={[styles.widgetCard, { backgroundColor: theme.colors.surfaceElevated }]}
+            style={styles.widgetCard}
             onPress={handleWaterLogPress}
             activeOpacity={0.7}
           >
             <View style={styles.widgetIconContainer}>
-              <Ionicons name="water-outline" size={24} color={theme.colors.deepTeal} />
+              <Ionicons name="water-outline" size={24} color="#0F4C44" />
             </View>
-            <View style={styles.widgetContent}>
-              <Text style={[styles.widgetTitle, { color: theme.colors.text }]}>
-                Water log
-              </Text>
-              <Text style={[styles.widgetSubtitle, { color: theme.colors.textSecondary }]}>
-                {hydrationLogged > 0 ? hydrationProgressText : 'Tap to log water.'}
-              </Text>
+            <Text style={styles.widgetTitle}>Water</Text>
+            <Text style={styles.widgetSubtitle}>
+              {hydrationLogged > 0 ? hydrationProgressText : 'Log water'}
+            </Text>
+            <View style={styles.widgetArrow}>
+              <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
           </TouchableOpacity>
 
-          {/* Progress & History Widget */}
+          {/* Progress Widget */}
           <TouchableOpacity
-            style={[styles.widgetCard, { backgroundColor: theme.colors.surfaceElevated }]}
+            style={styles.widgetCard}
             onPress={handleProgressPress}
             activeOpacity={0.7}
           >
             <View style={styles.widgetIconContainer}>
-              <Ionicons name="stats-chart-outline" size={24} color={theme.colors.deepTeal} />
+              <Ionicons name="stats-chart-outline" size={24} color="#0F4C44" />
             </View>
-            <View style={styles.widgetContent}>
-              <Text style={[styles.widgetTitle, { color: theme.colors.text }]}>
-                Progress & history
-              </Text>
-              <Text style={[styles.widgetSubtitle, { color: theme.colors.textSecondary }]}>
-                {streak > 0 || completedLast7Days > 0
-                  ? `${streak} day streak • ${completedLast7Days} check-ins this week`
-                  : 'Track your streak and recent days.'}
-              </Text>
+            <Text style={styles.widgetTitle}>Progress</Text>
+            <Text style={styles.widgetSubtitle}>
+              {streak > 0 ? `${streak} day streak` : 'Track progress'}
+            </Text>
+            <View style={styles.widgetArrow}>
+              <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
           </TouchableOpacity>
 
-          {/* Today's Recovery Plan Widget */}
+          {/* Today's Plan Widget */}
           <TouchableOpacity
-            style={[styles.widgetCard, { backgroundColor: theme.colors.surfaceElevated }]}
+            style={styles.widgetCard}
             onPress={handleRecoveryPlanPress}
             activeOpacity={0.7}
           >
             <View style={styles.widgetIconContainer}>
-              <Ionicons name="sunny-outline" size={24} color={theme.colors.deepTeal} />
+              <Ionicons name="sunny-outline" size={24} color="#0F4C44" />
             </View>
-            <View style={styles.widgetContent}>
-              <Text style={[styles.widgetTitle, { color: theme.colors.text }]}>
-                Today's recovery plan
-              </Text>
-              <Text style={[styles.widgetSubtitle, { color: theme.colors.textSecondary }]}>
-                See today's steps and hydration goals.
-              </Text>
+            <Text style={styles.widgetTitle}>Today's Plan</Text>
+            <Text style={styles.widgetSubtitle}>Recovery steps</Text>
+            <View style={styles.widgetArrow}>
+              <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
           </TouchableOpacity>
 
           {/* Evening Check-In Widget */}
           <TouchableOpacity
-            style={[styles.widgetCard, { backgroundColor: theme.colors.surfaceElevated }]}
+            style={styles.widgetCard}
             onPress={handleEveningCheckInPress}
             activeOpacity={0.7}
           >
             <View style={styles.widgetIconContainer}>
-              <Ionicons name="moon-outline" size={24} color={theme.colors.deepTeal} />
+              <Ionicons name="moon-outline" size={24} color="#0F4C44" />
             </View>
-            <View style={styles.widgetContent}>
-              <Text style={[styles.widgetTitle, { color: theme.colors.text }]}>
-                Evening check-in
-              </Text>
-              <Text style={[styles.widgetSubtitle, { color: theme.colors.textSecondary }]}>
-                {accessInfo.hasFullAccess
-                  ? 'Track your evening recovery.'
-                  : 'Premium feature • Unlock to access'}
-              </Text>
-            </View>
+            <Text style={styles.widgetTitle}>Evening</Text>
+            <Text style={styles.widgetSubtitle}>
+              {accessInfo.hasFullAccess ? 'Check-in' : 'Premium'}
+            </Text>
             {!accessInfo.hasFullAccess && (
-              <View style={styles.lockIcon}>
-                <Ionicons name="lock-closed" size={16} color={theme.colors.textTertiary} />
+              <View style={styles.lockBadge}>
+                <Ionicons name="lock-closed" size={12} color="rgba(15,76,68,0.5)" />
               </View>
             )}
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
+            <View style={styles.widgetArrow}>
+              <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
+            </View>
           </TouchableOpacity>
         </View>
 
-        {/* Premium Hook (for free users) */}
+        {/* Premium CTA (only for free users, subtle) */}
         {accessInfo.isFree && (
           <TouchableOpacity
-            style={[styles.upgradeCard, { backgroundColor: theme.colors.surfaceElevated }]}
+            style={styles.upgradeCard}
             onPress={handleUpgradePress}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <View style={styles.upgradeIconContainer}>
-              <Ionicons name="sparkles-outline" size={24} color={theme.colors.deepTeal} />
-            </View>
             <View style={styles.upgradeContent}>
-              <Text style={[styles.upgradeTitle, { color: theme.colors.text }]}>
-                Upgrade to Premium
-              </Text>
-              <Text style={[styles.upgradeSubtitle, { color: theme.colors.textSecondary }]}>
-                Unlock evening check-ins, insights & more
-              </Text>
+              <View style={styles.upgradeIconContainer}>
+                <Ionicons name="sparkles-outline" size={20} color="#0F4C44" />
+              </View>
+              <View style={styles.upgradeTextContainer}>
+                <Text style={styles.upgradeTitle}>Unlock Premium</Text>
+                <Text style={styles.upgradeSubtitle}>
+                  Evening check-ins, insights, and full guidance.
+                </Text>
+              </View>
+              <View style={styles.upgradeButton}>
+                <Text style={styles.upgradeButtonText}>Upgrade</Text>
+              </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.deepTeal} />
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -430,92 +460,189 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
   },
-  quickActionsSection: {
-    marginTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+  welcomeBannerContainer: {
     marginBottom: 16,
   },
-  widgetCard: {
+
+  // Hero Card
+  heroCard: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: 'rgba(15,76,68,0.08)',
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 20,
+    shadowOpacity: 1,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(15,76,68,0.08)',
+  },
+  heroContent: {
+    gap: 20,
+  },
+  heroHeader: {
+    gap: 8,
+  },
+  heroTitle: {
+    ...typography.sectionTitle,
+    fontSize: 24,
+    color: '#0F3D3E',
+    lineHeight: 32,
+  },
+  heroSubtitle: {
+    ...typography.body,
+    fontSize: 15,
+    color: 'rgba(15,61,62,0.6)',
+    lineHeight: 21,
+  },
+  heroChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: 'rgba(15,76,68,0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
   },
-  widgetIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(15, 63, 70, 0.1)',
+  chipText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: 'rgba(15,76,68,0.6)',
+  },
+  chipTextCompleted: {
+    color: '#7AB48B',
+  },
+  heroButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  heroButtonGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 8,
   },
-  widgetContent: {
+  heroButtonText: {
+    ...typography.button,
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+
+  // Widgets Grid
+  widgetsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 24,
+  },
+  widgetCard: {
     flex: 1,
+    minWidth: '47%',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(15,76,68,0.08)',
+    shadowColor: 'rgba(15,76,68,0.06)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 1,
+    elevation: 3,
+    position: 'relative',
+  },
+  widgetIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(15,76,68,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   widgetTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.bodyMedium,
+    fontSize: 15,
+    color: '#0F3D3E',
     marginBottom: 4,
   },
   widgetSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.bodySmall,
+    fontSize: 13,
+    color: 'rgba(15,61,62,0.6)',
+    lineHeight: 18,
   },
-  statusPill: {
-    backgroundColor: 'rgba(122, 180, 139, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  widgetArrow: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
   },
-  statusPillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#7AB48B',
-  },
-  lockIcon: {
-    marginRight: 8,
-  },
-  upgradeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 8,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(15, 63, 70, 0.2)',
-  },
-  upgradeIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(15, 63, 70, 0.15)',
+  lockBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(15,76,68,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+  },
+
+  // Upgrade Card
+  upgradeCard: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(15,76,68,0.12)',
+    marginBottom: 8,
   },
   upgradeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  upgradeIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(15,76,68,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeTextContainer: {
     flex: 1,
+    gap: 2,
   },
   upgradeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
+    ...typography.bodyMedium,
+    fontSize: 15,
+    color: '#0F3D3E',
   },
   upgradeSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.bodySmall,
+    fontSize: 12,
+    color: 'rgba(15,61,62,0.6)',
+    lineHeight: 16,
+  },
+  upgradeButton: {
+    backgroundColor: '#0F4C44',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  upgradeButtonText: {
+    ...typography.button,
+    fontSize: 13,
+    color: '#FFFFFF',
   },
 });
