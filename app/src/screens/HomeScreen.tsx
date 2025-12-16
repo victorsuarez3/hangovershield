@@ -45,6 +45,7 @@ import {
 import { getLocalDailyCheckIn, deleteLocalDailyCheckIn } from '../services/dailyCheckInStorage';
 import { getTodayId } from '../utils/dateUtils';
 import { typography } from '../design-system/typography';
+import { generatePlan } from '../domain/recovery/planGenerator';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -199,6 +200,61 @@ export const HomeScreen: React.FC = () => {
 
     loadTodayCheckIn();
   }, [user?.uid, isCheckInCompleted]);
+
+  // Load micro-action and recovery score
+  useEffect(() => {
+    const loadMicroActionAndScore = async () => {
+      try {
+        // Get today's check-in
+        let checkIn = null;
+        if (user?.uid) {
+          checkIn = await getTodayDailyCheckIn(user.uid);
+        }
+        if (!checkIn) {
+          const localCheckIn = await getLocalDailyCheckIn();
+          if (localCheckIn) {
+            const todayId = getTodayId();
+            if (localCheckIn.id === todayId) {
+              checkIn = {
+                severity: localCheckIn.level,
+                symptoms: localCheckIn.symptoms,
+                drankLastNight: localCheckIn.drankLastNight,
+                drinkingToday: localCheckIn.drinkingToday,
+              };
+            }
+          }
+        }
+
+        // Generate micro-action if check-in exists
+        if (checkIn) {
+          const feeling = checkIn.severity as 'mild' | 'moderate' | 'severe' | 'none';
+          const symptomKeys = checkIn.symptoms.filter((s): s is 'headache' | 'nausea' | 'dryMouth' | 'dizziness' | 'fatigue' | 'anxiety' | 'brainFog' | 'poorSleep' | 'noSymptoms' => {
+            return ['headache', 'nausea', 'dryMouth', 'dizziness', 'fatigue', 'anxiety', 'brainFog', 'poorSleep', 'noSymptoms'].includes(s);
+          }) as any[];
+          
+          const plan = generatePlan({
+            level: feeling,
+            symptoms: symptomKeys,
+            drankLastNight: checkIn.drankLastNight,
+            drinkingToday: checkIn.drinkingToday,
+          });
+          
+          setMicroAction(plan.microAction);
+        } else {
+          setMicroAction(null);
+        }
+
+        // Calculate recovery score
+        const { computeRecoveryScore } = useUserDataStore.getState();
+        const score = computeRecoveryScore();
+        setRecoveryScore(score);
+      } catch (error) {
+        console.error('[HomeScreen] Error loading micro-action and score:', error);
+      }
+    };
+
+    loadMicroActionAndScore();
+  }, [user?.uid, isCheckInCompleted, hydrationLogged, hydrationGoal, streak]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Analytics Helpers
@@ -617,6 +673,37 @@ export const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Today's Micro-step Card */}
+        {microAction && (
+          <View style={styles.microStepCard}>
+            <View style={styles.microStepHeader}>
+              <Ionicons name="bulb-outline" size={20} color="#0F4C44" />
+              <Text style={styles.microStepTitle}>Today's micro-step</Text>
+            </View>
+            <Text style={styles.microStepText}>{microAction.title}</Text>
+            <Text style={styles.microStepBody}>{microAction.body}</Text>
+          </View>
+        )}
+
+        {/* Today's Recovery Score Card */}
+        {recoveryScore !== null && (
+          <View style={styles.recoveryScoreCard}>
+            <Text style={styles.recoveryScoreTitle}>Today's Recovery Score</Text>
+            <View style={styles.recoveryScoreCircle}>
+              <Text style={styles.recoveryScoreNumber}>{recoveryScore}</Text>
+              <Text style={styles.recoveryScoreMax}>/100</Text>
+            </View>
+            <View style={styles.recoveryScoreBar}>
+              <View 
+                style={[
+                  styles.recoveryScoreBarFill,
+                  { width: `${recoveryScore}%` }
+                ]} 
+              />
+            </View>
+          </View>
+        )}
+
         {/* Quick Widgets Grid - 2x2 */}
         <View style={styles.widgetsGrid}>
           {/* Water Log Widget */}
@@ -975,6 +1062,94 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#0F4C44',
     textDecorationLine: 'underline',
+  },
+  // Micro-step Card
+  microStepCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 24,
+    shadowColor: 'rgba(15, 76, 68, 0.08)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 1,
+    elevation: 4,
+  },
+  microStepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  microStepTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    color: '#0F3D3E',
+  },
+  microStepText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 15,
+    color: '#0F3D3E',
+    marginBottom: 4,
+    lineHeight: 22,
+  },
+  microStepBody: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.7)',
+    lineHeight: 20,
+  },
+  // Recovery Score Card
+  recoveryScoreCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 24,
+    alignItems: 'center',
+    shadowColor: 'rgba(15, 76, 68, 0.08)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 1,
+    elevation: 4,
+  },
+  recoveryScoreTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    color: '#0F3D3E',
+    marginBottom: 16,
+  },
+  recoveryScoreCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(15, 76, 68, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  recoveryScoreNumber: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 36,
+    color: '#0F3D3E',
+    lineHeight: 44,
+  },
+  recoveryScoreMax: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 16,
+    color: 'rgba(15, 61, 62, 0.6)',
+    marginTop: -4,
+  },
+  recoveryScoreBar: {
+    width: '100%',
+    height: 8,
+    backgroundColor: 'rgba(15, 76, 68, 0.1)',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  recoveryScoreBarFill: {
+    height: '100%',
+    backgroundColor: '#0F4C44',
+    borderRadius: 4,
   },
   // Widgets Grid
   widgetsGrid: {
