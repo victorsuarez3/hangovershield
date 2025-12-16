@@ -241,10 +241,13 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
   };
 
 
-  // Handle Evening Check-in navigation - always navigate, but screen will show paywall if no access
+  // Handle Evening Check-in navigation - check access and navigate accordingly
   const handleEveningCheckIn = () => {
-    // Always navigate to EveningCheckIn - the screen itself will redirect to paywall if needed
-    navigateAfterClose(onGoToEveningCheckIn);
+    if (accessInfo.hasFullAccess) {
+      navigateAfterClose(onGoToEveningCheckIn);
+    } else {
+      navigateAfterClose(onGoToEveningCheckInLocked);
+    }
   };
 
   // Handle Account navigation
