@@ -28,8 +28,35 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccessStatus } from '../hooks/useAccessStatus';
 import { PaywallSource } from '../constants/paywallSources';
+import { formatWelcomeUnlockTimeRemaining } from '../services/welcomeUnlock';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Get dynamic subtitle for subscription menu item based on access status
+ */
+function getSubscriptionSubtitle(accessInfo: {
+  status: 'free' | 'welcome' | 'premium';
+  welcomeRemainingMs: number;
+  isTrialActive: boolean;
+}): string {
+  switch (accessInfo.status) {
+    case 'premium':
+      return accessInfo.isTrialActive 
+        ? 'Trial active. Manage subscription.' 
+        : 'Premium active. Manage subscription.';
+    case 'welcome':
+      const timeLeft = formatWelcomeUnlockTimeRemaining(accessInfo.welcomeRemainingMs);
+      return `Welcome access (${timeLeft} left)`;
+    case 'free':
+    default:
+      return 'Unlock full recovery guidance.';
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -340,9 +367,7 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
             <MenuItem
               icon={accessInfo.isPremium ? 'card-outline' : 'star-outline'}
               label={accessInfo.isPremium ? 'Subscription' : 'Upgrade to Premium'}
-              subtitle={accessInfo.isPremium 
-                ? 'Manage your subscription.' 
-                : 'Unlock full recovery guidance.'}
+              subtitle={getSubscriptionSubtitle(accessInfo)}
               isPremiumItem={!accessInfo.isPremium}
               onPress={handleSubscription}
             />

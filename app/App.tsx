@@ -32,7 +32,7 @@ const INTRO_ONBOARDING_KEY = '@hangovershield_intro_onboarding_completed'; // NE
 const FEELING_ONBOARDING_KEY = '@hangovershield_feeling_onboarding_completed'; // Daily check-in flow
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, userDoc, loading } = useAuth();
   const [showSplash, setShowSplash] = React.useState(true);
   // NEW: Intro onboarding (pre-auth, explains app value)
   const [showIntroOnboarding, setShowIntroOnboarding] = React.useState(false);
@@ -155,6 +155,18 @@ function AppContent() {
         onContinue={() => {
           setShowSplash(false);
         }}
+      />
+    );
+  }
+
+  // Auth loading gate: Wait for userDoc to load when user exists
+  // This prevents UI flicker and ensures useAccessStatus has correct data
+  if (loading || (user && !userDoc)) {
+    return (
+      <SplashScreen
+        onFinish={() => {}}
+        showContinueButton={false}
+        onContinue={() => {}}
       />
     );
   }

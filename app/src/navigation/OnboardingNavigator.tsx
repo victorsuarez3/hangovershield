@@ -19,6 +19,8 @@ import { getRecoveryAnalysis, getKeySymptomLabels } from '../utils/recoveryAnaly
 import { markPlanCompletedForToday } from '../services/dailyCheckIn';
 import { getTodayId } from '../utils/dateUtils';
 import { useAuth } from '../providers/AuthProvider';
+import { grantWelcomeUnlock } from '../services/welcomeUnlock';
+import * as Analytics from '../utils/analytics';
 
 const FEELING_ONBOARDING_KEY = '@hangovershield_feeling_onboarding_completed';
 
@@ -26,6 +28,7 @@ const FEELING_ONBOARDING_KEY = '@hangovershield_feeling_onboarding_completed';
 const PlanLoadingScreenWrapper: React.FC = () => {
   const route = useRoute<RouteProp<OnboardingStackParamList, 'PlanLoading'>>();
   const navigation = useNavigation<NativeStackNavigationProp<OnboardingStackParamList>>();
+  const { user } = useAuth();
   const { feeling, symptoms } = route.params;
 
   const handleFinished = async () => {
@@ -34,6 +37,21 @@ const PlanLoadingScreenWrapper: React.FC = () => {
       await AsyncStorage.setItem(FEELING_ONBOARDING_KEY, 'true');
     } catch (error) {
       console.error('Error saving onboarding status:', error);
+    }
+
+    // Grant 24h Welcome Unlock for authenticated users (idempotent)
+    if (user?.uid) {
+      try {
+        await grantWelcomeUnlock(user.uid);
+        Analytics.logAnalyticsEvent('welcome_unlock_granted', {
+          trigger: 'feeling_onboarding_complete',
+          userId: user.uid,
+        });
+        console.log('[OnboardingNavigator] Welcome unlock granted for user:', user.uid);
+      } catch (error) {
+        console.error('[OnboardingNavigator] Error granting welcome unlock:', error);
+        // Non-blocking - continue to recovery plan even if unlock fails
+      }
     }
 
     // Navigate to Today's Recovery Plan screen
