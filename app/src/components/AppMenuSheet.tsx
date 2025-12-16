@@ -234,7 +234,8 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
   // Helper to close menu then navigate
   const navigateAfterClose = (callback: () => void) => {
     handleClose();
-    setTimeout(callback, 200);
+    // Keep delay small so navigation feels responsive and doesn't get "lost"
+    setTimeout(callback, 80);
   };
 
   // Handle Evening Check-in navigation - always navigate, but screen will show paywall if no access
@@ -257,14 +258,17 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
       animationType="none"
       onRequestClose={handleClose}
       statusBarTranslucent
+      presentationStyle="overFullScreen"
+      hardwareAccelerated
     >
       {/* Backdrop */}
-      <Pressable style={styles.backdrop} onPress={handleClose}>
+      <Pressable style={styles.backdrop} onPress={handleClose} pointerEvents="auto">
         <Animated.View
           style={[
             styles.backdropInner,
             { opacity: backdropOpacity },
           ]}
+          pointerEvents="none"
         />
       </Pressable>
 
@@ -281,7 +285,8 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
             ],
           },
         ]}
-        pointerEvents="box-none"
+        pointerEvents="auto"
+        onStartShouldSetResponder={() => true}
       >
         <View style={styles.menuCardInner}>
           {/* Header */}
@@ -370,6 +375,7 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
   },
   backdropInner: {
     ...StyleSheet.absoluteFillObject,
@@ -381,6 +387,8 @@ const styles = StyleSheet.create({
     left: 16,
     maxWidth: 380,
     alignSelf: 'flex-end',
+    zIndex: 2,
+    elevation: 50,
   },
   menuCardInner: {
     backgroundColor: '#FFFFFF',
