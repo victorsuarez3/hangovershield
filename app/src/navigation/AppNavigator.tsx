@@ -3,11 +3,9 @@
  */
 
 import React from 'react';
-import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList, TabParamList } from './types';
-import { CustomTabBar } from '../components/CustomTabBar';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 
 // Screens
@@ -82,23 +80,13 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({ allowGuestMode = fal
   return (
     <ProtectedRoute allowGuestMode={allowGuestMode}>
       <Tab.Navigator
-        tabBar={(props) => <CustomTabBar {...props} />}
+        tabBar={() => null}
         screenOptions={{
           headerShown: false,
           tabBarShowLabel: false,
           tabBarStyle: {
-            backgroundColor: 'rgba(0,0,0,0)', // Transparente total
-            position: 'absolute',
-            borderTopWidth: 0, // NO borde
-            elevation: 0, // Android: NO sombra
-            shadowOpacity: 0, // iOS: NO sombra
-            shadowColor: 'transparent',
-            shadowOffset: { width: 0, height: 0 },
-            shadowRadius: 0,
+            display: 'none',
           },
-          tabBarBackground: () => (
-            <View style={{ flex: 1, backgroundColor: 'transparent' }} />
-          ),
         }}
       >
         <Tab.Screen name="Home" component={HomeStack} />
