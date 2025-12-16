@@ -763,8 +763,10 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* App Header with Menu */}
+      {/* App Header with Back Button and Menu */}
       <AppHeader
+        showBackButton
+        onBackPress={() => navigation.goBack()}
         showMenuButton
         onMenuPress={() => setMenuVisible(true)}
       />

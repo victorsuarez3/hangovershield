@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
+import { AppHeader } from '../components/AppHeader';
 import {
   DailyCheckInSeverity,
   SEVERITY_LABELS,
@@ -409,11 +410,16 @@ export const CheckInScreen: React.FC = () => {
           locations={[0, 1]}
           style={StyleSheet.absoluteFillObject}
         />
+        <AppHeader
+          title="Daily Check-In"
+          showBackButton
+          onBackPress={() => navigation.goBack()}
+        />
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 },
+            { paddingTop: 16, paddingBottom: insets.bottom + 24 },
           ]}
           showsVerticalScrollIndicator={false}
         >
@@ -431,12 +437,16 @@ export const CheckInScreen: React.FC = () => {
         locations={[0, 1]}
         style={StyleSheet.absoluteFillObject}
       />
-
+      <AppHeader
+        title="Daily Check-In"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+      />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 120 },
+          { paddingTop: 16, paddingBottom: insets.bottom + 120 },
         ]}
         showsVerticalScrollIndicator={false}
       >
