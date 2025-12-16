@@ -38,6 +38,7 @@ import {
   countCompletedInLastDays,
   getTodayDailyCheckIn,
   deleteTodayDailyCheckIn,
+  DailyCheckInSummary,
 } from '../services/dailyCheckIn';
 import { getLocalDailyCheckIn, deleteLocalDailyCheckIn } from '../services/dailyCheckInStorage';
 import { getTodayId, getDateId } from '../utils/dateUtils';
@@ -148,6 +149,38 @@ export const HomeScreen: React.FC = () => {
 
         setStreak(currentStreak);
         setCompletedLast7Days(completed7Days);
+
+        // Build last 7 days tracker data
+        const checkInMap = new Map<string, DailyCheckInSummary>();
+        checkIns.forEach((ci) => checkInMap.set(ci.date, ci));
+
+        const last7Days: Array<{
+          dateId: string;
+          dayLabel: string;
+          isCompleted: boolean;
+          isToday: boolean;
+        }> = [];
+
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(today);
+          date.setDate(date.getDate() - i);
+          const dateId = getDateId(date);
+          const checkIn = checkInMap.get(dateId);
+          const isToday = dateId === todayId;
+          
+          // Get day label (Mon, Tue, etc.)
+          const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 3);
+
+          last7Days.push({
+            dateId,
+            dayLabel,
+            isCompleted: checkIn?.planCompleted === true,
+            isToday,
+          });
+        }
+
+        setLast7DaysData(last7Days);
       } catch (error) {
         console.error('[HomeScreen] Error loading progress data:', error);
       }
@@ -711,6 +744,63 @@ export const HomeScreen: React.FC = () => {
           </View>
         )}
 
+        {/* Progress Snapshot Card */}
+        <View style={styles.progressSnapshotCard}>
+          <View style={styles.progressSnapshotHeader}>
+            <Text style={styles.progressSnapshotTitle}>Your progress</Text>
+            {streak > 0 ? (
+              <Text style={styles.progressSnapshotSubtitle}>🔥 {streak}-day streak</Text>
+            ) : (
+              <Text style={styles.progressSnapshotSubtitle}>Start your streak today</Text>
+            )}
+          </View>
+
+          {/* 7-day tracker */}
+          <View style={styles.progressTracker}>
+            {last7DaysData.map((day) => (
+              <View key={day.dateId} style={styles.progressDay}>
+                <View
+                  style={[
+                    styles.progressDayCircle,
+                    day.isCompleted && styles.progressDayCircleCompleted,
+                    day.isToday && styles.progressDayCircleToday,
+                  ]}
+                >
+                  {day.isCompleted && (
+                    <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.progressDayLabel,
+                    day.isToday && styles.progressDayLabelToday,
+                  ]}
+                >
+                  {day.dayLabel}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Motivational copy */}
+          <Text style={styles.progressMotivational}>
+            {streak >= 3
+              ? "You're building a habit."
+              : streak >= 1
+              ? "Consistency beats intensity."
+              : "Every check-in counts."}
+          </Text>
+
+          {/* CTA */}
+          <TouchableOpacity
+            onPress={handleProgressPress}
+            activeOpacity={0.7}
+            style={styles.progressCTA}
+          >
+            <Text style={styles.progressCTAText}>View full progress →</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Today's Recovery Score Card */}
         {recoveryScore !== null && (
           <View style={styles.recoveryScoreCard}>
@@ -1124,6 +1214,88 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(15, 61, 62, 0.7)',
     lineHeight: 20,
+  },
+  // Progress Snapshot Card
+  progressSnapshotCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 24,
+    shadowColor: 'rgba(15, 76, 68, 0.08)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 1,
+    elevation: 4,
+  },
+  progressSnapshotHeader: {
+    marginBottom: 16,
+  },
+  progressSnapshotTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    color: '#0F3D3E',
+    marginBottom: 4,
+  },
+  progressSnapshotSubtitle: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.7)',
+  },
+  progressTracker: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  progressDay: {
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  progressDayCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(15, 76, 68, 0.08)',
+    borderWidth: 2,
+    borderColor: 'rgba(15, 76, 68, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressDayCircleCompleted: {
+    backgroundColor: '#0F4C44',
+    borderColor: '#0F4C44',
+  },
+  progressDayCircleToday: {
+    borderWidth: 2,
+    borderColor: '#0F4C44',
+  },
+  progressDayLabel: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: 'rgba(15, 61, 62, 0.5)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  progressDayLabelToday: {
+    color: '#0F4C44',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  progressMotivational: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.7)',
+    marginBottom: 12,
+    fontStyle: 'italic',
+  },
+  progressCTA: {
+    alignSelf: 'flex-end',
+  },
+  progressCTAText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#0F4C44',
   },
   // Recovery Score Card
   recoveryScoreCard: {
