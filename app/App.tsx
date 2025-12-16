@@ -128,17 +128,30 @@ function AppContent() {
     }
   }, [dailyCheckInStatus]);
 
-  const handleGoToHome = React.useCallback(() => {
+  const handleGoToHome = React.useCallback(async () => {
+    // Only proceed if user is authenticated
+    if (!user) {
+      console.warn('[handleGoToHome] User not authenticated, cannot navigate to home');
+      return;
+    }
+
     // Mark onboarding as completed if in onboarding flow
     if (!feelingOnboardingCompleted) {
-      setFeelingOnboardingCompleted(true);
+      try {
+        await AsyncStorage.setItem(FEELING_ONBOARDING_KEY, 'true');
+        setFeelingOnboardingCompleted(true);
+      } catch (error) {
+        console.error('Error saving onboarding completion:', error);
+        // Still set state even if AsyncStorage fails
+        setFeelingOnboardingCompleted(true);
+      }
     }
     // Mark daily check-in as completed if in daily check-in flow
     if (dailyCheckInStatus === 'needs_checkin') {
       setDailyCheckInStatus('completed');
     }
     // App.tsx will automatically show AppNavigator when these conditions are met
-  }, [feelingOnboardingCompleted, dailyCheckInStatus]);
+  }, [user, feelingOnboardingCompleted, dailyCheckInStatus]);
 
   // Wait for onboarding status to be loaded
   if (introOnboardingCompleted === null) {
