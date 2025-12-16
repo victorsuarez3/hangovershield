@@ -20,6 +20,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { SettingsScreenProps } from '../navigation/types';
 import { deleteAccount } from '../services/auth';
 import { showAlert } from '../utils/alert';
+import { AppHeader } from '../components/AppHeader';
 
 interface SettingsItem {
   id: string;
@@ -143,15 +144,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
         contentContainerStyle={styles.content}
       >
         <View style={[styles.header, { paddingTop: insets.top }]}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: theme.colors.text }]}>
-            Settings
-          </Text>
+          <AppHeader
+            title="Settings"
+            showBackButton
+            onBackPress={() => navigation.goBack()}
+          />
         </View>
 
         <View style={styles.settingsList}>
