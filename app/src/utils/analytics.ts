@@ -20,7 +20,9 @@ export type AnalyticsEvent =
   | 'soft_gate_shown'
   | 'soft_gate_cta_clicked'
   | 'locked_section_shown'
-  | 'locked_section_tapped';
+  | 'locked_section_tapped'
+  | 'home_widget_clicked'
+  | 'paywall_opened';
 
 export interface PaywallShownProperties {
   source: string;
@@ -162,6 +164,30 @@ export const Analytics = {
       plan,
       source,
       error,
+    });
+  },
+
+  homeWidgetClicked: (
+    widget: string,
+    accessStatus: string,
+    contextScreen?: string
+  ) => {
+    logAnalyticsEvent('home_widget_clicked', {
+      widget,
+      accessStatus,
+      contextScreen: contextScreen || 'HomeScreen',
+    });
+  },
+
+  paywallOpened: (
+    source: string,
+    contextScreen?: string,
+    accessStatus?: string
+  ) => {
+    logAnalyticsEvent('paywall_opened', {
+      source,
+      contextScreen: contextScreen || 'unknown',
+      accessStatus: accessStatus || 'unknown',
     });
   },
 };

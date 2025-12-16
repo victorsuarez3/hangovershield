@@ -3,7 +3,6 @@
  */
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { PaywallSourceType } from '../constants/paywallSources';
 
 export type RootStackParamList = {
@@ -24,17 +23,8 @@ export type RootStackParamList = {
   DailyWaterLog: undefined;
 };
 
-export type TabParamList = {
-  Home: undefined;
-  SmartPlan: undefined;
-  Tools: undefined;
-  Progress: undefined;
-  Settings: undefined;
-};
-
-export type AuthFlowParamList = {
-  Login: undefined;
-};
+// TabParamList removed - we use Stack Navigator only now
+// AuthFlowParamList removed - not used
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'HomeMain'>;
 export type CheckInScreenProps = NativeStackScreenProps<RootStackParamList, 'CheckIn'>;
