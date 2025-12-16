@@ -1046,6 +1046,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontStyle: 'italic',
   },
+  motivationalMessage: {
+    ...typography.body,
+    fontSize: 15,
+    color: 'rgba(15, 61, 62, 0.7)',
+    lineHeight: 22,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
   progressSignal: {
     ...typography.bodySmall,
     fontSize: 13,
