@@ -89,6 +89,7 @@ export const PaywallScreen: React.FC = () => {
   
   // Local state
   const [selectedPackageId, setSelectedPackageId] = useState<PackageIdentifier>(null);
+  const [selectedPlanType, setSelectedPlanType] = useState<'yearly' | 'monthly'>('yearly'); // Fallback selection
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [offeringsLoaded, setOfferingsLoaded] = useState(false);
@@ -140,8 +141,12 @@ export const PaywallScreen: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const handlePurchase = async () => {
-    // Find selected package by identifier
-    const packageToPurchase = packages.find(pkg => pkg.identifier === selectedPackageId) || yearlyPackage || monthlyPackage;
+    // Find selected package by identifier or fallback to plan type
+    const packageToPurchase = 
+      (selectedPackageId && packages.find(pkg => pkg.identifier === selectedPackageId)) ||
+      (selectedPlanType === 'yearly' ? yearlyPackage : monthlyPackage) ||
+      yearlyPackage ||
+      monthlyPackage;
     
     if (!packageToPurchase) {
       Alert.alert('Error', 'No package available. Please try again later.');
@@ -188,7 +193,7 @@ export const PaywallScreen: React.FC = () => {
     navigation.goBack();
   };
   
-  const handlePlanSelect = (packageId: string) => {
+  const handlePlanSelect = (packageId: string | null, planType: 'yearly' | 'monthly') => {
     // Haptic feedback on selection (optional)
     if (Haptics) {
       try {
@@ -197,7 +202,11 @@ export const PaywallScreen: React.FC = () => {
         // Haptics not available, continue silently
       }
     }
-    setSelectedPackageId(packageId);
+    // Always update selection, even if packageId is null
+    setSelectedPlanType(planType);
+    if (packageId) {
+      setSelectedPackageId(packageId);
+    }
   };
   
   const handleRetry = async () => {
@@ -296,54 +305,50 @@ export const PaywallScreen: React.FC = () => {
         {/* Pricing Options */}
         <View style={styles.pricingSection}>
           {/* Yearly Option - Highlighted */}
-          {yearlyPackage && (
-            <Pressable
-              style={[
-                styles.pricingCard,
-                styles.pricingCardHighlighted,
-                selectedPackageId === yearlyPackage.identifier && styles.pricingCardSelected,
-              ]}
-              onPress={() => handlePlanSelect(yearlyPackage.identifier)}
-              disabled={isLoading}
-            >
-              <View style={styles.badgeContainer} pointerEvents="none">
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>BEST VALUE</Text>
-                </View>
+          <Pressable
+            style={[
+              styles.pricingCard,
+              styles.pricingCardHighlighted,
+              (selectedPlanType === 'yearly' || (yearlyPackage && selectedPackageId === yearlyPackage.identifier)) && styles.pricingCardSelected,
+            ]}
+            onPress={() => handlePlanSelect(yearlyPackage?.identifier || null, 'yearly')}
+            disabled={isLoading}
+          >
+            <View style={styles.badgeContainer} pointerEvents="none">
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>BEST VALUE</Text>
               </View>
-              <View style={styles.radioContainer} pointerEvents="none">
-                <View style={[styles.radio, selectedPackageId === yearlyPackage.identifier && styles.radioSelected]}>
-                  {selectedPackageId === yearlyPackage.identifier && <View style={styles.radioInner} />}
-                </View>
+            </View>
+            <View style={styles.radioContainer} pointerEvents="none">
+              <View style={[styles.radio, (selectedPlanType === 'yearly' || (yearlyPackage && selectedPackageId === yearlyPackage.identifier)) && styles.radioSelected]}>
+                {(selectedPlanType === 'yearly' || (yearlyPackage && selectedPackageId === yearlyPackage.identifier)) && <View style={styles.radioInner} />}
               </View>
-              <Text style={styles.pricingAmount}>{yearlyPrice}</Text>
-              <Text style={styles.pricingPeriod}>/ year</Text>
-              <Text style={styles.pricingSubtext}>
-                Less than {dailyPrice}/day to recover properly.
-              </Text>
-            </Pressable>
-          )}
+            </View>
+            <Text style={styles.pricingAmount}>{yearlyPrice}</Text>
+            <Text style={styles.pricingPeriod}>/ year</Text>
+            <Text style={styles.pricingSubtext}>
+              Less than {dailyPrice}/day to recover properly.
+            </Text>
+          </Pressable>
 
           {/* Monthly Option */}
-          {monthlyPackage && (
-            <Pressable
-              style={[
-                styles.pricingCard,
-                selectedPackageId === monthlyPackage.identifier && styles.pricingCardSelected,
-              ]}
-              onPress={() => handlePlanSelect(monthlyPackage.identifier)}
-              disabled={isLoading}
-            >
-              <View style={styles.radioContainer} pointerEvents="none">
-                <View style={[styles.radio, selectedPackageId === monthlyPackage.identifier && styles.radioSelected]}>
-                  {selectedPackageId === monthlyPackage.identifier && <View style={styles.radioInner} />}
-                </View>
+          <Pressable
+            style={[
+              styles.pricingCard,
+              (selectedPlanType === 'monthly' || (monthlyPackage && selectedPackageId === monthlyPackage.identifier)) && styles.pricingCardSelected,
+            ]}
+            onPress={() => handlePlanSelect(monthlyPackage?.identifier || null, 'monthly')}
+            disabled={isLoading}
+          >
+            <View style={styles.radioContainer} pointerEvents="none">
+              <View style={[styles.radio, (selectedPlanType === 'monthly' || (monthlyPackage && selectedPackageId === monthlyPackage.identifier)) && styles.radioSelected]}>
+                {(selectedPlanType === 'monthly' || (monthlyPackage && selectedPackageId === monthlyPackage.identifier)) && <View style={styles.radioInner} />}
               </View>
-              <Text style={styles.pricingAmount}>{monthlyPrice}</Text>
-              <Text style={styles.pricingPeriod}>/ month</Text>
-              <Text style={styles.pricingSubtext}>Flexible — cancel anytime</Text>
-            </Pressable>
-          )}
+            </View>
+            <Text style={styles.pricingAmount}>{monthlyPrice}</Text>
+            <Text style={styles.pricingPeriod}>/ month</Text>
+            <Text style={styles.pricingSubtext}>Flexible — cancel anytime</Text>
+          </Pressable>
         </View>
 
         {/* Error Message */}
@@ -385,7 +390,7 @@ export const PaywallScreen: React.FC = () => {
               <Text style={styles.ctaText}>Try Again</Text>
             ) : (
               <Text style={styles.ctaText}>
-                {getCTAText(selectedPackageId === yearlyPackage?.identifier, source)}
+                {getCTAText(selectedPlanType === 'yearly' || selectedPackageId === yearlyPackage?.identifier, source)}
               </Text>
             )}
           </TouchableOpacity>
@@ -401,6 +406,20 @@ export const PaywallScreen: React.FC = () => {
           )}
         </View>
 
+        {/* Restore Purchases Button */}
+        {purchasesReady && (
+          <TouchableOpacity
+            style={styles.restoreButton}
+            onPress={handleRestore}
+            disabled={isRestoring || isLoading}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.restoreButtonText}>
+              {isRestoring ? 'Restoring...' : 'Restore Purchases'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Footer Links */}
         <View style={styles.footer}>
           <Pressable onPress={handlePrivacyPolicy} style={styles.footerLink}>
@@ -409,16 +428,6 @@ export const PaywallScreen: React.FC = () => {
           <Text style={styles.footerSeparator}>|</Text>
           <Pressable onPress={handleTermsOfUse} style={styles.footerLink}>
             <Text style={styles.footerLinkText}>Terms of Use</Text>
-          </Pressable>
-          <Text style={styles.footerSeparator}>|</Text>
-          <Pressable 
-            onPress={handleRestore} 
-            style={styles.footerLink}
-            disabled={isRestoring}
-          >
-            <Text style={styles.footerLinkText}>
-              {isRestoring ? 'Restoring...' : 'Restore Purchases'}
-            </Text>
           </Pressable>
         </View>
       </ScrollView>
