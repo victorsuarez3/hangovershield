@@ -64,7 +64,10 @@ export function useRevenueCat(): UseRevenueCatReturn {
   const [packages, setPackages] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const isAvailable = isRevenueCatAvailable();
+  // Safely check if RevenueCat is available
+  const isAvailable = typeof isRevenueCatAvailable === 'function' 
+    ? isRevenueCatAvailable() 
+    : false;
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Derived state
