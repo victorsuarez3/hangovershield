@@ -58,8 +58,7 @@ function AppContent() {
   const [checkingDailyStatus, setCheckingDailyStatus] = React.useState(false);
   const [pendingNav, setPendingNav] = React.useState<
     | null
-    | { kind: 'tab'; tab: 'Home' | 'SmartPlan' | 'Tools' | 'Progress' | 'Settings' }
-    | { kind: 'homeStack'; screen: 'CheckIn' | 'DailyWaterLog' | 'EveningCheckIn' | 'Paywall'; params?: any }
+    | { kind: 'screen'; screen: 'HomeMain' | 'SmartPlan' | 'Tools' | 'Progress' | 'ProfileMain' | 'CheckIn' | 'DailyWaterLog' | 'EveningCheckIn' | 'Paywall' | 'Settings'; params?: any }
   >(null);
 
   // Check if we're in a real device environment (not Expo Go / dev overlay)
@@ -214,24 +213,12 @@ function AppContent() {
         console.log('[AppNavigation] Attempting to flush pendingNav', { pendingNav, routeNames });
       }
 
-      if (pendingNav.kind === 'tab') {
-        if (routeNames.includes(pendingNav.tab)) {
+      if (pendingNav.kind === 'screen') {
+        if (routeNames.includes(pendingNav.screen)) {
           if (__DEV__) {
-            console.log('[AppNavigation] Navigating to tab', pendingNav.tab);
+            console.log('[AppNavigation] Navigating to screen', pendingNav.screen);
           }
-          navigationRef.navigate(pendingNav.tab);
-          setPendingNav(null);
-          return;
-        }
-      } else if (pendingNav.kind === 'homeStack') {
-        if (routeNames.includes('Home')) {
-          if (__DEV__) {
-            console.log('[AppNavigation] Navigating to homeStack screen', pendingNav.screen);
-          }
-          navigationRef.navigate('Home', {
-            screen: pendingNav.screen,
-            params: pendingNav.params,
-          });
+          navigationRef.navigate(pendingNav.screen as any, pendingNav.params);
           setPendingNav(null);
           return;
         }
@@ -273,15 +260,15 @@ function AppContent() {
       return;
     }
     if (__DEV__) {
-      console.log('[AppNavigation] handleGoToHome setting pendingNav to Home');
+      console.log('[AppNavigation] handleGoToHome setting pendingNav to HomeMain');
     }
-    setPendingNav({ kind: 'tab', tab: 'Home' });
+    setPendingNav({ kind: 'screen', screen: 'HomeMain' });
   }, [ensureMainAppVisible, user, skipAuthMode]);
 
   const handleGoToToday = React.useCallback(async () => {
     const ok = await ensureMainAppVisible();
     if (!ok) return;
-    setPendingNav({ kind: 'tab', tab: 'SmartPlan' });
+    setPendingNav({ kind: 'screen', screen: 'SmartPlan' });
   }, [ensureMainAppVisible]);
 
   const handleGoToProgress = React.useCallback(async () => {
@@ -298,19 +285,19 @@ function AppContent() {
     if (__DEV__) {
       console.log('[AppNavigation] handleGoToProgress setting pendingNav to Progress');
     }
-    setPendingNav({ kind: 'tab', tab: 'Progress' });
+    setPendingNav({ kind: 'screen', screen: 'Progress' });
   }, [ensureMainAppVisible, user, skipAuthMode]);
 
   const handleGoToWaterLog = React.useCallback(async () => {
     const ok = await ensureMainAppVisible();
     if (!ok) return;
-    setPendingNav({ kind: 'homeStack', screen: 'DailyWaterLog' });
+    setPendingNav({ kind: 'screen', screen: 'DailyWaterLog' });
   }, [ensureMainAppVisible]);
 
   const handleGoToEveningCheckIn = React.useCallback(async () => {
     const ok = await ensureMainAppVisible();
     if (!ok) return;
-    setPendingNav({ kind: 'homeStack', screen: 'EveningCheckIn' });
+    setPendingNav({ kind: 'screen', screen: 'EveningCheckIn' });
   }, [ensureMainAppVisible]);
 
   const handleGoToDailyCheckIn = React.useCallback(async () => {
@@ -325,7 +312,7 @@ function AppContent() {
     const ok = await ensureMainAppVisible();
     if (!ok) return;
     setPendingNav({
-      kind: 'homeStack',
+      kind: 'screen',
       screen: 'Paywall',
       params: { source: source ?? 'menu_subscription', contextScreen },
     });
