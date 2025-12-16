@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface AppHeaderProps {
   title?: string;
+  subtitle?: string;
   showBackButton?: boolean;
   onBackPress?: () => void;
   showMenuButton?: boolean;
@@ -34,6 +35,7 @@ export interface AppHeaderProps {
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
   title,
+  subtitle,
   showBackButton = false,
   onBackPress,
   showMenuButton = false,
@@ -56,19 +58,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       <View style={styles.leftContainer}>
         {showBackButton && (
           <TouchableOpacity
-            style={styles.iconButton}
             onPress={onBackPress}
             activeOpacity={0.7}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Ionicons name="chevron-back" size={24} color="#0F4C44" />
+            <Ionicons name="chevron-back" size={24} color="#0F3D3E" />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Center - Title */}
+      {/* Center - Title and Subtitle */}
       <View style={styles.centerContainer}>
         {title && <Text style={styles.title}>{title}</Text>}
+        {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
       </View>
 
       {/* Right side - Menu button */}
@@ -108,23 +110,31 @@ const styles = StyleSheet.create({
   leftContainer: {
     width: 44,
     alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   centerContainer: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   rightContainer: {
     width: 44,
     alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   title: {
     fontFamily: 'CormorantGaramond_600SemiBold',
-    fontSize: 18,
+    fontSize: 20,
     color: '#0F3D3E',
     letterSpacing: -0.3,
+    textAlign: 'center',
   },
-  iconButton: {
-    padding: 4,
+  subtitle: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.6)',
+    textAlign: 'center',
+    marginTop: 2,
   },
   menuButton: {
     padding: 4,

@@ -405,6 +405,7 @@ export const AccountScreen: React.FC = () => {
       {/* Header */}
       <AppHeader
         title="Account"
+        subtitle="Your plan, privacy & support."
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
