@@ -261,34 +261,40 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
       presentationStyle="overFullScreen"
       hardwareAccelerated
     >
-      {/* Backdrop */}
-      <Pressable style={styles.backdrop} onPress={handleClose} pointerEvents="auto">
+      <View style={styles.root} pointerEvents="box-none">
+        {/* Backdrop */}
+        <Pressable style={styles.backdrop} onPress={handleClose} pointerEvents="auto">
+          <Animated.View
+            style={[
+              styles.backdropInner,
+              { opacity: backdropOpacity },
+            ]}
+            pointerEvents="none"
+          />
+        </Pressable>
+
+        {/* Menu Card */}
         <Animated.View
           style={[
-            styles.backdropInner,
-            { opacity: backdropOpacity },
+            styles.menuCard,
+            {
+              marginTop: insets.top + 60,
+              opacity: cardOpacity,
+              transform: [
+                { translateY: cardTranslateY },
+                { scale: cardScale },
+              ],
+            },
           ]}
-          pointerEvents="none"
-        />
-      </Pressable>
-
-      {/* Menu Card */}
-      <Animated.View
-        style={[
-          styles.menuCard,
-          {
-            marginTop: insets.top + 60,
-            opacity: cardOpacity,
-            transform: [
-              { translateY: cardTranslateY },
-              { scale: cardScale },
-            ],
-          },
-        ]}
-        pointerEvents="auto"
-        onStartShouldSetResponder={() => true}
-      >
-        <View style={styles.menuCardInner}>
+          pointerEvents="auto"
+          onStartShouldSetResponder={() => true}
+          onMoveShouldSetResponder={() => true}
+        >
+          <View
+            style={styles.menuCardInner}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+          >
           {/* Header */}
           <View style={styles.menuHeader}>
             <Text style={styles.menuTitle}>Quick Access</Text>
@@ -363,7 +369,8 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
             />
           </View>
         </View>
-      </Animated.View>
+        </Animated.View>
+      </View>
     </Modal>
   );
 };
@@ -373,6 +380,9 @@ export const AppMenuSheet: React.FC<AppMenuSheetProps> = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  root: {
+    ...StyleSheet.absoluteFillObject,
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 1,
