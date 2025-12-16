@@ -451,8 +451,19 @@ export function addCustomerInfoListener(
 
   try {
     const listener = Purchases.addCustomerInfoUpdateListener(callback);
+    // Return cleanup function - handle cases where listener might not have remove()
     return () => {
-      if (listener && typeof listener.remove === "function") { listener.remove(); }
+      try {
+        if (listener && typeof listener.remove === 'function') {
+          listener.remove();
+        } else if (listener && typeof listener === 'function') {
+          // Some SDK versions return the cleanup function directly
+          listener();
+        }
+      } catch (cleanupError) {
+        // Ignore cleanup errors - non-fatal
+        console.warn('[RevenueCat] Error removing listener (non-fatal)');
+      }
     };
   } catch (error) {
     console.error('[RevenueCat] Error adding listener:', error);
