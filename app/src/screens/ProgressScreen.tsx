@@ -1,7 +1,7 @@
 /**
  * Progress Screen - Hangover Shield
- * Shows streak, weekly summary, and recent history
- * Premium retention-boosting view
+ * Premium wellness dashboard with progress tracking
+ * Consistent with HomeScreen design system
  */
 
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
@@ -10,18 +10,19 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
 import { AppHeader } from '../components/AppHeader';
-import { AppMenuSheet } from '../components/AppMenuSheet';
+import { AppMenuSheet, CurrentScreen } from '../components/AppMenuSheet';
 import { useAccessStatus } from '../hooks/useAccessStatus';
+import { useAppNavigation } from '../contexts/AppNavigationContext';
 import { SoftGateCard } from '../components/SoftGateCard';
 import { LockedSection } from '../components/LockedSection';
 import { PaywallSource } from '../constants/paywallSources';
@@ -32,8 +33,7 @@ import {
   countCompletedInLastDays,
 } from '../services/dailyCheckIn';
 import { getTodayId } from '../utils/dateUtils';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { typography } from '../design-system/typography';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -92,112 +92,184 @@ const getStatusText = (summary: DailyCheckInSummary): string => {
   }
 };
 
+// Get last 7 days date IDs (including today)
+const getLast7DaysIds = (todayId: string): string[] => {
+  const dates: string[] = [];
+  const currentDate = new Date(todayId + 'T00:00:00');
+  
+  for (let i = 0; i < 7; i++) {
+    const dateId = currentDate.toISOString().split('T')[0];
+    dates.push(dateId);
+    currentDate.setDate(currentDate.getDate() - 1);
+  }
+  
+  return dates;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Status Indicator Dot
-const StatusDot: React.FC<{ status: DayStatus }> = ({ status }) => {
-  const getColor = () => {
-    switch (status) {
-      case 'completed':
-        return '#1A6B5C';
-      case 'partial':
-        return '#E8A957';
-      case 'none':
-        return 'rgba(15, 76, 68, 0.15)';
-    }
-  };
-
-  const isFilled = status === 'completed';
-  const isPartial = status === 'partial';
-
-  return (
-    <View
-      style={[
-        styles.statusDot,
-        {
-          backgroundColor: isFilled ? getColor() : 'transparent',
-          borderColor: getColor(),
-          borderWidth: isFilled ? 0 : 2,
-        },
-      ]}
-    >
-      {isPartial && <View style={[styles.statusDotHalf, { backgroundColor: getColor() }]} />}
-      {isFilled && <Ionicons name="checkmark" size={10} color="#FFF" />}
-    </View>
-  );
-};
-
-// Streak Badge
-const StreakBadge: React.FC<{ streak: number }> = ({ streak }) => {
-  if (streak === 0) {
-    return (
-      <View style={styles.streakBadgeEmpty}>
-        <Ionicons name="flame-outline" size={16} color="rgba(15, 76, 68, 0.4)" />
-        <Text style={styles.streakTextEmpty}>No active streak</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.streakBadge}>
-      <Ionicons name="flame" size={16} color="#E8A957" />
-      <Text style={styles.streakText}>
-        {streak}-day streak
-      </Text>
-    </View>
-  );
-};
-
-// Weekly Summary Card
-interface WeeklySummaryProps {
-  completedDays: number;
-  streak: number;
+// Empty State with CTA
+interface EmptyStateProps {
+  onStartCheckIn: () => void;
 }
 
-const WeeklySummaryCard: React.FC<WeeklySummaryProps> = ({ completedDays, streak }) => {
-  const progress = completedDays / 7;
+const EmptyState: React.FC<EmptyStateProps> = ({ onStartCheckIn }) => (
+  <View style={styles.emptyState}>
+    <View style={styles.emptyIconCircle}>
+      <Ionicons name="calendar-outline" size={40} color="rgba(15, 76, 68, 0.3)" />
+    </View>
+    <Text style={styles.emptyTitle}>Your journey starts today</Text>
+    <Text style={styles.emptyText}>
+      Complete your first recovery plan to see your progress here.
+    </Text>
+    <TouchableOpacity
+      style={styles.emptyCTA}
+      onPress={onStartCheckIn}
+      activeOpacity={0.8}
+    >
+      <LinearGradient
+        colors={['#0F4C44', '#0A3F37']}
+        style={styles.emptyCTAGradient}
+      >
+        <Text style={styles.emptyCTAText}>Complete your first check-in</Text>
+        <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+      </LinearGradient>
+    </TouchableOpacity>
+  </View>
+);
+
+// Progress Snapshot Card (First Progress State)
+interface ProgressSnapshotProps {
+  daysCompleted: number;
+  streak: number;
+  totalCheckIns: number;
+}
+
+const ProgressSnapshot: React.FC<ProgressSnapshotProps> = ({
+  daysCompleted,
+  streak,
+  totalCheckIns,
+}) => {
+  // Never show misleading zeroes - only show if > 0
+  const showStreak = streak > 0;
+  const showDaysCompleted = daysCompleted > 0;
+  const showTotalCheckIns = totalCheckIns > 0;
 
   return (
-    <View style={styles.summaryCard}>
-      <View style={styles.summaryHeader}>
-        <Text style={styles.summaryTitle}>Progress</Text>
-        <Text style={styles.summarySubtitle}>Small wins every day add up.</Text>
+    <View style={styles.snapshotCard}>
+      <Text style={styles.snapshotTitle}>Progress Snapshot</Text>
+      <Text style={styles.snapshotSubtitle}>Your recovery journey so far</Text>
+      
+      <View style={styles.snapshotStats}>
+        {showDaysCompleted && (
+          <View style={styles.snapshotStat}>
+            <Text style={styles.snapshotStatValue}>{daysCompleted}</Text>
+            <Text style={styles.snapshotStatLabel}>Days completed</Text>
+          </View>
+        )}
+        {showStreak && (
+          <View style={styles.snapshotStat}>
+            <View style={styles.streakIconContainer}>
+              <Ionicons name="flame" size={20} color="#E8A957" />
+            </View>
+            <Text style={styles.snapshotStatValue}>{streak}</Text>
+            <Text style={styles.snapshotStatLabel}>Current streak</Text>
+          </View>
+        )}
+        {showTotalCheckIns && (
+          <View style={styles.snapshotStat}>
+            <Text style={styles.snapshotStatValue}>{totalCheckIns}</Text>
+            <Text style={styles.snapshotStatLabel}>Total check-ins</Text>
+          </View>
+        )}
       </View>
+    </View>
+  );
+};
 
-      {/* This Week */}
-      <View style={styles.thisWeekSection}>
-        <View style={styles.thisWeekHeader}>
-          <Text style={styles.thisWeekLabel}>This week</Text>
-          <StreakBadge streak={streak} />
-        </View>
+// 7-Day Timeline
+interface TimelineProps {
+  checkIns: DailyCheckInSummary[];
+  todayId: string;
+}
 
-        <View style={styles.thisWeekStats}>
-          <Text style={styles.thisWeekValue}>
-            <Text style={styles.thisWeekNumber}>{completedDays}</Text>
-            <Text style={styles.thisWeekOf}> of 7 days completed</Text>
-          </Text>
-        </View>
+const Timeline: React.FC<TimelineProps> = ({ checkIns, todayId }) => {
+  const last7Days = getLast7DaysIds(todayId);
+  const checkInMap = new Map<string, DailyCheckInSummary>();
+  checkIns.forEach((ci) => checkInMap.set(ci.date, ci));
 
-        {/* Progress bar */}
-        <View style={styles.weekProgressBar}>
-          <View style={[styles.weekProgressFill, { width: `${progress * 100}%` }]} />
-        </View>
+  const getDayStatusForDate = (dateId: string): DayStatus => {
+    const checkIn = checkInMap.get(dateId);
+    if (!checkIn) return 'none';
+    return getDayStatus(checkIn);
+  };
 
-        {/* Day dots */}
-        <View style={styles.dayDotsContainer}>
-          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
-            <View key={index} style={styles.dayDotWrapper}>
+  const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  return (
+    <View style={styles.timelineCard}>
+      <Text style={styles.timelineTitle}>Last 7 days</Text>
+      <View style={styles.timelineContainer}>
+        {last7Days.map((dateId, index) => {
+          const status = getDayStatusForDate(dateId);
+          const isCompleted = status === 'completed';
+          const isPartial = status === 'partial';
+          const isToday = dateId === todayId;
+
+          return (
+            <View key={dateId} style={styles.timelineDay}>
               <View
                 style={[
-                  styles.dayDot,
-                  index < completedDays && styles.dayDotCompleted,
+                  styles.timelineDot,
+                  isCompleted && styles.timelineDotCompleted,
+                  isPartial && styles.timelineDotPartial,
+                  isToday && styles.timelineDotToday,
                 ]}
-              />
-              <Text style={styles.dayDotLabel}>{day}</Text>
+              >
+                {isCompleted && (
+                  <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                )}
+              </View>
+              <Text style={styles.timelineLabel}>{dayLabels[index]}</Text>
             </View>
-          ))}
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+// Trends Section (Premium)
+interface TrendsSectionProps {
+  checkIns: DailyCheckInSummary[];
+  todayId: string;
+}
+
+const TrendsSection: React.FC<TrendsSectionProps> = ({ checkIns, todayId }) => {
+  const completedLast7Days = countCompletedInLastDays(checkIns, todayId, 7);
+  const completedLast30Days = countCompletedInLastDays(checkIns, todayId, 30);
+  const streak = calculateStreak(checkIns, todayId);
+
+  return (
+    <View style={styles.trendsCard}>
+      <Text style={styles.trendsTitle}>Trends</Text>
+      <View style={styles.trendsGrid}>
+        <View style={styles.trendItem}>
+          <Text style={styles.trendValue}>{completedLast7Days}</Text>
+          <Text style={styles.trendLabel}>Completed this week</Text>
+        </View>
+        <View style={styles.trendItem}>
+          <Text style={styles.trendValue}>{completedLast30Days}</Text>
+          <Text style={styles.trendLabel}>Completed this month</Text>
+        </View>
+        <View style={styles.trendItem}>
+          <View style={styles.streakIconContainer}>
+            <Ionicons name="flame" size={18} color="#E8A957" />
+          </View>
+          <Text style={styles.trendValue}>{streak}</Text>
+          <Text style={styles.trendLabel}>Day streak</Text>
         </View>
       </View>
     </View>
@@ -227,23 +299,18 @@ const HistoryRow: React.FC<HistoryRowProps> = ({ summary }) => {
           {statusText}
         </Text>
       </View>
-      <StatusDot status={status} />
+      <View style={[
+        styles.statusDot,
+        status === 'completed' && styles.statusDotCompleted,
+        status === 'partial' && styles.statusDotPartial,
+      ]}>
+        {status === 'completed' && (
+          <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+        )}
+      </View>
     </View>
   );
 };
-
-// Empty State
-const EmptyState: React.FC = () => (
-  <View style={styles.emptyState}>
-    <View style={styles.emptyIconCircle}>
-      <Ionicons name="calendar-outline" size={40} color="rgba(15, 76, 68, 0.3)" />
-    </View>
-    <Text style={styles.emptyTitle}>Your journey starts today</Text>
-    <Text style={styles.emptyText}>
-      Complete your first recovery plan to see your progress here.
-    </Text>
-  </View>
-);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Component
@@ -254,11 +321,13 @@ export const ProgressScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const accessInfo = useAccessStatus();
+  const appNav = useAppNavigation();
 
   const [checkIns, setCheckIns] = useState<DailyCheckInSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [currentScreen] = useState<CurrentScreen>('progress');
 
   const todayId = useMemo(() => getTodayId(), []);
 
@@ -270,7 +339,7 @@ export const ProgressScreen: React.FC = () => {
     }
 
     try {
-      const data = await getRecentCheckIns({ uid: user.uid, limit: 14 });
+      const data = await getRecentCheckIns({ uid: user.uid, limit: 30 });
       setCheckIns(data);
     } catch (error) {
       console.error('Error fetching progress data:', error);
@@ -296,6 +365,49 @@ export const ProgressScreen: React.FC = () => {
     () => countCompletedInLastDays(checkIns, todayId, 7),
     [checkIns, todayId]
   );
+  const totalCheckIns = checkIns.filter((ci) => ci.planCompleted).length;
+
+  // Navigation handlers
+  const handleGoToHome = useCallback(() => {
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'HomeMain' }],
+      })
+    );
+  }, [navigation]);
+
+  const handleGoToToday = useCallback(() => {
+    navigation.navigate('SmartPlan');
+  }, [navigation]);
+
+  const handleGoToProgress = useCallback(() => {
+    setMenuVisible(false);
+  }, []);
+
+  const handleGoToCheckIn = useCallback(() => {
+    appNav.goToDailyCheckIn();
+  }, [appNav]);
+
+  const handleGoToWaterLog = useCallback(() => {
+    navigation.navigate('DailyWaterLog');
+  }, [navigation]);
+
+  const handleGoToEveningCheckIn = useCallback(() => {
+    if (accessInfo.hasFullAccess) {
+      navigation.navigate('EveningCheckIn');
+    } else {
+      navigation.navigate('EveningCheckInLocked');
+    }
+  }, [navigation, accessInfo.hasFullAccess]);
+
+  const handleGoToEveningCheckInLocked = useCallback(() => {
+    navigation.navigate('EveningCheckInLocked');
+  }, [navigation]);
+
+  const handleGoToSubscription = useCallback((source: string) => {
+    navigation.navigate('Paywall', { source });
+  }, [navigation]);
 
   // Loading state
   if (isLoading) {
@@ -311,16 +423,28 @@ export const ProgressScreen: React.FC = () => {
     );
   }
 
+  const hasCheckIns = checkIns.length > 0;
+  const hasCompletedCheckIns = totalCheckIns > 0;
+
   return (
     <View style={styles.container}>
+      {/* Premium gradient background with vignette */}
       <LinearGradient
         colors={['#E4F2EF', '#D8EBE7', '#CEE5E1']}
         locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFillObject}
       />
+      {/* Subtle vignette overlay for premium contrast */}
+      <LinearGradient
+        colors={['rgba(15,76,68,0.03)', 'transparent', 'rgba(15,76,68,0.05)']}
+        locations={[0, 0.5, 1]}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
 
       {/* App Header with Menu */}
       <AppHeader
+        title="Progress"
         showMenuButton
         onMenuPress={() => setMenuVisible(true)}
       />
@@ -346,60 +470,50 @@ export const ProgressScreen: React.FC = () => {
           <Text style={styles.headerSubtitle}>Track your recovery journey</Text>
         </View>
 
-        {checkIns.length === 0 ? (
-          <EmptyState />
+        {!hasCheckIns ? (
+          // Empty State
+          <EmptyState onStartCheckIn={handleGoToCheckIn} />
         ) : (
           <>
-            {/* Weekly Summary - Always visible */}
-            <WeeklySummaryCard completedDays={completedLast7Days} streak={streak} />
-
-            {/* Soft Gate for Trends (if user doesn't have full access) */}
-            {!accessInfo.hasFullAccess && (
-              <SoftGateCard
-                title="Unlock 30 & 90-day trends"
-                description="See your recovery patterns over time with advanced insights."
-                source={PaywallSource.PROGRESS_OVERVIEW_SOFT_GATE}
-                contextScreen="Progress"
+            {/* Progress Snapshot (First Progress State) */}
+            {hasCompletedCheckIns && (
+              <ProgressSnapshot
+                daysCompleted={completedLast7Days}
+                streak={streak}
+                totalCheckIns={totalCheckIns}
               />
             )}
 
-            {/* Trends Section - Locked for free users */}
-            {!accessInfo.hasFullAccess ? (
-              <LockedSection
-                feature="progress_trends"
-                contextScreen="Progress"
-              >
-                <View style={styles.historySection}>
-                  <Text style={styles.historySectionTitle}>TRENDS</Text>
-                  <View style={styles.historyList}>
-                    {/* Placeholder for trends - would show 30/90 day stats */}
-                    <View style={styles.placeholderCard}>
-                      <Text style={styles.placeholderText}>30-day trends</Text>
-                      <Text style={styles.placeholderText}>90-day trends</Text>
-                    </View>
-                  </View>
-                </View>
-              </LockedSection>
+            {/* Timeline Section */}
+            <Timeline checkIns={checkIns} todayId={todayId} />
+
+            {/* Trends Section */}
+            {accessInfo.hasFullAccess ? (
+              <TrendsSection checkIns={checkIns} todayId={todayId} />
             ) : (
-              <View style={styles.historySection}>
-                <Text style={styles.historySectionTitle}>TRENDS</Text>
-                <View style={styles.historyList}>
-                  {/* Premium users see real trends */}
-                  <View style={styles.placeholderCard}>
-                    <Text style={styles.placeholderText}>30-day trends</Text>
-                    <Text style={styles.placeholderText}>90-day trends</Text>
-                  </View>
-                </View>
-              </View>
+              <>
+                <SoftGateCard
+                  title="Unlock 30 & 90-day trends"
+                  description="See your recovery patterns over time with advanced insights."
+                  source={PaywallSource.PROGRESS_TRENDS_SOFT_GATE}
+                  contextScreen="Progress"
+                />
+                <LockedSection
+                  feature="progress_trends"
+                  contextScreen="Progress"
+                >
+                  <TrendsSection checkIns={checkIns} todayId={todayId} />
+                </LockedSection>
+              </>
             )}
 
-            {/* Recent History */}
+            {/* History Section */}
             <View style={styles.historySection}>
               <Text style={styles.historySectionTitle}>RECENT DAYS</Text>
               
-              {/* Show first 3 for free users, all for premium/welcome */}
               {!accessInfo.hasFullAccess ? (
                 <>
+                  {/* Free: Show first 3 days */}
                   <View style={styles.historyList}>
                     {checkIns.slice(0, 3).map((summary) => (
                       <HistoryRow key={summary.id} summary={summary} />
@@ -415,18 +529,21 @@ export const ProgressScreen: React.FC = () => {
                   />
                   
                   {/* Locked remaining history */}
-                  <LockedSection
-                    feature="progress_history"
-                    contextScreen="Progress"
-                  >
-                    <View style={styles.historyList}>
-                      {checkIns.slice(3).map((summary) => (
-                        <HistoryRow key={summary.id} summary={summary} />
-                      ))}
-                    </View>
-                  </LockedSection>
+                  {checkIns.length > 3 && (
+                    <LockedSection
+                      feature="progress_history"
+                      contextScreen="Progress"
+                    >
+                      <View style={styles.historyList}>
+                        {checkIns.slice(3).map((summary) => (
+                          <HistoryRow key={summary.id} summary={summary} />
+                        ))}
+                      </View>
+                    </LockedSection>
+                  )}
                 </>
               ) : (
+                // Premium: Show full history
                 <View style={styles.historyList}>
                   {checkIns.map((summary) => (
                     <HistoryRow key={summary.id} summary={summary} />
@@ -442,36 +559,15 @@ export const ProgressScreen: React.FC = () => {
       <AppMenuSheet
         visible={menuVisible}
         onClose={() => setMenuVisible(false)}
-        currentScreen="progress"
-        onGoToHome={() => {
-          setMenuVisible(false);
-          navigation.navigate('HomeMain');
-        }}
-        onGoToToday={() => {
-          setMenuVisible(false);
-          navigation.navigate('SmartPlan');
-        }}
-        onGoToProgress={() => setMenuVisible(false)}
-        onGoToCheckIn={() => {
-          setMenuVisible(false);
-          navigation.navigate('CheckIn');
-        }}
-        onGoToWaterLog={() => {
-          setMenuVisible(false);
-          navigation.navigate('DailyWaterLog');
-        }}
-        onGoToEveningCheckIn={() => {
-          setMenuVisible(false);
-          navigation.navigate('EveningCheckIn');
-        }}
-        onGoToEveningCheckInLocked={() => {
-          setMenuVisible(false);
-          navigation.navigate('EveningCheckIn');
-        }}
-        onGoToSubscription={(source) => {
-          setMenuVisible(false);
-          navigation.navigate('Paywall', { source });
-        }}
+        currentScreen={currentScreen}
+        onGoToHome={handleGoToHome}
+        onGoToToday={handleGoToToday}
+        onGoToProgress={handleGoToProgress}
+        onGoToCheckIn={handleGoToCheckIn}
+        onGoToWaterLog={handleGoToWaterLog}
+        onGoToEveningCheckIn={handleGoToEveningCheckIn}
+        onGoToEveningCheckInLocked={handleGoToEveningCheckInLocked}
+        onGoToSubscription={handleGoToSubscription}
       />
     </View>
   );
@@ -495,6 +591,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
+    paddingTop: 8,
   },
 
   // Header
@@ -503,7 +600,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   headerTitle: {
-    fontFamily: 'CormorantGaramond_600SemiBold',
+    ...typography.sectionTitle,
     fontSize: 32,
     color: '#0F3D3E',
     textAlign: 'center',
@@ -511,202 +608,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontFamily: 'Inter_400Regular',
+    ...typography.body,
     fontSize: 15,
     color: 'rgba(15, 61, 62, 0.6)',
     textAlign: 'center',
-  },
-
-  // Summary Card
-  summaryCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: 'rgba(15, 76, 68, 0.08)',
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 20,
-    shadowOpacity: 1,
-    elevation: 6,
-  },
-  summaryHeader: {
-    marginBottom: 20,
-  },
-  summaryTitle: {
-    fontFamily: 'CormorantGaramond_600SemiBold',
-    fontSize: 24,
-    color: '#0F3D3E',
-    marginBottom: 4,
-  },
-  summarySubtitle: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 14,
-    color: 'rgba(15, 61, 62, 0.5)',
-  },
-
-  // This Week
-  thisWeekSection: {},
-  thisWeekHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  thisWeekLabel: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 12,
-    color: 'rgba(15, 76, 68, 0.5)',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  thisWeekStats: {
-    marginBottom: 12,
-  },
-  thisWeekValue: {},
-  thisWeekNumber: {
-    fontFamily: 'CormorantGaramond_600SemiBold',
-    fontSize: 36,
-    color: '#0F4C44',
-  },
-  thisWeekOf: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 16,
-    color: 'rgba(15, 61, 62, 0.6)',
-  },
-
-  // Week Progress Bar
-  weekProgressBar: {
-    height: 6,
-    backgroundColor: 'rgba(15, 76, 68, 0.1)',
-    borderRadius: 3,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  weekProgressFill: {
-    height: '100%',
-    backgroundColor: '#0F4C44',
-    borderRadius: 3,
-  },
-
-  // Day Dots
-  dayDotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dayDotWrapper: {
-    alignItems: 'center',
-  },
-  dayDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(15, 76, 68, 0.08)',
-    marginBottom: 6,
-  },
-  dayDotCompleted: {
-    backgroundColor: '#0F4C44',
-  },
-  dayDotLabel: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 10,
-    color: 'rgba(15, 61, 62, 0.4)',
-  },
-
-  // Streak Badge
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(232, 169, 87, 0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    gap: 5,
-  },
-  streakText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 12,
-    color: '#C4893D',
-  },
-  streakBadgeEmpty: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(15, 76, 68, 0.05)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    gap: 5,
-  },
-  streakTextEmpty: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 12,
-    color: 'rgba(15, 76, 68, 0.4)',
-  },
-
-  // History Section
-  historySection: {
-    marginBottom: 16,
-  },
-  historySectionTitle: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 11,
-    color: 'rgba(15, 76, 68, 0.45)',
-    letterSpacing: 1.5,
-    marginBottom: 12,
-  },
-  historyList: {
-    gap: 10,
-  },
-
-  // History Row
-  historyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 14,
-    padding: 16,
-    shadowColor: 'rgba(15, 76, 68, 0.05)',
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    shadowOpacity: 1,
-    elevation: 2,
-  },
-  historyRowLeft: {
-    flex: 1,
-  },
-  historyDate: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 14,
-    color: '#0F3D3E',
-    marginBottom: 3,
-  },
-  historyStatus: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 13,
-    color: 'rgba(15, 61, 62, 0.5)',
-  },
-  historyStatusCompleted: {
-    color: '#1A6B5C',
-  },
-  historyStatusPartial: {
-    color: '#C4893D',
-  },
-
-  // Status Dot
-  statusDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  statusDotHalf: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: '50%',
   },
 
   // Empty State
@@ -723,35 +628,269 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
+    shadowColor: 'rgba(15, 76, 68, 0.08)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 1,
+    elevation: 3,
   },
   emptyTitle: {
-    fontFamily: 'CormorantGaramond_600SemiBold',
+    ...typography.sectionTitle,
     fontSize: 22,
     color: '#0F3D3E',
     textAlign: 'center',
     marginBottom: 10,
   },
   emptyText: {
-    fontFamily: 'Inter_400Regular',
+    ...typography.body,
     fontSize: 15,
     color: 'rgba(15, 61, 62, 0.5)',
     textAlign: 'center',
     lineHeight: 22,
+    marginBottom: 24,
   },
-  placeholderCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 12,
+  emptyCTA: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  emptyCTAGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 8,
   },
-  placeholderText: {
-    fontFamily: 'Inter_400Regular',
+  emptyCTAText: {
+    ...typography.button,
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+
+  // Progress Snapshot
+  snapshotCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: 'rgba(15, 76, 68, 0.08)',
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 20,
+    shadowOpacity: 1,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 76, 68, 0.08)',
+  },
+  snapshotTitle: {
+    ...typography.sectionTitle,
+    fontSize: 24,
+    color: '#0F3D3E',
+    marginBottom: 4,
+  },
+  snapshotSubtitle: {
+    ...typography.body,
     fontSize: 14,
     color: 'rgba(15, 61, 62, 0.5)',
-    marginBottom: 8,
+    marginBottom: 20,
+  },
+  snapshotStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  snapshotStat: {
+    flex: 1,
+    minWidth: '30%',
+    alignItems: 'center',
+  },
+  snapshotStatValue: {
+    ...typography.sectionTitle,
+    fontSize: 32,
+    color: '#0F4C44',
+    marginBottom: 4,
+  },
+  snapshotStatLabel: {
+    ...typography.bodySmall,
+    fontSize: 12,
+    color: 'rgba(15, 61, 62, 0.6)',
+    textAlign: 'center',
+  },
+  streakIconContainer: {
+    marginBottom: 4,
+  },
+
+  // Timeline
+  timelineCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: 'rgba(15, 76, 68, 0.08)',
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 20,
+    shadowOpacity: 1,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 76, 68, 0.08)',
+  },
+  timelineTitle: {
+    ...typography.bodyMedium,
+    fontSize: 15,
+    color: '#0F3D3E',
+    marginBottom: 16,
+  },
+  timelineContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  timelineDay: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  timelineDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(15, 76, 68, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(15, 76, 68, 0.15)',
+  },
+  timelineDotCompleted: {
+    backgroundColor: '#0F4C44',
+    borderColor: '#0F4C44',
+  },
+  timelineDotPartial: {
+    backgroundColor: 'rgba(232, 169, 87, 0.3)',
+    borderColor: '#E8A957',
+  },
+  timelineDotToday: {
+    borderWidth: 3,
+    borderColor: '#0F4C44',
+  },
+  timelineLabel: {
+    ...typography.labelSmall,
+    fontSize: 11,
+    color: 'rgba(15, 61, 62, 0.5)',
+  },
+
+  // Trends
+  trendsCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: 'rgba(15, 76, 68, 0.08)',
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 20,
+    shadowOpacity: 1,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 76, 68, 0.08)',
+  },
+  trendsTitle: {
+    ...typography.bodyMedium,
+    fontSize: 15,
+    color: '#0F3D3E',
+    marginBottom: 16,
+  },
+  trendsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  trendItem: {
+    flex: 1,
+    minWidth: '30%',
+    alignItems: 'center',
+  },
+  trendValue: {
+    ...typography.sectionTitle,
+    fontSize: 28,
+    color: '#0F4C44',
+    marginBottom: 4,
+  },
+  trendLabel: {
+    ...typography.bodySmall,
+    fontSize: 12,
+    color: 'rgba(15, 61, 62, 0.6)',
+    textAlign: 'center',
+  },
+
+  // History Section
+  historySection: {
+    marginBottom: 16,
+  },
+  historySectionTitle: {
+    ...typography.labelSmall,
+    fontSize: 11,
+    color: 'rgba(15, 76, 68, 0.45)',
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+  },
+  historyList: {
+    gap: 10,
+    marginBottom: 12,
+  },
+
+  // History Row
+  historyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: 'rgba(15, 76, 68, 0.06)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 1,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 76, 68, 0.08)',
+  },
+  historyRowLeft: {
+    flex: 1,
+  },
+  historyDate: {
+    ...typography.bodyMedium,
+    fontSize: 15,
+    color: '#0F3D3E',
+    marginBottom: 3,
+  },
+  historyStatus: {
+    ...typography.bodySmall,
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.5)',
+  },
+  historyStatusCompleted: {
+    color: '#1A6B5C',
+  },
+  historyStatusPartial: {
+    color: '#C4893D',
+  },
+
+  // Status Dot
+  statusDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(15, 76, 68, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(15, 76, 68, 0.15)',
+  },
+  statusDotCompleted: {
+    backgroundColor: '#0F4C44',
+    borderColor: '#0F4C44',
+  },
+  statusDotPartial: {
+    backgroundColor: 'rgba(232, 169, 87, 0.3)',
+    borderColor: '#E8A957',
   },
 });
 
 export default ProgressScreen;
-
