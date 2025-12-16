@@ -116,6 +116,15 @@ export const EveningCheckInLockedScreen: React.FC = () => {
             <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </TouchableOpacity>
 
+          {/* Dev Skip Button */}
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={handleSkip}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.skipButtonText}>Skip (Dev)</Text>
+          </TouchableOpacity>
+
           {/* Explanation Text */}
           <Text style={styles.explanationText}>
             Evening check-ins help you reflect on your recovery, track improvements, and prepare for optimal rest and recovery.
