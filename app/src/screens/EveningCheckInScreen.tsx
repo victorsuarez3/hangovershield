@@ -204,7 +204,7 @@ export const EveningCheckInScreen: React.FC = () => {
 
           {/* Alcohol Question */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Alcohol today?</Text>
+            <Text style={styles.alcoholTitle}>Alcohol today?</Text>
 
             <View style={styles.optionsContainer}>
               {ALCOHOL_OPTIONS.map((option) => (
