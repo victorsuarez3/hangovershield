@@ -22,9 +22,9 @@ const COPY_MAP: Record<PaywallSourceType | 'default', PaywallCopy> = {
     primaryCTAOverride: 'Unlock Evening Reset',
   },
   recovery_plan_soft_gate: {
-    headline: "Finish today's recovery properly",
+    headline: "Finish today's recovery — properly",
     subheadline: 'Your body responds best to a complete plan.',
-    urgencyLine: "You're missing part of today's recovery.",
+    urgencyLine: "Part of today's recovery is locked.",
   },
   progress_overview_soft_gate: {
     headline: 'Understand your recovery patterns',

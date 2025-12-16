@@ -26,6 +26,7 @@ import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { getTodayDailyCheckIn } from './src/services/dailyCheckIn';
 import { getTodayId } from './src/utils/dateUtils';
 import { initializeRevenueCat, identifyUser, logOutRevenueCat } from './src/services/revenuecat';
+import Constants from 'expo-constants';
 
 // Debug: Verify RevenueCat exports are available
 console.log('RC exports check:', {
@@ -352,18 +353,35 @@ export default function App() {
     Inter_700Bold: require('./assets/fonts/Inter_700Bold.ttf'),
   });
 
-  // Initialize RevenueCat SDK on app launch
+  // Check if we're in a real device environment (not Expo Go / dev overlay)
+  const isRealDevice = React.useMemo(() => {
+    return Constants.appOwnership !== 'expo' && 
+           Constants.executionEnvironment !== 'storeClient';
+  }, []);
+
+  // Initialize RevenueCat SDK ONLY when:
+  // 1. User is authenticated
+  // 2. Running on real device (not Expo Go / dev environment)
   React.useEffect(() => {
+    if (!user?.uid) {
+      return;
+    }
+
+    if (!isRealDevice) {
+      console.log('[App] RevenueCat: Skipping init (Expo / Dev environment)');
+      return;
+    }
+
     const initRC = async () => {
       try {
-        await initializeRevenueCat();
+        await initializeRevenueCat(user.uid);
         console.log('[App] RevenueCat initialized');
       } catch (error) {
         console.error('[App] RevenueCat init error:', error);
       }
     };
     initRC();
-  }, []);
+  }, [user?.uid, isRealDevice]);
 
   // Hide native splash once fonts are loaded
   React.useEffect(() => {
