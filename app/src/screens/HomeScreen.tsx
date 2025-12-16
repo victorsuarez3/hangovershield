@@ -29,7 +29,9 @@ import { Analytics } from '../utils/analytics';
 import {
   getTodayHydrationLog,
   getHydrationGoal,
+  addWaterEntry,
 } from '../services/hydrationService';
+import { createWaterEntry } from '../features/water/waterUtils';
 import {
   getRecentCheckIns,
   calculateStreak,
