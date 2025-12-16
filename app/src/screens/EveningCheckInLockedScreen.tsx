@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { PaywallSource } from '../constants/paywallSources';
 import { logAnalyticsEvent } from '../utils/analytics';
+import { AppHeader } from '../components/AppHeader';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -55,14 +56,12 @@ export const EveningCheckInLockedScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Back Button */}
-      <TouchableOpacity
-        style={[styles.backButton, { top: insets.top + 16 }]}
-        onPress={handleGoBack}
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-      >
-        <Ionicons name="chevron-back" size={24} color="rgba(0, 0, 0, 0.6)" />
-      </TouchableOpacity>
+      {/* App Header */}
+      <AppHeader
+        title="Evening Check-In"
+        showBackButton
+        onBackPress={handleGoBack}
+      />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -71,50 +70,50 @@ export const EveningCheckInLockedScreen: React.FC = () => {
       >
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <View style={styles.iconContainer}>
-            <View style={styles.iconGlow} />
-            <Ionicons name="moon-outline" size={64} color="#0F3D3E" />
-          </View>
-          <Text style={styles.headline}>Evening Check-In</Text>
           <Text style={styles.subheadline}>
-            Track your recovery progress and build lasting habits with daily evening reflections.
+            Reflect on your recovery progress and prepare for tomorrow.
           </Text>
         </View>
 
-        {/* Benefits Card */}
+        {/* Premium Feature Card */}
         <View style={styles.benefitsCard}>
-          <Text style={styles.benefitsTitle}>What you'll unlock:</Text>
-          
-          <BenefitRow
-            icon="checkmark-circle"
-            text="Reflect on your day's recovery progress"
-          />
-          <BenefitRow
-            icon="checkmark-circle"
-            text="Track symptoms and how you felt tonight"
-          />
-          <BenefitRow
-            icon="checkmark-circle"
-            text="Build consistency with daily check-ins"
-          />
-          <BenefitRow
-            icon="checkmark-circle"
-            text="See patterns over time in your insights"
-          />
-        </View>
+          {/* Premium Feature Header */}
+          <View style={styles.premiumHeader}>
+            <Ionicons name="moon" size={24} color="#0F4C44" />
+            <Text style={styles.premiumLabel}>Premium Feature</Text>
+          </View>
 
-        {/* CTA Section */}
-        <View style={styles.ctaSection}>
+          {/* Benefits List */}
+          <BenefitRow
+            icon="checkmark-circle"
+            text="Evening reflection questions"
+          />
+          <BenefitRow
+            icon="checkmark-circle"
+            text="Recovery progress assessment"
+          />
+          <BenefitRow
+            icon="checkmark-circle"
+            text="Next day preparation"
+          />
+          <BenefitRow
+            icon="checkmark-circle"
+            text="Smart sleep recommendations"
+          />
+
+          {/* CTA Button */}
           <TouchableOpacity
             style={styles.ctaButton}
             onPress={handleUpgrade}
             activeOpacity={0.8}
           >
-            <Text style={styles.ctaText}>Unlock Evening Check-In</Text>
+            <Text style={styles.ctaText}>Upgrade to Premium</Text>
             <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.ctaSubtext}>
-            Upgrade to Premium to access evening check-ins and all premium features.
+
+          {/* Explanation Text */}
+          <Text style={styles.explanationText}>
+            Evening check-ins help you reflect on your recovery, track improvements, and prepare for optimal rest and recovery.
           </Text>
         </View>
       </ScrollView>
@@ -150,21 +149,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  backButton: {
-    position: 'absolute',
-    left: 20,
-    zIndex: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 80,
+    paddingTop: 24,
     paddingBottom: 40,
   },
   heroSection: {
@@ -172,60 +160,37 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     paddingHorizontal: 16,
   },
-  iconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
-    position: 'relative',
-  },
-  iconGlow: {
-    position: 'absolute',
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: 'rgba(15, 61, 62, 0.08)',
-    zIndex: -1,
-  },
-  headline: {
-    fontFamily: 'CormorantGaramond_600SemiBold',
-    fontSize: 32,
-    color: 'rgba(0, 0, 0, 0.9)',
-    textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 38,
-  },
   subheadline: {
     fontFamily: 'Inter_400Regular',
     fontSize: 16,
-    color: 'rgba(0, 0, 0, 0.7)',
+    color: 'rgba(15, 61, 62, 0.7)',
     textAlign: 'center',
     lineHeight: 24,
     maxWidth: '90%',
   },
   benefitsCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     paddingHorizontal: 24,
     paddingTop: 24,
-    paddingBottom: 20,
+    paddingBottom: 24,
     marginBottom: 32,
-    shadowColor: 'rgba(0, 0, 0, 0.06)',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: 'rgba(15, 76, 68, 0.1)',
+    shadowOffset: { width: 0, height: 4 },
     shadowRadius: 16,
     shadowOpacity: 1,
     elevation: 6,
   },
-  benefitsTitle: {
+  premiumHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 10,
+  },
+  premiumLabel: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 18,
-    color: '#0F3D3E',
-    marginBottom: 20,
+    fontSize: 16,
+    color: '#0F4C44',
   },
   benefitRow: {
     flexDirection: 'row',
@@ -233,53 +198,51 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   benefitIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: 'rgba(15, 76, 68, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 12,
     marginTop: 2,
   },
   benefitText: {
     fontFamily: 'Inter_400Regular',
     fontSize: 15,
-    color: 'rgba(0, 0, 0, 0.8)',
+    color: 'rgba(15, 61, 62, 0.8)',
     lineHeight: 22,
     flex: 1,
-  },
-  ctaSection: {
-    marginBottom: 24,
   },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0A3F37',
-    borderRadius: 15,
+    backgroundColor: '#0F4C44',
+    borderRadius: 16,
     height: 56,
     paddingHorizontal: 24,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    marginTop: 24,
+    marginBottom: 16,
+    shadowColor: 'rgba(15, 76, 68, 0.2)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
     elevation: 6,
-    marginBottom: 12,
     gap: 8,
   },
   ctaText: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 17,
     color: '#FFFFFF',
-    fontWeight: '600',
   },
-  ctaSubtext: {
+  explanationText: {
     fontFamily: 'Inter_400Regular',
     fontSize: 14,
-    color: 'rgba(0, 0, 0, 0.6)',
+    color: 'rgba(15, 61, 62, 0.6)',
     textAlign: 'center',
     lineHeight: 20,
+    marginTop: 8,
   },
 });
 
