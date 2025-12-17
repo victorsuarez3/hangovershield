@@ -102,7 +102,9 @@ export const PaywallScreen: React.FC = () => {
   const [isRestoring, setIsRestoring] = useState(false);
   
   const offeringsLoaded = packages.length > 0;
-  const purchasesReady = isRevenueCatAvailable && offeringsLoaded;
+  // Allow purchases if RevenueCat is available and packages are loaded
+  // OR if we're in dev mode (for testing UI)
+  const purchasesReady = (isRevenueCatAvailable && offeringsLoaded) || __DEV__;
 
   const selectedPackage = useMemo(() => {
     if (selectedPlan === 'yearly') return yearlyPackage ?? null;
@@ -132,6 +134,16 @@ export const PaywallScreen: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const handlePurchase = async () => {
+    // In dev mode without RevenueCat, simulate success
+    if (__DEV__ && !isRevenueCatAvailable) {
+      Alert.alert(
+        'Dev Mode',
+        'RevenueCat is not available. In production, this would complete the purchase.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+      return;
+    }
+
     const packageToPurchase = selectedPackage ?? yearlyPackage ?? monthlyPackage ?? null;
     
     if (!packageToPurchase) {
@@ -230,6 +242,18 @@ export const PaywallScreen: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const isLoading = isLoadingPackages || isPurchasing || isRestoring;
+
+  // Debug logging
+  if (__DEV__) {
+    console.log('[PaywallScreen] Button state:', {
+      purchasesReady,
+      isLoading,
+      isRevenueCatAvailable,
+      offeringsLoaded,
+      packagesCount: packages.length,
+      disabled: isLoading || !purchasesReady,
+    });
+  }
 
   return (
     <View style={styles.container}>
