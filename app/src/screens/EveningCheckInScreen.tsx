@@ -115,6 +115,32 @@ export const EveningCheckInScreen: React.FC = () => {
     }
   };
 
+  // Show completion screen
+  if (isCompleted) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#E4F2EF', '#D8EBE7', '#CEE5E1']}
+          locations={[0, 0.5, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <LinearGradient
+          colors={['rgba(15,76,68,0.03)', 'transparent', 'rgba(15,76,68,0.05)']}
+          locations={[0, 0.5, 1]}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+
+        <View style={styles.completionContainer}>
+          <View style={styles.completionIcon}>
+            <Ionicons name="checkmark-circle" size={80} color="#0F4C44" />
+          </View>
+          <Text style={styles.completionText}>Saved</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <LinearGradient
