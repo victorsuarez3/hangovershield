@@ -457,6 +457,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.3,
   },
+
+  // Completion Screen
+  completionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  completionIcon: {
+    marginBottom: 16,
+  },
+  completionText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 18,
+    color: '#0F4C44',
+    letterSpacing: 0.5,
+  },
 });
 
 export default EveningCheckInScreen;
