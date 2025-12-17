@@ -71,6 +71,7 @@ export const EveningCheckInScreen: React.FC = () => {
   const [eveningMood, setEveningMood] = useState<EveningMood | null>(null);
   const [alcoholToday, setAlcoholToday] = useState<AlcoholToday | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   // Check if at least one field has been interacted with
   const hasInteraction = eveningReflection.trim().length > 0 || eveningMood !== null || alcoholToday !== null;
@@ -100,8 +101,13 @@ export const EveningCheckInScreen: React.FC = () => {
 
       console.log('[EveningCheckIn] Saved evening check-in');
 
-      // Navigate back to home
-      navigation.goBack();
+      // Show completion state
+      setIsCompleted(true);
+
+      // Navigate back to home after brief delay
+      setTimeout(() => {
+        navigation.goBack();
+      }, 1500);
     } catch (error) {
       console.error('[EveningCheckIn] Error saving:', error);
     } finally {
