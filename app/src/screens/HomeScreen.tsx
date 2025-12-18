@@ -87,9 +87,10 @@ export const HomeScreen: React.FC = () => {
   // Daily check-in status
   const dailyCheckIn = useDailyCheckIn(user?.uid || null);
 
-  // Hydration state
-  const [hydrationGoal, setHydrationGoal] = useState(1500);
-  const [hydrationLogged, setHydrationLogged] = useState(0);
+  // Hydration state - use store as single source of truth
+  const { hydrationGoal: storeHydrationGoal, todayHydrationTotal, addHydrationEntry: addToStore, setHydrationLogs } = useUserDataStore();
+  const hydrationGoal = storeHydrationGoal;
+  const hydrationLogged = todayHydrationTotal;
 
   // Progress state
   const [streak, setStreak] = useState(0);
@@ -117,25 +118,30 @@ export const HomeScreen: React.FC = () => {
     isToday: boolean;
   }>>([]);
 
-  // Load hydration data
+  // Load hydration data from service and sync to store (single source of truth)
   useEffect(() => {
     const loadHydrationData = async () => {
       if (!user?.uid) return;
 
       try {
+        // Load from service
         const goal = await getHydrationGoal(user.uid);
-        setHydrationGoal(goal);
-
-        const todayLogs = await getTodayHydrationLog(user.uid);
-        const totalMl = todayLogs.reduce((sum, entry) => sum + entry.amountMl, 0);
-        setHydrationLogged(totalMl);
+        const logs = await getTodayHydrationLog(user.uid);
+        
+        // Update store (single source of truth)
+        const todayId = new Date().toISOString().split('T')[0];
+        const hydrationLogs: { [key: string]: any[] } = {};
+        hydrationLogs[todayId] = logs;
+        setHydrationLogs(hydrationLogs);
+        
+        // Store will automatically calculate todayHydrationTotal
       } catch (error) {
         console.error('[HomeScreen] Error loading hydration data:', error);
       }
     };
 
     loadHydrationData();
-  }, [user?.uid]);
+  }, [user?.uid, setHydrationLogs]);
 
   // Daily check-in status (computed early for use in effects)
   const isCheckInCompleted = dailyCheckIn.status === 'completed_today';
@@ -425,27 +431,27 @@ export const HomeScreen: React.FC = () => {
     handleGoToWaterLog();
   }, [logWidgetClick, handleGoToWaterLog]);
 
-  // Quick add water handlers
+  // Quick add water handlers - update store for single source of truth
   const handleQuickAddWater = useCallback(async (amountMl: number) => {
     if (!user?.uid) return;
     
     try {
-      // Create water entry inline
-      const newEntry = {
-        id: `water_${Date.now()}`,
-        amountMl,
-        timestamp: Date.now(),
-      };
+      const todayId = new Date().toISOString().split('T')[0];
+      
+      // Create water entry using utility function (consistent with DailyWaterLogScreen)
+      const newEntry = createWaterEntry(amountMl);
+      
+      // Update store immediately (single source of truth)
+      addToStore(todayId, newEntry);
+      
+      // Save to Firebase
       await addWaterEntry(user.uid, newEntry);
       
-      // Refresh from service to ensure consistency
-      const todayLogs = await getTodayHydrationLog(user.uid);
-      const totalMl = todayLogs.reduce((sum, entry) => sum + entry.amountMl, 0);
-      setHydrationLogged(totalMl);
+      // Store will automatically update todayHydrationTotal, which will trigger re-render
     } catch (error) {
       console.error('[HomeScreen] Error adding water:', error);
     }
-  }, [user?.uid]);
+  }, [user?.uid, addToStore]);
 
   const handleProgressPress = useCallback(() => {
     logWidgetClick('progress');

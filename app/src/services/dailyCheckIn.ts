@@ -29,10 +29,6 @@ import { RecoveryAction } from '../screens/TodayRecoveryPlanScreen';
 
 export type DailyCheckInSeverity = 'mild' | 'moderate' | 'severe' | 'none';
 
-// Import plan types for unified storage
-import { RecoveryPlan, MicroAction } from '../domain/recovery/planGenerator';
-import { RecoveryAction } from '../screens/TodayRecoveryPlanScreen';
-
 export interface DailyCheckInData {
   date: string; // "YYYY-MM-DD"
   createdAt: Timestamp | null;

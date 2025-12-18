@@ -14,11 +14,6 @@ import {
   Animated,
   Alert,
   Dimensions,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +26,9 @@ import { useAccessStatus } from '../hooks/useAccessStatus';
 import { SoftGateCard } from '../components/SoftGateCard';
 import { LockedSection } from '../components/LockedSection';
 import { PaywallSource } from '../constants/paywallSources';
+import { useAuth } from '../providers/AuthProvider';
+import { useUserDataStore } from '../stores/useUserDataStore';
+import { getTodayHydrationLog, getHydrationGoal } from '../services/hydrationService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -180,135 +178,6 @@ const SymptomChip: React.FC<{ label: string }> = ({ label }) => (
   </View>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hydration Log Bottom Sheet
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface HydrationSheetProps {
-  visible: boolean;
-  onClose: () => void;
-  onLogAmount: (amount: number) => void;
-  goalLiters: number;
-  currentLiters: number;
-}
-
-const HydrationLogSheet: React.FC<HydrationSheetProps> = ({
-  visible,
-  onClose,
-  onLogAmount,
-  goalLiters,
-  currentLiters,
-}) => {
-  const [customAmount, setCustomAmount] = useState('');
-  const insets = useSafeAreaInsets();
-
-  // Preset amounts for quick logging
-  const presetAmounts = [0.25, 0.5, 0.75];
-
-  const handlePresetPress = (amount: number) => {
-    onLogAmount(amount);
-    onClose();
-  };
-
-  const handleCustomSave = () => {
-    const parsed = parseFloat(customAmount);
-    if (!isNaN(parsed) && parsed > 0) {
-      onLogAmount(parsed);
-      setCustomAmount('');
-      onClose();
-    }
-  };
-
-  const handleClose = () => {
-    setCustomAmount('');
-    onClose();
-  };
-
-  const remaining = Math.max(0, goalLiters - currentLiters);
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={handleClose}
-    >
-      <Pressable style={styles.sheetOverlay} onPress={handleClose}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.sheetKeyboardView}
-        >
-          <Pressable
-            style={[styles.sheetContainer, { paddingBottom: insets.bottom + 20 }]}
-            onPress={(e) => e.stopPropagation()}
-          >
-            {/* Handle bar */}
-            <View style={styles.sheetHandle} />
-
-            {/* Header */}
-            <Text style={styles.sheetTitle}>Log today's water</Text>
-            <Text style={styles.sheetSubtitle}>
-              Your goal today: {goalLiters.toFixed(1)}L
-              {remaining > 0 && ` • ${remaining.toFixed(2)}L remaining`}
-            </Text>
-
-            {/* Preset Buttons */}
-            <View style={styles.presetContainer}>
-              {presetAmounts.map((amount) => (
-                <TouchableOpacity
-                  key={amount}
-                  style={styles.presetButton}
-                  onPress={() => handlePresetPress(amount)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.presetButtonText}>+{amount}L</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Divider */}
-            <View style={styles.sheetDivider}>
-              <View style={styles.sheetDividerLine} />
-              <Text style={styles.sheetDividerText}>or</Text>
-              <View style={styles.sheetDividerLine} />
-            </View>
-
-            {/* Custom Input */}
-            <View style={styles.customInputContainer}>
-              <Text style={styles.customInputLabel}>Custom amount (L)</Text>
-              <View style={styles.customInputRow}>
-                <TextInput
-                  style={styles.customInput}
-                  value={customAmount}
-                  onChangeText={setCustomAmount}
-                  keyboardType="decimal-pad"
-                  placeholder="0.0"
-                  placeholderTextColor="rgba(15,76,68,0.3)"
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.customSaveButton,
-                    (!customAmount || parseFloat(customAmount) <= 0) && styles.customSaveButtonDisabled,
-                  ]}
-                  onPress={handleCustomSave}
-                  disabled={!customAmount || parseFloat(customAmount) <= 0}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.customSaveButtonText}>Save</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Cancel */}
-            <TouchableOpacity style={styles.sheetCancelButton} onPress={handleClose}>
-              <Text style={styles.sheetCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Pressable>
-    </Modal>
-  );
-};
 
 // Today at a Glance Card
 interface GlanceCardProps {
@@ -333,9 +202,9 @@ const GlanceCard: React.FC<GlanceCardProps> = ({
   // Check if goal is reached
   const goalReached = hydrationLogged >= hydrationGoal;
 
-  // Dynamic label text
+  // Dynamic label text - format: "X.XL logged of Y.YL"
   const hydrationLabelText = goalReached
-    ? `Goal reached — ${hydrationLogged.toFixed(1)}L logged`
+    ? `${hydrationLogged.toFixed(1)}L logged of ${hydrationGoal.toFixed(1)}L`
     : `${hydrationLogged.toFixed(1)}L logged of ${hydrationGoal.toFixed(1)}L`;
 
   // Dynamic hint text
@@ -597,6 +466,7 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
   const navigation = useNavigation<any>();
   const appNav = useAppNavigation();
   const accessInfo = useAccessStatus();
+  const { user } = useAuth();
   
   // Menu state
   const [menuVisible, setMenuVisible] = useState(false);
@@ -613,7 +483,12 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
     onCompletePlan,
   } = props;
 
-  const [localActions, setLocalActions] = useState<RecoveryAction[]>(initialActions);
+  // Ensure we always have actions - use default if none provided or empty
+  const safeInitialActions = (initialActions && initialActions.length > 0) 
+    ? initialActions 
+    : DEFAULT_MOCK_DATA.actions;
+  
+  const [localActions, setLocalActions] = useState<RecoveryAction[]>(safeInitialActions);
 
   // Update localActions when initialActions prop changes (e.g., when plan loads)
   useEffect(() => {
@@ -621,29 +496,58 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
       console.log('[TodayRecoveryPlanScreen] Updating actions:', initialActions.length, 'actions');
       setLocalActions(initialActions);
     } else {
-      console.warn('[TodayRecoveryPlanScreen] No actions provided or empty array');
+      console.warn('[TodayRecoveryPlanScreen] No actions provided or empty array, using defaults');
+      // Use default actions if none provided
+      setLocalActions(DEFAULT_MOCK_DATA.actions);
     }
   }, [initialActions]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Hydration State
-  // Today's hydration tracking - stored in liters
+  // Hydration State - Single Source of Truth
+  // Read directly from store for real-time updates
   // ─────────────────────────────────────────────────────────────────────────
-  const [hydrationLoggedLiters, setHydrationLoggedLiters] = useState<number>(
-    initialHydrationProgress * hydrationGoalLiters
-  );
-  const [isHydrationSheetVisible, setHydrationSheetVisible] = useState(false);
+  const { hydrationGoal: storeHydrationGoal, todayHydrationTotal } = useUserDataStore();
+  const [hydrationGoalLitersState, setHydrationGoalLitersState] = useState<number>(hydrationGoalLiters);
 
-  // Helper: Log hydration from a step completion (e.g., "Hydration check-in")
-  // Can be called when specific steps are completed
-  const logHydrationFromStep = useCallback((amount: number) => {
-    setHydrationLoggedLiters((prev) => prev + amount);
-  }, []);
+  // Load hydration goal from service on mount (store may not have it initially)
+  useEffect(() => {
+    const loadHydrationGoal = async () => {
+      if (!user?.uid) {
+        // Fallback to props if no user
+        setHydrationGoalLitersState(hydrationGoalLiters);
+        return;
+      }
 
-  // Handler for logging hydration from the sheet
-  const handleLogHydration = useCallback((amount: number) => {
-    setHydrationLoggedLiters((prev) => prev + amount);
-  }, []);
+      try {
+        // Get goal from service (or use prop as fallback)
+        const goalMl = await getHydrationGoal(user.uid);
+        const goalLiters = goalMl / 1000; // Convert ml to liters
+        setHydrationGoalLitersState(goalLiters || hydrationGoalLiters);
+      } catch (error) {
+        console.error('[TodayRecoveryPlanScreen] Error loading hydration goal:', error);
+        // Fallback to props
+        setHydrationGoalLitersState(hydrationGoalLiters);
+      }
+    };
+
+    loadHydrationGoal();
+  }, [user?.uid, hydrationGoalLiters]);
+
+  // Update goal from store if it changes (user may have updated it in DailyWaterLogScreen)
+  useEffect(() => {
+    if (storeHydrationGoal && storeHydrationGoal > 0) {
+      const goalLiters = storeHydrationGoal / 1000; // Convert ml to liters
+      setHydrationGoalLitersState(goalLiters);
+    }
+  }, [storeHydrationGoal]);
+
+  // Calculate hydration logged in liters from store (real-time updates)
+  const hydrationLoggedLiters = (todayHydrationTotal || 0) / 1000; // Convert ml to liters
+
+  // Handler to navigate to DailyWaterLog screen
+  const handleHydrationPress = useCallback(() => {
+    navigation.navigate('DailyWaterLog');
+  }, [navigation]);
 
   // Derived values
   const totalActions = localActions.length;
@@ -665,20 +569,12 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         prev.map((action) => (action.id === id ? { ...action, completed } : action))
       );
 
-      // If completing a hydration-related step, auto-log water
-      // Map step IDs to hydration amounts - adjust as needed
-      const hydrationSteps: Record<string, number> = {
-        '2': 0.5, // "Water + electrolytes" step
-        'morning-2': 0.5, // ID used in navigator
-      };
-
-      if (completed && hydrationSteps[id]) {
-        logHydrationFromStep(hydrationSteps[id]);
-      }
+      // Note: Hydration logging is now handled exclusively in DailyWaterLog screen
+      // We no longer auto-log hydration from step completion to maintain single source of truth
 
       onToggleAction?.(id, completed);
     },
-    [onToggleAction, logHydrationFromStep]
+    [onToggleAction]
   );
 
   // CTA text - changes based on completion status
@@ -739,6 +635,14 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
     let globalIndex = 0;
     const totalSteps = localActions.length;
 
+    console.log('[TodayRecoveryPlanScreen] Building timeline items from', totalSteps, 'actions');
+    console.log('[TodayRecoveryPlanScreen] Grouped actions:', Array.from(groupedActions.entries()).map(([time, acts]) => `${time}: ${acts.length}`).join(', '));
+
+    if (totalSteps === 0) {
+      console.warn('[TodayRecoveryPlanScreen] No actions to display!');
+      return items;
+    }
+
     Array.from(groupedActions.entries()).forEach(([timeOfDay, actions]) => {
       items.push({ type: 'header', timeOfDay });
       actions.forEach((action, idx) => {
@@ -752,6 +656,7 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
       });
     });
 
+    console.log('[TodayRecoveryPlanScreen] Built', items.length, 'timeline items');
     return items;
   }, [groupedActions, localActions.length]);
 
@@ -790,9 +695,9 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         <GlanceCard
           recoveryWindow={recoveryWindowLabel}
           symptoms={symptomLabels}
-          hydrationGoal={hydrationGoalLiters}
+          hydrationGoal={hydrationGoalLitersState}
           hydrationLogged={hydrationLoggedLiters}
-          onHydrationPress={() => setHydrationSheetVisible(true)}
+          onHydrationPress={handleHydrationPress}
         />
 
         {/* Timeline Section */}
@@ -883,15 +788,6 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
           </TouchableOpacity>
         )}
       </View>
-
-      {/* Hydration Log Bottom Sheet */}
-      <HydrationLogSheet
-        visible={isHydrationSheetVisible}
-        onClose={() => setHydrationSheetVisible(false)}
-        onLogAmount={handleLogHydration}
-        goalLiters={hydrationGoalLiters}
-        currentLiters={hydrationLoggedLiters}
-      />
 
       {/* App Menu Sheet */}
       <AppMenuSheet
@@ -1436,132 +1332,6 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Hydration Log Sheet Styles
-  // ─────────────────────────────────────────────────────────────────────────
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  sheetKeyboardView: {
-    justifyContent: 'flex-end',
-  },
-  sheetContainer: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-  },
-  sheetHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: 'rgba(15,76,68,0.15)',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 20,
-  },
-  sheetTitle: {
-    fontFamily: 'CormorantGaramond_600SemiBold',
-    fontSize: 26,
-    color: '#0F3D3E',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  sheetSubtitle: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 14,
-    color: 'rgba(15,61,62,0.5)',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  presetContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 20,
-  },
-  presetButton: {
-    backgroundColor: 'rgba(15,76,68,0.08)',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(15,76,68,0.1)',
-  },
-  presetButtonText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 16,
-    color: '#0F4C44',
-  },
-  sheetDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-    gap: 12,
-  },
-  sheetDividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(15,76,68,0.1)',
-  },
-  sheetDividerText: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 12,
-    color: 'rgba(15,76,68,0.4)',
-  },
-  customInputContainer: {
-    marginBottom: 20,
-  },
-  customInputLabel: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 13,
-    color: 'rgba(15,61,62,0.6)',
-    marginBottom: 10,
-  },
-  customInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  customInput: {
-    flex: 1,
-    height: 52,
-    backgroundColor: 'rgba(15,76,68,0.04)',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    fontFamily: 'Inter_500Medium',
-    fontSize: 18,
-    color: '#0F3D3E',
-    borderWidth: 1,
-    borderColor: 'rgba(15,76,68,0.1)',
-  },
-  customSaveButton: {
-    backgroundColor: '#0A3F37',
-    paddingHorizontal: 28,
-    height: 52,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  customSaveButtonDisabled: {
-    backgroundColor: 'rgba(15,76,68,0.2)',
-  },
-  customSaveButtonText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 15,
-    color: '#FFF',
-  },
-  sheetCancelButton: {
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  sheetCancelText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 15,
-    color: 'rgba(15,61,62,0.5)',
-  },
 });
 
 export default TodayRecoveryPlanScreen;
