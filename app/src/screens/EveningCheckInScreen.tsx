@@ -103,7 +103,7 @@ export const EveningCheckInScreen: React.FC = () => {
         console.log('[EveningCheckIn] No user ID - showing completion anyway (dev mode)');
         setIsCompleted(true);
         setTimeout(() => {
-          navigation.navigate('HomeMain' as any);
+          navigation.navigate('EveningCheckInComplete' as any);
         }, 1200);
         return;
       }
@@ -128,17 +128,17 @@ export const EveningCheckInScreen: React.FC = () => {
       // Show completion feedback in the same screen
       setIsCompleted(true);
 
-      // Navigate to HomeMain after brief delay to show success feedback
+      // Navigate to closure screen after brief delay to show success feedback
       setTimeout(() => {
-        navigation.navigate('HomeMain' as any);
+        navigation.navigate('EveningCheckInComplete' as any);
       }, 1200);
     } catch (error) {
       console.error('[EveningCheckIn] Error saving:', error);
       // Still show completion even if save fails (for dev/testing)
       setIsCompleted(true);
       setTimeout(() => {
-        // Navigate to HomeMain instead of goBack to avoid paywall redirect
-        navigation.navigate('HomeMain' as any);
+        // Navigate to closure screen instead of HomeMain
+        navigation.navigate('EveningCheckInComplete' as any);
       }, 1200);
     } finally {
       setIsSaving(false);

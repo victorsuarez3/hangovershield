@@ -22,6 +22,7 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
 import { EveningCheckInScreen } from '../screens/EveningCheckInScreen';
 import { EveningCheckInLockedScreen } from '../screens/EveningCheckInLockedScreen';
+import { EveningCheckInCompleteScreen } from '../screens/EveningCheckInCompleteScreen';
 import { DailyWaterLogScreen } from '../screens/DailyWaterLogScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -61,6 +62,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({ allowGuestMode = fal
         <Stack.Screen name="Paywall" component={PaywallScreen} />
         <Stack.Screen name="EveningCheckIn" component={EveningCheckInScreen} />
         <Stack.Screen name="EveningCheckInLocked" component={EveningCheckInLockedScreen} />
+        <Stack.Screen name="EveningCheckInComplete" component={EveningCheckInCompleteScreen} />
         <Stack.Screen name="DailyWaterLog" component={DailyWaterLogScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>

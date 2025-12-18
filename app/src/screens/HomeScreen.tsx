@@ -71,7 +71,7 @@ export const HomeScreen: React.FC = () => {
   // Menu state
   const [menuVisible, setMenuVisible] = useState(false);
   const [currentScreen] = useState<CurrentScreen>('home');
-  
+
   // Hydration tooltip state
   const [hydrationTooltipVisible, setHydrationTooltipVisible] = useState(false);
 
@@ -645,12 +645,12 @@ export const HomeScreen: React.FC = () => {
           {progressSignal && (
             <Text style={styles.progressSignal}>{progressSignal}</Text>
           )}
-        </View>
+      </View>
 
         {/* Welcome Banner (only for welcome users, small) */}
         {accessInfo.isWelcome && (
           <View style={styles.welcomeBannerContainer}>
-            <WelcomeCountdownBanner />
+      <WelcomeCountdownBanner />
         </View>
         )}
 
@@ -670,29 +670,29 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.heroHeader}>
               <Text style={styles.heroTitle}>
                 {isCheckInCompleted ? "You're on track" : "Check in for today"}
-              </Text>
+          </Text>
               <Text style={styles.heroSubtitle}>
                 {isCheckInCompleted
                   ? "Follow your personalized steps to feel better faster."
                   : "This helps us guide you to feel better today."}
-              </Text>
+          </Text>
             </View>
 
-            {/* Status Chips */}
+            {/* Status Chips - Only show if check-in is pending or if hydration is logged */}
             <View style={styles.heroChips}>
-              <View style={styles.chip}>
-                <Ionicons
-                  name={isCheckInCompleted ? 'checkmark-circle' : 'time-outline'}
-                  size={14}
-                  color={isCheckInCompleted ? '#7AB48B' : 'rgba(15,76,68,0.5)'}
-                />
-                <Text style={[
-                  styles.chipText,
-                  isCheckInCompleted && styles.chipTextCompleted
-                ]}>
-                  Check-in: {isCheckInCompleted ? 'Completed' : 'Pending'}
-                </Text>
-              </View>
+              {/* Only show check-in status chip if check-in is NOT completed */}
+              {!isCheckInCompleted && (
+                <View style={styles.chip}>
+                  <Ionicons
+                    name="time-outline"
+                    size={14}
+                    color="rgba(15,76,68,0.5)"
+                  />
+                  <Text style={styles.chipText}>
+                    Check-in: Pending
+                  </Text>
+                </View>
+              )}
               {hydrationLogged > 0 && (
                 <View style={styles.chip}>
                   <Ionicons name="water" size={14} color="rgba(15,76,68,0.5)" />
@@ -702,7 +702,7 @@ export const HomeScreen: React.FC = () => {
             </View>
 
             {/* Primary CTA Button */}
-            <TouchableOpacity
+          <TouchableOpacity
               style={styles.heroButton}
               onPress={(e) => {
                 e.stopPropagation();
@@ -713,18 +713,18 @@ export const HomeScreen: React.FC = () => {
                 }
               }}
               activeOpacity={0.8}
-            >
-              <LinearGradient
+          >
+            <LinearGradient
                 colors={['#0F4C44', '#0A3F37']}
                 style={styles.heroButtonGradient}
-              >
+            >
                 <Text style={styles.heroButtonText}>
-                  {isCheckInCompleted ? "View today's plan" : "Complete daily check-in"}
-                </Text>
+                  {isCheckInCompleted ? "View today's check-in" : "Complete daily check-in"}
+              </Text>
                 <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
         </TouchableOpacity>
 
         {/* Today's Recovery Score Card - Moved up for immediate feedback */}
@@ -733,7 +733,7 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.recoveryScoreTitle}>Today's Recovery Score</Text>
             <Text style={styles.recoveryScoreSubtitle}>
               Based on how you checked in, hydrated, and completed recovery actions today.
-            </Text>
+          </Text>
             <View style={styles.recoveryScoreCircle}>
               <Text style={styles.recoveryScoreNumber}>{recoveryScore}</Text>
               <Text style={styles.recoveryScoreMax}>/100</Text>
@@ -796,7 +796,7 @@ export const HomeScreen: React.FC = () => {
           <View style={styles.waterLogProgress}>
             <Text style={styles.waterLogProgressText}>
               Logged: <Text style={styles.waterLogBold}>{hydrationLogged}ml</Text> of {hydrationGoal}ml
-            </Text>
+              </Text>
             <View style={styles.waterLogProgressBar}>
               <View 
                 style={[
@@ -828,7 +828,7 @@ export const HomeScreen: React.FC = () => {
           {/* Goal Info */}
           <Text style={styles.waterLogGoalText}>
             ~{Math.max(0, hydrationGoal - hydrationLogged)}ml left to reach today's goal
-          </Text>
+              </Text>
 
           {/* View Full Log Link */}
           <TouchableOpacity
@@ -836,19 +836,22 @@ export const HomeScreen: React.FC = () => {
             activeOpacity={0.7}
           >
             <Text style={styles.waterLogViewLink}>View full water log</Text>
-          </TouchableOpacity>
-        </View>
+            </TouchableOpacity>
+          </View>
 
         {/* Progress Snapshot Card */}
         <View style={styles.progressSnapshotCard}>
           <View style={styles.progressSnapshotHeader}>
-            <Text style={styles.progressSnapshotTitle}>Your progress</Text>
+            <View style={styles.progressSnapshotTitleRow}>
+              <Ionicons name="stats-chart-outline" size={20} color="#0F4C44" style={styles.progressIcon} />
+              <Text style={styles.progressSnapshotTitle}>Your progress</Text>
+        </View>
             {streak > 0 ? (
               <Text style={styles.progressSnapshotSubtitle}>🔥 {streak}-day streak</Text>
             ) : (
               <Text style={styles.progressSnapshotSubtitle}>Start your streak today</Text>
             )}
-          </View>
+      </View>
 
           {/* 7-day tracker */}
           <View style={styles.progressTracker}>
@@ -875,7 +878,7 @@ export const HomeScreen: React.FC = () => {
                 </Text>
               </View>
             ))}
-          </View>
+      </View>
 
           {/* Motivational copy */}
           <Text style={styles.progressMotivational}>
@@ -888,95 +891,36 @@ export const HomeScreen: React.FC = () => {
             activeOpacity={0.7}
             style={styles.progressCTA}
           >
-            <Text style={styles.progressCTAText}>View full progress →</Text>
+            <Text style={styles.progressCTAText}>See your patterns →</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Quick Widgets Grid - 2x2 */}
-        <View style={styles.widgetsGrid}>
-          {/* Water Log Widget */}
-          <TouchableOpacity
-            style={styles.widgetCard}
-            onPress={handleWaterLogPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.widgetIconContainer}>
-              <Ionicons name="water-outline" size={24} color="#0F4C44" />
-      </View>
-            <Text style={styles.widgetTitle}>Water</Text>
-            <Text style={styles.widgetSubtitle}>
-              {hydrationLogged > 0 ? hydrationProgressText : 'Log water'}
-          </Text>
-            <View style={styles.widgetArrow}>
-              <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
+        {/* Evening Check-In Widget - Only remaining widget */}
+        <TouchableOpacity
+          style={styles.eveningWidgetCard}
+          onPress={handleEveningCheckInPress}
+          activeOpacity={0.7}
+        >
+          <View style={styles.eveningWidgetContent}>
+            <View style={styles.eveningWidgetLeft}>
+              <View style={styles.eveningWidgetIconContainer}>
+                <Ionicons name="moon-outline" size={24} color="#0F4C44" />
+              </View>
+              <View style={styles.eveningWidgetText}>
+                <Text style={styles.eveningWidgetTitle}>Evening check-in</Text>
+                <Text style={styles.eveningWidgetSubtitle}>
+                  {accessInfo.hasFullAccess ? 'Reflect + sleep prep' : 'Reflect + sleep prep'}
+                </Text>
+              </View>
             </View>
-          </TouchableOpacity>
-
-          {/* Progress Widget */}
-          <TouchableOpacity
-            style={styles.widgetCard}
-            onPress={handleProgressPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.widgetIconContainer}>
-              <Ionicons name="stats-chart-outline" size={24} color="#0F4C44" />
-            </View>
-            <Text style={styles.widgetTitle}>Progress</Text>
-            <Text style={styles.widgetSubtitle}>
-              {streak > 0 ? `Streak: ${streak} days` : 'Track progress'}
-          </Text>
-            <View style={styles.widgetArrow}>
-              <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
-            </View>
-          </TouchableOpacity>
-          
-          {/* Today's Plan Widget */}
-          <TouchableOpacity
-            style={styles.widgetCard}
-            onPress={handleRecoveryPlanPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.widgetIconContainer}>
-              <Ionicons name="sunny-outline" size={24} color="#0F4C44" />
-            </View>
-            <Text style={styles.widgetTitle}>Today's Plan</Text>
-            <Text style={styles.widgetSubtitle}>
-              {planStepsLeft !== null ? `${planStepsLeft} steps left` : 'Recovery steps'}
-            </Text>
-            {planStepsLeft !== null && planStepsLeft > 0 && (
-              <Text style={styles.widgetMicroData}>{planStepsLeft} steps left</Text>
-            )}
-            {planStepsLeft === null && isCheckInCompleted && (
-              <Text style={styles.widgetMicroData}>Pending</Text>
-            )}
-            <View style={styles.widgetArrow}>
-              <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
-            </View>
-          </TouchableOpacity>
-
-          {/* Evening Check-In Widget */}
-          <TouchableOpacity
-            style={styles.widgetCard}
-            onPress={handleEveningCheckInPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.widgetIconContainer}>
-              <Ionicons name="moon-outline" size={24} color="#0F4C44" />
-            </View>
-            <Text style={styles.widgetTitle}>Evening check-in</Text>
-            <Text style={styles.widgetSubtitle}>
-              {accessInfo.hasFullAccess ? 'Reflect + sleep prep' : 'Reflect + sleep prep'}
-              </Text>
             {!accessInfo.hasFullAccess && (
               <View style={styles.premiumBadge}>
                 <Text style={styles.premiumBadgeText}>Premium</Text>
               </View>
             )}
-            <View style={styles.widgetArrow}>
-              <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
-            </View>
-          </TouchableOpacity>
-        </View>
+            <Ionicons name="chevron-forward" size={20} color="rgba(15,76,68,0.3)" />
+          </View>
+        </TouchableOpacity>
 
         {/* Dev: Clear Check-In Button (only in development) */}
         {__DEV__ && (
@@ -1330,11 +1274,18 @@ const styles = StyleSheet.create({
   progressSnapshotHeader: {
     marginBottom: 16,
   },
+  progressSnapshotTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  progressIcon: {
+    marginRight: 8,
+  },
   progressSnapshotTitle: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
     color: '#0F3D3E',
-    marginBottom: 4,
   },
   progressSnapshotSubtitle: {
     fontFamily: 'Inter_400Regular',
@@ -1555,6 +1506,56 @@ const styles = StyleSheet.create({
     color: '#0F4C44',
     fontFamily: 'Inter_600SemiBold',
     letterSpacing: 0.5,
+  },
+
+  // Evening Check-In Widget (single card, not in grid)
+  eveningWidgetCard: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(15,76,68,0.08)',
+    shadowColor: 'rgba(15,76,68,0.06)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 1,
+    elevation: 3,
+  },
+  eveningWidgetContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  eveningWidgetLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  eveningWidgetIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(15,76,68,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  eveningWidgetText: {
+    flex: 1,
+  },
+  eveningWidgetTitle: {
+    ...typography.bodyMedium,
+    fontSize: 15,
+    color: '#0F3D3E',
+    marginBottom: 2,
+  },
+  eveningWidgetSubtitle: {
+    ...typography.bodySmall,
+    fontSize: 13,
+    color: 'rgba(15,61,62,0.6)',
+    lineHeight: 18,
   },
 
   // Upgrade Card
