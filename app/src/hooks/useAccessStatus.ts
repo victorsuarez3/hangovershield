@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../providers/AuthProvider';
 import {
   isWelcomeUnlockActive,
@@ -63,6 +64,22 @@ export function useAccessStatus(): AccessInfo {
   const [isTrialActive, setIsTrialActive] = useState(false);
   const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [devPremiumEnabled, setDevPremiumEnabled] = useState(false);
+
+  // Check for dev premium flag (for testing)
+  useEffect(() => {
+    const checkDevPremium = async () => {
+      try {
+        const DEV_PREMIUM_KEY = '@hangovershield_dev_premium_enabled';
+        const enabled = await AsyncStorage.getItem(DEV_PREMIUM_KEY);
+        setDevPremiumEnabled(enabled === 'true');
+      } catch (error) {
+        console.error('Error checking dev premium:', error);
+        setDevPremiumEnabled(false);
+      }
+    };
+    checkDevPremium();
+  }, []);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Update from RevenueCat CustomerInfo
@@ -146,11 +163,14 @@ export function useAccessStatus(): AccessInfo {
   // ─────────────────────────────────────────────────────────────────────────────
 
   let status: AccessStatus;
-  if (isPremiumActive) {
-    // Priority 1: RevenueCat premium (paid subscription or trial)
+  // Priority 1: Dev premium flag (for testing)
+  if (devPremiumEnabled) {
+    status = 'premium';
+  } else if (isPremiumActive) {
+    // Priority 2: RevenueCat premium (paid subscription or trial)
     status = 'premium';
   } else if (isWelcomeActive) {
-    // Priority 2: Firestore welcome unlock (24h free access)
+    // Priority 3: Firestore welcome unlock (24h free access)
     status = 'welcome';
   } else {
     // Default: Free user

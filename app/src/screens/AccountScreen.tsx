@@ -63,6 +63,11 @@ interface PremiumFeaturesModalProps {
   onClose: () => void;
 }
 
+interface MedicalDisclaimerModalProps {
+  visible: boolean;
+  onClose: () => void;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Components
 // ─────────────────────────────────────────────────────────────────────────────
@@ -229,9 +234,10 @@ const PremiumFeaturesModal: React.FC<PremiumFeaturesModalProps> = ({
 }) => {
   const features = [
     'Daily recovery plan',
+    'Morning check-in',
+    'Evening check-in',
     'Smart hydration tracking',
-    'Daily check-ins + streaks',
-    'Progress tracking',
+    'Progress & streak tracking',
     'Early access to new features',
   ];
 
@@ -277,13 +283,66 @@ const PremiumFeaturesModal: React.FC<PremiumFeaturesModalProps> = ({
   );
 };
 
+const MedicalDisclaimerModal: React.FC<MedicalDisclaimerModalProps> = ({
+  visible,
+  onClose,
+}) => {
+  const disclaimerText = `Hangover Shield provides general wellness guidance and self-reflection tools.
+It is not intended to diagnose, treat, cure, or prevent any medical condition.
+If symptoms are severe, persistent, or concerning, seek professional medical help.`;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Medical Disclaimer</Text>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={onClose}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+            >
+              <Ionicons name="close" size={24} color="rgba(15, 76, 68, 0.5)" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.disclaimerContent}>
+            <Text style={styles.disclaimerText}>{disclaimerText}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.modalSingleButton}
+            onPress={onClose}
+            activeOpacity={0.8}
+            accessibilityLabel="Got it"
+            accessibilityRole="button"
+          >
+            <Text style={styles.modalSingleButtonText}>Got it</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
 const APP_LINKS = {
   APPLE_SUBSCRIPTION_MANAGEMENT: 'https://apps.apple.com/account/subscriptions',
-  SUPPORT_EMAIL: 'mailto:support@hangovershield.com',
+  SUPPORT_URL: 'https://hangovershield.co/contact',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -299,6 +358,7 @@ export const AccountScreen: React.FC = () => {
   const [premiumModalVisible, setPremiumModalVisible] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
+  const [medicalDisclaimerModalVisible, setMedicalDisclaimerModalVisible] = useState(false);
 
   // Subscription Management
   const handleManageSubscription = async () => {
@@ -383,14 +443,15 @@ export const AccountScreen: React.FC = () => {
   // Support
   const handleContactSupport = async () => {
     try {
-      const supported = await Linking.canOpenURL(APP_LINKS.SUPPORT_EMAIL);
+      const supported = await Linking.canOpenURL(APP_LINKS.SUPPORT_URL);
       if (supported) {
-        await Linking.openURL(APP_LINKS.SUPPORT_EMAIL);
+        await Linking.openURL(APP_LINKS.SUPPORT_URL);
       } else {
-        Alert.alert('Unable to send email', 'Please check your email configuration.');
+        Alert.alert('Unable to open link', 'Please check your internet connection.');
       }
     } catch (error) {
-      console.error('Error opening email:', error);
+      console.error('Error opening support URL:', error);
+      Alert.alert('Error', 'Unable to open support page. Please try again.');
     }
   };
 
@@ -439,22 +500,6 @@ export const AccountScreen: React.FC = () => {
           />
         </AccountSection>
 
-        {/* Account Section */}
-        <AccountSection title="Account">
-          <AccountRow
-            icon="log-out-outline"
-            label="Sign Out"
-            onPress={handleSignOut}
-          />
-          <View style={styles.separator} />
-          <AccountRow
-            icon="trash-outline"
-            label="Delete Account"
-            subtitle="Permanently delete your account and data"
-            onPress={handleDeleteAccount}
-          />
-        </AccountSection>
-
         {/* Legal Section */}
         <AccountSection title="Legal">
           <AccountRow
@@ -468,6 +513,13 @@ export const AccountScreen: React.FC = () => {
             label="Terms of Service"
             onPress={handleTermsOfService}
           />
+          <View style={styles.separator} />
+          <AccountRow
+            icon="medical-outline"
+            label="Medical Disclaimer"
+            subtitle="General wellness information. Not medical advice."
+            onPress={() => setMedicalDisclaimerModalVisible(true)}
+          />
         </AccountSection>
 
         {/* Support Section */}
@@ -477,6 +529,22 @@ export const AccountScreen: React.FC = () => {
             label="Contact Support"
             subtitle="Get help or send feedback"
             onPress={handleContactSupport}
+          />
+        </AccountSection>
+
+        {/* Account Section */}
+        <AccountSection title="Account">
+          <AccountRow
+            icon="log-out-outline"
+            label="Sign Out"
+            onPress={handleSignOut}
+          />
+          <View style={styles.separator} />
+          <AccountRow
+            icon="trash-outline"
+            label="Delete Account"
+            subtitle="Permanently delete your account and data"
+            onPress={handleDeleteAccount}
           />
         </AccountSection>
 
@@ -512,6 +580,11 @@ export const AccountScreen: React.FC = () => {
         onClose={() => setPrivacyModalVisible(false)}
         title="Privacy Policy"
         content={<PrivacyPolicyContent />}
+      />
+
+      <MedicalDisclaimerModal
+        visible={medicalDisclaimerModalVisible}
+        onClose={() => setMedicalDisclaimerModalVisible(false)}
       />
     </SafeAreaView>
   );
@@ -833,6 +906,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#0F3D3E',
     marginLeft: 12,
+  },
+  modalOverlayTouchable: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  disclaimerContent: {
+    marginBottom: 24,
+  },
+  disclaimerText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 16,
+    lineHeight: 24,
+    color: 'rgba(15, 61, 62, 0.7)',
   },
 });
 

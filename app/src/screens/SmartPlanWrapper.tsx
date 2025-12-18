@@ -33,71 +33,53 @@ export const SmartPlanWrapper: React.FC = () => {
     actions: RecoveryAction[];
   } | null>(null);
 
-  // Load check-in and generate plan
+  // Load plan from unified service (single source of truth)
   useEffect(() => {
     const loadPlan = async () => {
       setIsLoading(true);
 
       try {
-        // Try to get check-in from Firestore first, then local
-        let checkIn = null;
-        if (user?.uid) {
-          checkIn = await getTodayDailyCheckIn(user.uid);
-        }
-        
-        if (!checkIn) {
-          // Fallback to local storage
-          const localCheckIn = await getLocalDailyCheckIn();
-          if (localCheckIn) {
-            checkIn = {
-              date: localCheckIn.id,
-              severity: localCheckIn.level,
-              severityLabel: '', // Will be set below
-              symptoms: localCheckIn.symptoms,
-              drankLastNight: localCheckIn.drankLastNight,
-              drinkingToday: localCheckIn.drinkingToday,
-            };
-          }
-        }
-
-        // If no check-in found, redirect to check-in screen
-        if (!checkIn) {
-          // Navigate to check-in if no plan exists
-          // For now, generate a default "none" plan as fallback
-          const feeling: FeelingOption = 'none';
-          const symptoms: SymptomKey[] = [];
-          generatePlanData(feeling, symptoms);
+        // Read from unified service (single source of truth)
+        if (!user?.uid) {
+          console.warn('[SmartPlanWrapper] No user ID, cannot load plan');
+          setIsLoading(false);
           return;
         }
 
-        // Map severity to feeling
-        const feeling = checkIn.severity as FeelingOption;
-        const symptomKeys = checkIn.symptoms.filter((s): s is SymptomKey => {
-          return [
-            'headache',
-            'nausea',
-            'dryMouth',
-            'dizziness',
-            'fatigue',
-            'anxiety',
-            'brainFog',
-            'poorSleep',
-            'noSymptoms',
-          ].includes(s);
-        }) as SymptomKey[];
+        const checkIn = await getTodayDailyCheckIn(user.uid);
+        
+        if (checkIn && checkIn.generatedPlan && checkIn.completedAt) {
+          // Use saved plan from unified service
+          const today = new Date();
+          const dateString = today.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+          });
 
-        generatePlanData(feeling, symptomKeys, checkIn.drankLastNight, checkIn.drinkingToday);
+          setPlanData({
+            date: dateString,
+            recoveryWindowLabel: checkIn.generatedPlan.recoveryWindowLabel,
+            symptomLabels: checkIn.generatedPlan.symptomLabels,
+            actions: checkIn.generatedPlan.steps,
+          });
+          console.log('[SmartPlanWrapper] Loaded plan from unified service');
+        } else {
+          // No check-in found - redirect to check-in screen
+          console.warn('[SmartPlanWrapper] No check-in found, redirecting to check-in');
+          navigation.navigate('CheckIn');
+        }
       } catch (error) {
         console.error('[SmartPlanWrapper] Error loading plan:', error);
-        // Fallback to default plan
-        generatePlanData('none', []);
+        // Fallback: try to navigate to check-in
+        navigation.navigate('CheckIn');
       } finally {
         setIsLoading(false);
       }
     };
 
     loadPlan();
-  }, [user?.uid]);
+  }, [user?.uid, navigation]);
 
   const generatePlanData = (feeling: FeelingOption, symptoms: SymptomKey[], drankLastNight?: boolean, drinkingToday?: boolean) => {
     // Use centralized plan generator

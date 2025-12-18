@@ -57,15 +57,19 @@ export const useDailyCheckIn = (userId: string | null): UseDailyCheckInReturn =>
     try {
       const checkIn = await getTodayDailyCheckIn(userId);
       
-      if (checkIn) {
+      // Check-in is completed only if it exists AND has completedAt timestamp
+      // This ensures onboarding check-in counts as completed
+      if (checkIn && checkIn.completedAt) {
         setTodayCheckIn(checkIn);
         setStatus('completed_today');
+        console.log('[useDailyCheckIn] Check-in completed for today');
       } else {
         setTodayCheckIn(null);
         setStatus('needs_checkin');
+        console.log('[useDailyCheckIn] No check-in found or not completed');
       }
     } catch (error) {
-      console.error('Error checking daily check-in status:', error);
+      console.error('[useDailyCheckIn] Error checking daily check-in status:', error);
       // Default to needs check-in if we cannot verify
       setStatus('needs_checkin');
     } finally {

@@ -24,6 +24,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { useUserDataStore } from '../stores/useUserDataStore';
 import { useAppNavigation } from '../contexts/AppNavigationContext';
 import { WelcomeCountdownBanner } from '../components/WelcomeCountdownBanner';
+import { InfoTooltipModal } from '../components/InfoTooltipModal';
 import { PaywallSource } from '../constants/paywallSources';
 import { Analytics } from '../utils/analytics';
 import {
@@ -70,6 +71,9 @@ export const HomeScreen: React.FC = () => {
   // Menu state
   const [menuVisible, setMenuVisible] = useState(false);
   const [currentScreen] = useState<CurrentScreen>('home');
+  
+  // Hydration tooltip state
+  const [hydrationTooltipVisible, setHydrationTooltipVisible] = useState(false);
 
   // Get user's first name
   const firstName = useMemo(() => {
@@ -202,11 +206,25 @@ export const HomeScreen: React.FC = () => {
     setPlanStepsLeft(null); // null means we'll show "Pending"
   }, [isCheckInCompleted, user?.uid]);
 
-  // Load today's check-in data for contextual feedback
+  // Load today's check-in data for contextual feedback (from unified service)
   useEffect(() => {
     const loadTodayCheckIn = async () => {
       try {
-        // Try local first (fast)
+        // Read from unified service (single source of truth)
+        if (user?.uid) {
+          const firestoreCheckIn = await getTodayDailyCheckIn(user.uid);
+          if (firestoreCheckIn && firestoreCheckIn.completedAt) {
+            // Check-in exists and is completed
+            setTodayCheckInData({
+              severity: firestoreCheckIn.severity,
+              drankLastNight: firestoreCheckIn.drankLastNight,
+              drinkingToday: firestoreCheckIn.drinkingToday,
+            });
+            return;
+          }
+        }
+
+        // Fallback to local storage
         const localCheckIn = await getLocalDailyCheckIn();
         if (localCheckIn) {
           const todayId = getTodayId();
@@ -215,19 +233,6 @@ export const HomeScreen: React.FC = () => {
               severity: localCheckIn.level,
               drankLastNight: localCheckIn.drankLastNight,
               drinkingToday: localCheckIn.drinkingToday,
-            });
-            return;
-          }
-        }
-
-        // Try Firestore if logged in
-        if (user?.uid) {
-          const firestoreCheckIn = await getTodayDailyCheckIn(user.uid);
-          if (firestoreCheckIn) {
-            setTodayCheckInData({
-              severity: firestoreCheckIn.severity,
-              drankLastNight: firestoreCheckIn.drankLastNight,
-              drinkingToday: firestoreCheckIn.drinkingToday,
             });
           }
         }
@@ -264,8 +269,13 @@ export const HomeScreen: React.FC = () => {
           }
         }
 
-        // Generate micro-action if check-in exists
-        if (checkIn) {
+        // Read micro-action from unified service (single source of truth)
+        if (checkIn && 'microStep' in checkIn && checkIn.microStep) {
+          // Use saved micro-action from unified service
+          setMicroAction(checkIn.microStep);
+          console.log('[HomeScreen] Loaded micro-action from unified service');
+        } else if (checkIn) {
+          // Fallback: generate if not saved yet (shouldn't happen in normal flow)
           const feeling = checkIn.severity as 'mild' | 'moderate' | 'severe' | 'none';
           const symptomKeys = checkIn.symptoms.filter((s): s is 'headache' | 'nausea' | 'dryMouth' | 'dizziness' | 'fatigue' | 'anxiety' | 'brainFog' | 'poorSleep' | 'noSymptoms' => {
             return ['headache', 'nausea', 'dryMouth', 'dizziness', 'fatigue', 'anxiety', 'brainFog', 'poorSleep', 'noSymptoms'].includes(s);
@@ -761,6 +771,19 @@ export const HomeScreen: React.FC = () => {
           <View style={styles.waterLogHeader}>
             <Ionicons name="water" size={20} color="#FF8C42" />
             <Text style={styles.waterLogTitle}>Hydration today</Text>
+            <TouchableOpacity
+              onPress={() => setHydrationTooltipVisible(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.infoIconButton}
+              accessibilityLabel="Show hydration guide"
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={18}
+                color="rgba(15, 76, 68, 0.5)"
+              />
+            </TouchableOpacity>
           </View>
 
           {/* Progress */}
@@ -1003,6 +1026,19 @@ export const HomeScreen: React.FC = () => {
         onGoToSubscription={handleGoToSubscription}
         currentScreen={currentScreen}
       />
+
+      {/* Hydration Tooltip Modal */}
+      <InfoTooltipModal
+        visible={hydrationTooltipVisible}
+        onClose={() => setHydrationTooltipVisible(false)}
+        title="Hydration guide"
+        items={[
+          'A typical glass of water is ~200ml',
+          '+200ml = one glass • +500ml = a small bottle',
+          'Your daily goal is a general guideline to support recovery',
+        ]}
+        ctaLabel="Got it"
+      />
     </View>
   );
 };
@@ -1177,6 +1213,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
     color: '#0F3D3E',
+    flex: 1,
+  },
+  infoIconButton: {
+    marginLeft: 'auto',
   },
   waterLogProgress: {
     marginBottom: 16,

@@ -15,7 +15,11 @@ import { PlanCompleteScreen } from '../screens/PlanCompleteScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
 import { PaywallSourceType } from '../constants/paywallSources';
 import { getRecoveryAnalysis, getKeySymptomLabels } from '../utils/recoveryAnalysis';
-import { DailyCheckInSeverity, markPlanCompletedForToday } from '../services/dailyCheckIn';
+import { 
+  DailyCheckInSeverity, 
+  markPlanCompletedForToday,
+  getTodayDailyCheckIn,
+} from '../services/dailyCheckIn';
 import { getTodayId } from '../utils/dateUtils';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -135,141 +139,82 @@ const DailyRecoveryPlanWrapper: React.FC<DailyRecoveryPlanWrapperProps> = ({ use
   const route = useRoute<RouteProp<DailyCheckInStackParamList, 'DailyRecoveryPlan'>>();
   const navigation = useNavigation<NativeStackNavigationProp<DailyCheckInStackParamList>>();
   const { feeling, symptoms } = route.params;
+  const [planData, setPlanData] = React.useState<{
+    date: string;
+    recoveryWindowLabel: string;
+    symptomLabels: string[];
+    hydrationGoalLiters: number;
+    actions: any[];
+  } | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  // Generate recovery analysis from feeling + symptoms
-  const analysis = getRecoveryAnalysis(feeling, symptoms);
-  const baseSymptomLabels = getKeySymptomLabels(symptoms);
-  
-  // Add feeling label at the start
-  const symptomLabels = feeling !== 'none' 
-    ? [FEELING_DISPLAY_LABELS[feeling], ...baseSymptomLabels]
-    : baseSymptomLabels.length > 0 
-      ? baseSymptomLabels 
-      : ['Feeling okay'];
-
-  // Check if user reported poor sleep
-  const hasPoorSleep = symptoms.includes('poorSleep');
-
-  // Base actions - ordered by importance for recovery
-  const allActions = [
-    {
-      id: 'morning-1',
-      timeOfDay: 'morning' as const,
-      time: '6:00 AM',
-      title: 'Soft light & breathing',
-      description: 'Gentle light exposure and slow breathing help calm the nervous system and reduce early morning hangover stress.',
-      durationMinutes: 2,
-      icon: 'sunny-outline',
-      completed: false,
-    },
-    {
-      id: 'morning-2',
-      timeOfDay: 'morning' as const,
-      time: '8:00 AM',
-      title: 'Water + electrolytes',
-      description: 'Rehydrate early to support liver detox and reduce symptoms.',
-      durationMinutes: 1,
-      icon: 'water-outline',
-      completed: false,
-    },
-    {
-      id: 'morning-3',
-      timeOfDay: 'morning' as const,
-      time: '9:00 AM',
-      title: 'Light breakfast',
-      description: 'Easy-to-digest foods stabilize blood sugar and ease nausea (toast, banana, eggs).',
-      durationMinutes: 15,
-      icon: 'cafe-outline',
-      completed: false,
-    },
-    {
-      id: 'midday-1',
-      timeOfDay: 'midday' as const,
-      time: '11:00 AM',
-      title: 'Short walk & check-in',
-      description: 'Light movement boosts circulation and improves cognitive clarity.',
-      durationMinutes: 15,
-      icon: 'walk-outline',
-      completed: false,
-    },
-    {
-      id: 'afternoon-1',
-      timeOfDay: 'afternoon' as const,
-      time: '2:00 PM',
-      title: 'Light meal + rest',
-      description: 'Refuel gently; avoid heavy or greasy foods.',
-      durationMinutes: 20,
-      icon: 'restaurant-outline',
-      completed: false,
-    },
-  ];
-
-  // Power nap action - included based on severity or poor sleep
-  const powerNapAction = hasPoorSleep
-    ? {
-        id: 'midday-nap',
-        timeOfDay: 'midday' as const,
-        time: '1:00 PM',
-        title: 'Restorative power nap',
-        description: 'Your sleep was disrupted; a short nap helps your body catch up.',
-        durationMinutes: 25,
-        icon: 'moon-outline',
-        completed: false,
+  // Load plan from unified service (single source of truth)
+  React.useEffect(() => {
+    const loadPlan = async () => {
+      setIsLoading(true);
+      try {
+        // Load from unified service
+        const checkIn = await getTodayDailyCheckIn(userId);
+        
+        if (checkIn && checkIn.generatedPlan && checkIn.completedAt) {
+          // Use saved plan (single source of truth)
+          const today = new Date();
+          const dateString = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          
+          setPlanData({
+            date: dateString,
+            recoveryWindowLabel: checkIn.generatedPlan.recoveryWindowLabel,
+            symptomLabels: checkIn.generatedPlan.symptomLabels,
+            hydrationGoalLiters: checkIn.generatedPlan.hydrationGoalLiters,
+            actions: checkIn.generatedPlan.steps,
+          });
+          console.log('[DailyRecoveryPlanWrapper] Loaded plan from unified service');
+        } else {
+          // Fallback: plan should have been created in DailyCheckInScreen
+          console.warn('[DailyRecoveryPlanWrapper] Plan not found, generating fallback');
+          const { generatePlan } = await import('../domain/recovery/planGenerator');
+          const plan = generatePlan({
+            level: feeling,
+            symptoms: symptoms as any[],
+          });
+          
+          const today = new Date();
+          const dateString = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          
+          setPlanData({
+            date: dateString,
+            recoveryWindowLabel: plan.recoveryWindowLabel,
+            symptomLabels: plan.symptomLabels,
+            hydrationGoalLiters: plan.hydrationGoalLiters,
+            actions: plan.steps,
+          });
+        }
+      } catch (error) {
+        console.error('[DailyRecoveryPlanWrapper] Error loading plan:', error);
+        // Fallback to generating on the fly
+        const { generatePlan } = await import('../domain/recovery/planGenerator');
+        const plan = generatePlan({
+          level: feeling,
+          symptoms: symptoms as any[],
+        });
+        
+        const today = new Date();
+        const dateString = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        
+        setPlanData({
+          date: dateString,
+          recoveryWindowLabel: plan.recoveryWindowLabel,
+          symptomLabels: plan.symptomLabels,
+          hydrationGoalLiters: plan.hydrationGoalLiters,
+          actions: plan.steps,
+        });
+      } finally {
+        setIsLoading(false);
       }
-    : {
-        id: 'midday-nap',
-        timeOfDay: 'midday' as const,
-        time: '11:30 AM',
-        title: 'Power nap',
-        description: 'Short rest helps reset your nervous system and reduce brain fog.',
-        durationMinutes: 15,
-        icon: 'moon-outline',
-        completed: false,
-      };
+    };
 
-  // Build actions based on severity
-  let actions = [];
-  
-  if (feeling === 'severe') {
-    actions = [
-      ...allActions.slice(0, 4),
-      powerNapAction,
-      allActions[4],
-    ];
-  } else if (feeling === 'moderate') {
-    actions = [
-      ...allActions.slice(0, 4),
-      powerNapAction,
-      allActions[4],
-    ];
-  } else if (feeling === 'mild') {
-    if (hasPoorSleep) {
-      actions = [
-        ...allActions.slice(0, 4),
-        powerNapAction,
-        allActions[4],
-      ];
-    } else {
-      actions = [...allActions];
-    }
-  } else {
-    if (hasPoorSleep) {
-      actions = [
-        ...allActions.slice(0, 3),
-        powerNapAction,
-      ];
-    } else {
-      actions = allActions.slice(0, 4);
-    }
-  }
-
-  // Get today's date
-  const today = new Date();
-  const dateString = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-  // Convert recovery hours range object to string
-  const { min, max } = analysis.estimatedRecoveryHoursRange;
-  const recoveryWindowLabel = `${min}–${max} hours`;
+    loadPlan();
+  }, [userId, feeling, symptoms]);
 
   // Handler for completing the plan
   const handleCompletePlan = useCallback(async (stepsCompleted: number, totalSteps: number) => {
@@ -291,14 +236,19 @@ const DailyRecoveryPlanWrapper: React.FC<DailyRecoveryPlanWrapperProps> = ({ use
     navigation.navigate('PlanComplete', { stepsCompleted, totalSteps });
   }, [userId, navigation]);
 
+  if (isLoading || !planData) {
+    // Show loading state or fallback
+    return null; // Or a loading component
+  }
+
   return (
     <TodayRecoveryPlanScreen
-      date={dateString}
-      recoveryWindowLabel={recoveryWindowLabel}
-      symptomLabels={symptomLabels}
-      hydrationGoalLiters={1.5}
+      date={planData.date}
+      recoveryWindowLabel={planData.recoveryWindowLabel}
+      symptomLabels={planData.symptomLabels}
+      hydrationGoalLiters={planData.hydrationGoalLiters}
       hydrationProgress={0}
-      actions={actions}
+      actions={planData.actions}
       onToggleAction={(id, completed) => {
         console.log(`Action ${id} toggled to ${completed}`);
       }}

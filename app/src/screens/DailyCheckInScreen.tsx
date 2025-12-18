@@ -23,7 +23,7 @@ import {
   SEVERITY_LABELS,
   SEVERITY_DESCRIPTIONS,
   SYMPTOM_OPTIONS,
-  saveTodayDailyCheckIn,
+  ensureTodayPlan,
 } from '../services/dailyCheckIn';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -168,21 +168,27 @@ export const DailyCheckInScreen: React.FC<DailyCheckInScreenProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Save to Firestore
-      const success = await saveTodayDailyCheckIn(userId, {
+      // Save check-in with generated plan (single source of truth)
+      const checkInInput = {
         severity: selectedSeverity,
         severityLabel: SEVERITY_LABELS[selectedSeverity],
         symptoms: selectedSymptoms,
-      });
+        drankLastNight: false, // Daily check-in doesn't ask about this currently
+        drinkingToday: false, // Daily check-in doesn't ask about this currently
+      };
 
-      if (!success) {
-        console.warn('Failed to save daily check-in to Firestore, continuing anyway');
+      const savedCheckIn = await ensureTodayPlan(userId, checkInInput);
+
+      if (!savedCheckIn) {
+        console.warn('[DailyCheckInScreen] Failed to save check-in with plan, continuing anyway');
+      } else {
+        console.log('[DailyCheckInScreen] Saved check-in with plan');
       }
 
       // Call onComplete to trigger navigation
       onComplete(selectedSeverity, selectedSymptoms);
     } catch (error) {
-      console.error('Error in daily check-in:', error);
+      console.error('[DailyCheckInScreen] Error in daily check-in:', error);
       // Continue anyway even if save fails
       onComplete(selectedSeverity, selectedSymptoms);
     } finally {
