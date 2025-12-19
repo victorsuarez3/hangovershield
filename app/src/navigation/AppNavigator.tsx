@@ -15,7 +15,7 @@ import { CheckInCompleteScreen } from '../screens/CheckInCompleteScreen';
 import { SmartPlanWrapper } from '../screens/SmartPlanWrapper';
 import { PlanCompleteScreen } from '../screens/PlanCompleteScreen';
 import { ToolsScreen } from '../screens/ToolsScreen';
-import { ProgressScreen } from '../screens/ProgressScreen';
+import { ProgressInsightsScreen } from '../screens/ProgressInsightsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { AccountScreen } from '../screens/AccountScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
@@ -51,7 +51,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({ allowGuestMode = fal
         <Stack.Screen name="HomeMain" component={HomeScreen} />
         <Stack.Screen name="SmartPlan" component={SmartPlanWrapper} />
         <Stack.Screen name="Tools" component={ToolsScreen} />
-        <Stack.Screen name="Progress" component={ProgressScreen} />
+        <Stack.Screen name="Progress" component={ProgressInsightsScreen} />
         <Stack.Screen name="ProfileMain" component={ProfileScreen} />
         <Stack.Screen name="Account" component={AccountScreen} />
         

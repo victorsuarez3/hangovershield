@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, CommonActions } from '@react-navigation/native';
+import { useNavigation, CommonActions, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppMenuSheet, CurrentScreen } from '../components/AppMenuSheet';
 import { AppHeader } from '../components/AppHeader';
@@ -145,6 +145,16 @@ export const HomeScreen: React.FC = () => {
 
   // Daily check-in status (computed early for use in effects)
   const isCheckInCompleted = dailyCheckIn.status === 'completed_today';
+
+  // Refresh check-in status when screen comes into focus
+  // This ensures Home shows correct state after completing plan and returning from Congratulations
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.uid) {
+        dailyCheckIn.refreshCheckInStatus();
+      }
+    }, [user?.uid, dailyCheckIn])
+  );
 
   // Load progress data
   useEffect(() => {
