@@ -21,6 +21,11 @@ export interface LocalDailyCheckIn {
   // Alcohol flags (optional for backward compatibility)
   drankLastNight?: boolean;
   drinkingToday?: boolean;
+  // Evening check-in fields
+  eveningCheckInCompletedAt?: number; // Unix timestamp
+  eveningReflection?: string;
+  eveningMood?: 'calm' | 'okay' | 'tired' | 'not_great';
+  alcoholToday?: 'no' | 'a_little' | 'yes';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -316,6 +321,86 @@ export const wasCheckInCompleteShown = async (dateId?: string): Promise<boolean>
     return shown === 'true';
   } catch (error) {
     console.error('[dailyCheckInStorage] Error checking CheckInComplete shown status:', error);
+    return false;
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Evening Check-In Storage
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface EveningCheckInData {
+  eveningCheckInCompletedAt: number; // Unix timestamp
+  eveningReflection?: string;
+  eveningMood?: 'calm' | 'okay' | 'tired' | 'not_great';
+  alcoholToday?: 'no' | 'a_little' | 'yes';
+}
+
+/**
+ * Save evening check-in data to local storage
+ * Merges with existing daily check-in data
+ */
+export const saveLocalEveningCheckIn = async (
+  eveningData: Omit<EveningCheckInData, 'eveningCheckInCompletedAt'>
+): Promise<boolean> => {
+  try {
+    const dateId = getLocalDayId();
+    const storageKey = getStorageKey(dateId);
+
+    // Get existing check-in data
+    const existing = await getLocalDailyCheckIn(dateId);
+    if (!existing) {
+      console.warn('[dailyCheckInStorage] No existing check-in found for evening check-in');
+      // Create a minimal check-in entry if none exists
+      const minimalCheckIn: LocalDailyCheckIn = {
+        id: dateId,
+        createdAt: Date.now(),
+        level: 'none',
+        symptoms: [],
+        source: 'other',
+        version: 1,
+        eveningCheckInCompletedAt: Date.now(),
+        ...eveningData,
+      };
+      await AsyncStorage.setItem(storageKey, JSON.stringify(minimalCheckIn));
+      if (__DEV__) {
+        console.log('[dailyCheckInStorage] Created new check-in with evening data:', dateId);
+      }
+      return true;
+    }
+
+    // Merge evening data with existing check-in
+    const updated: LocalDailyCheckIn = {
+      ...existing,
+      eveningCheckInCompletedAt: Date.now(),
+      ...eveningData,
+    };
+
+    await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
+    if (__DEV__) {
+      console.log('[dailyCheckInStorage] Updated check-in with evening data:', {
+        dateId,
+        hasReflection: !!eveningData.eveningReflection,
+        hasMood: !!eveningData.eveningMood,
+        hasAlcohol: !!eveningData.alcoholToday,
+      });
+    }
+    return true;
+  } catch (error) {
+    console.error('[dailyCheckInStorage] Error saving evening check-in:', error);
+    return false;
+  }
+};
+
+/**
+ * Check if evening check-in was completed today
+ */
+export const hasCompletedEveningCheckInToday = async (dateId?: string): Promise<boolean> => {
+  try {
+    const checkIn = await getLocalDailyCheckIn(dateId);
+    return checkIn?.eveningCheckInCompletedAt !== undefined;
+  } catch (error) {
+    console.error('[dailyCheckInStorage] Error checking evening check-in status:', error);
     return false;
   }
 };

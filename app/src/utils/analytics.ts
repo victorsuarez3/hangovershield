@@ -22,7 +22,10 @@ export type AnalyticsEvent =
   | 'locked_section_shown'
   | 'locked_section_tapped'
   | 'home_widget_clicked'
-  | 'paywall_opened';
+  | 'paywall_opened'
+  | 'evening_checkin_completed'
+  | 'evening_closure_viewed'
+  | 'evening_home_state_closed';
 
 export interface PaywallShownProperties {
   source: string;
@@ -188,6 +191,25 @@ export const Analytics = {
       source,
       contextScreen: contextScreen || 'unknown',
       accessStatus: accessStatus || 'unknown',
+    });
+  },
+
+  // Evening check-in events
+  eveningCheckInCompleted: (userId: string) => {
+    logAnalyticsEvent('evening_checkin_completed', {
+      userId,
+    });
+  },
+
+  eveningClosureViewed: (userId: string) => {
+    logAnalyticsEvent('evening_closure_viewed', {
+      userId,
+    });
+  },
+
+  eveningHomeStateClosed: (userId: string) => {
+    logAnalyticsEvent('evening_home_state_closed', {
+      userId,
     });
   },
 };

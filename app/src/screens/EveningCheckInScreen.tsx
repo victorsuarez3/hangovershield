@@ -26,6 +26,8 @@ import { AppHeader } from '../components/AppHeader';
 import { SuccessCircle } from '../components/SuccessCircle';
 import { useAuth } from '../providers/AuthProvider';
 import { getTodayId } from '../utils/dateUtils';
+import { Analytics } from '../utils/analytics';
+import { saveLocalEveningCheckIn } from '../services/dailyCheckInStorage';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -97,33 +99,42 @@ export const EveningCheckInScreen: React.FC = () => {
 
     try {
       const todayId = getTodayId();
-      
-      // For dev mode, allow saving even without user
-      if (!user?.uid) {
-        console.log('[EveningCheckIn] No user ID - showing completion anyway (dev mode)');
-        setIsCompleted(true);
-        setTimeout(() => {
-          navigation.navigate('EveningCheckInComplete' as any);
-        }, 1200);
-        return;
-      }
 
-      const docRef = doc(db, 'users', user.uid, 'dailyCheckIns', todayId);
-
-      const eveningData: EveningCheckInData = {
-        date: todayId,
+      // Prepare evening data
+      const eveningDataLocal = {
         eveningReflection: eveningReflection.trim() || undefined,
         eveningMood: eveningMood || undefined,
         alcoholToday: alcoholToday || undefined,
-        completedAt: serverTimestamp(),
       };
 
-      console.log('[EveningCheckIn] Saving data:', eveningData);
+      console.log('[EveningCheckIn] Saving data:', eveningDataLocal);
 
-      // Merge with existing daily check-in data
-      await setDoc(docRef, eveningData, { merge: true });
+      // ALWAYS save to AsyncStorage first (works in dev mode without user)
+      await saveLocalEveningCheckIn(eveningDataLocal);
+      console.log('[EveningCheckIn] Saved to AsyncStorage successfully');
 
-      console.log('[EveningCheckIn] Saved evening check-in successfully');
+      // If user is logged in, also save to Firestore
+      if (user?.uid) {
+        const docRef = doc(db, 'users', user.uid, 'dailyCheckIns', todayId);
+
+        const eveningDataFirestore: EveningCheckInData = {
+          date: todayId,
+          eveningReflection: eveningReflection.trim() || undefined,
+          eveningMood: eveningMood || undefined,
+          alcoholToday: alcoholToday || undefined,
+          eveningCheckInCompletedAt: serverTimestamp(), // Specific field for evening check-in completion
+          completedAt: serverTimestamp(),
+        };
+
+        // Merge with existing daily check-in data
+        await setDoc(docRef, eveningDataFirestore, { merge: true });
+        console.log('[EveningCheckIn] Saved to Firestore successfully');
+
+        // Track analytics event
+        Analytics.eveningCheckInCompleted(user.uid);
+      } else {
+        console.log('[EveningCheckIn] No user ID - saved to AsyncStorage only (dev mode)');
+      }
 
       // Show completion feedback in the same screen
       setIsCompleted(true);
@@ -208,7 +219,7 @@ export const EveningCheckInScreen: React.FC = () => {
 
           {/* Emotional State Selection */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>How do you feel right now?</Text>
+            <Text style={styles.sectionTitle}>How does your body feel right now?</Text>
             <Text style={styles.sectionSubtitle}>Select one</Text>
 
             <View style={styles.optionsContainer}>
@@ -331,7 +342,7 @@ const styles = StyleSheet.create({
 
   // Sections
   section: {
-    marginBottom: 32,
+    marginBottom: 44,
   },
   sectionTitle: {
     fontFamily: 'CormorantGaramond_600SemiBold',
@@ -397,11 +408,6 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 2,
     borderColor: 'rgba(15, 76, 68, 0.1)',
-    shadowColor: 'rgba(15, 76, 68, 0.08)',
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    shadowOpacity: 1,
-    elevation: 2,
   },
   moodChipSelected: {
     borderColor: '#0F4C44',
@@ -428,11 +434,6 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 2,
     borderColor: 'rgba(15, 76, 68, 0.1)',
-    shadowColor: 'rgba(15, 76, 68, 0.08)',
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    shadowOpacity: 1,
-    elevation: 2,
   },
   alcoholChipSelected: {
     borderColor: '#0F4C44',
@@ -467,11 +468,11 @@ const styles = StyleSheet.create({
   completeButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: 'rgba(15, 76, 68, 0.2)',
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 12,
-    shadowOpacity: 1,
-    elevation: 6,
+    shadowColor: 'rgba(15, 76, 68, 0.15)',
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 8,
+    shadowOpacity: 0.7,
+    elevation: 4,
   },
   completeButtonDisabled: {
     opacity: 0.6,
