@@ -15,7 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { Button } from '../components/Button';
 import { useAppNavigation } from '../contexts/AppNavigationContext';
@@ -147,23 +147,18 @@ export const PlanCompleteScreen: React.FC = () => {
   }, []);
 
   const handleDone = () => {
-    // Navigate to HomeScreen
-    // Try direct navigation first (if we're in AppNavigator)
-    try {
-      navigation.navigate('HomeMain');
-    } catch (error) {
-      // Fallback to AppNavigationContext if direct navigation fails
-      console.log('[PlanCompleteScreen] Using appNav.goToHome()', {
-        user: user?.uid,
-        context: appNav.currentContext,
-      });
-      
-      if (user) {
-        appNav.goToHome();
-      } else {
-        // If no user, just navigate directly
-        navigation.navigate('HomeMain');
-      }
+    // Navigate to HomeScreen using AppNavigationContext (works from any navigator)
+    // This handles navigation correctly whether we're in AppNavigator or nested navigators
+    if (appNav && typeof appNav.goToHome === 'function') {
+      appNav.goToHome();
+    } else {
+      // Fallback: reset navigation stack to HomeMain
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'HomeMain' }],
+        })
+      );
     }
   };
 

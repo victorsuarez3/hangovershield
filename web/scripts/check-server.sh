@@ -82,3 +82,5 @@ echo ""
 echo "Si todo está correcto, puedes ejecutar:"
 echo "  cd web && ./scripts/deploy.sh"
 
+
+

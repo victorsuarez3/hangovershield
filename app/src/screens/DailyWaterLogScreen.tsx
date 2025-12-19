@@ -30,6 +30,7 @@ import {
 } from '../features/water/waterUtils';
 import { addWaterEntry, deleteWaterEntry, setHydrationGoal as saveHydrationGoal } from '../services/hydrationService';
 import { WaterEntry } from '../features/water/waterTypes';
+import { getTodayId } from '../utils/dateUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -58,7 +59,7 @@ export const DailyWaterLogScreen: React.FC = () => {
   const [customGoal, setCustomGoal] = useState('');
   const [celebrationScale] = useState(new Animated.Value(1));
 
-  const todayId = new Date().toISOString().split('T')[0];
+  const todayId = getTodayId();
   const todayEntries = hydrationLogs[todayId] || [];
 
   const progress = useMemo(

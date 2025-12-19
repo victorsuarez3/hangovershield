@@ -130,72 +130,6 @@ const SymptomChip: React.FC<SymptomChipProps> = ({ label, isSelected, onToggle }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Completed State Component
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface CompletedStateProps {
-  checkIn: LocalDailyCheckIn;
-  onViewPlan: () => void;
-}
-
-const CompletedState: React.FC<CompletedStateProps> = ({ checkIn, onViewPlan }) => {
-  const symptomsCount = checkIn.symptoms.filter(s => s !== 'noSymptoms').length;
-  const severityLabel = SEVERITY_LABELS[checkIn.level];
-
-  return (
-    <View style={styles.completedContainer}>
-      <View style={styles.completedIconCircle}>
-        <Ionicons name="checkmark-circle" size={48} color="#7AB48B" />
-      </View>
-      
-      <Text style={styles.completedTitle}>You're checked in for today.</Text>
-      <Text style={styles.completedSubtitle}>
-        Nice work. Your recovery plan is ready whenever you need it.
-      </Text>
-
-      {/* Summary Card */}
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Level:</Text>
-          <Text style={styles.summaryValue}>{severityLabel}</Text>
-        </View>
-        {symptomsCount > 0 && (
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Symptoms:</Text>
-            <Text style={styles.summaryValue}>{symptomsCount}</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Primary CTA */}
-      <TouchableOpacity
-        style={styles.viewPlanButton}
-        onPress={onViewPlan}
-        activeOpacity={0.8}
-      >
-        <LinearGradient
-          colors={['#0F4C44', '#0A3F37']}
-          style={styles.viewPlanGradient}
-        >
-          <Text style={styles.viewPlanText}>View Today's Plan</Text>
-          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {/* Secondary Text */}
-      <Text style={styles.nextCheckInText}>
-        Next check-in unlocks tomorrow.
-      </Text>
-
-      {/* Streak Seed */}
-      <Text style={styles.streakSeedText}>
-        You're building the habit.
-      </Text>
-    </View>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -210,7 +144,6 @@ export const CheckInScreen: React.FC = () => {
   const [drinkingToday, setDrinkingToday] = useState<boolean | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [todayCheckIn, setTodayCheckIn] = useState<LocalDailyCheckIn | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // Severity options with icons
@@ -225,6 +158,7 @@ export const CheckInScreen: React.FC = () => {
   ];
 
   // Check if user has already checked in today
+  // If yes, redirect to CheckInCompleteScreen instead of showing duplicate state
   useEffect(() => {
     const checkTodayStatus = async () => {
       setIsLoading(true);
@@ -237,8 +171,9 @@ export const CheckInScreen: React.FC = () => {
           const todayId = getLocalDayId();
           // Verify it's for today
           if (localCheckIn.id === todayId) {
-            setTodayCheckIn(localCheckIn);
-            setIsLoading(false);
+            // User already checked in - redirect to CheckInCompleteScreen
+            // This avoids duplicate "You're checked in" screens
+            navigation.replace('CheckInComplete');
             return;
           }
         }
@@ -250,19 +185,9 @@ export const CheckInScreen: React.FC = () => {
             const firestoreCheckIn = await getTodayDailyCheckIn(user.uid);
             
             if (firestoreCheckIn) {
-              // Convert to local format and save locally
-              const localFormat: LocalDailyCheckIn = {
-                id: firestoreCheckIn.date,
-                createdAt: firestoreCheckIn.createdAt?.toMillis() || Date.now(),
-                level: firestoreCheckIn.severity,
-                symptoms: firestoreCheckIn.symptoms,
-                source: 'daily_checkin',
-                version: 1,
-              };
-              
-              // Save to local for fast access next time
-              await saveLocalDailyCheckIn(localFormat);
-              setTodayCheckIn(localFormat);
+              // User already checked in - redirect to CheckInCompleteScreen
+              navigation.replace('CheckInComplete');
+              return;
             }
           } catch (error) {
             console.error('[CheckInScreen] Error checking Firestore:', error);
@@ -277,7 +202,7 @@ export const CheckInScreen: React.FC = () => {
     };
 
     checkTodayStatus();
-  }, [user?.uid]);
+  }, [user?.uid, navigation]);
 
   // Handle severity selection
   const handleSeveritySelect = useCallback((severity: DailyCheckInSeverity) => {
@@ -341,14 +266,6 @@ export const CheckInScreen: React.FC = () => {
       };
 
       await saveLocalDailyCheckIn(localCheckIn);
-      
-      // Update local state
-      const savedCheckIn: LocalDailyCheckIn = {
-        ...localCheckIn,
-        createdAt: Date.now(),
-        version: 1,
-      };
-      setTodayCheckIn(savedCheckIn);
 
       // Save to Firestore if logged in (best-effort, don't block)
       if (user?.uid) {
@@ -379,10 +296,6 @@ export const CheckInScreen: React.FC = () => {
     }
   }, [selectedSeverity, selectedSymptoms, drankLastNight, drinkingToday, user?.uid, navigation, isSubmitting]);
 
-  const handleViewPlan = useCallback(() => {
-    navigation.navigate('SmartPlan');
-  }, [navigation]);
-
   const canContinue = selectedSeverity !== null && !isSubmitting;
 
   // Loading state
@@ -401,35 +314,8 @@ export const CheckInScreen: React.FC = () => {
     );
   }
 
-  // Completed state
-  if (todayCheckIn) {
-    return (
-      <View style={styles.container}>
-        <LinearGradient
-          colors={HANGOVER_GRADIENT}
-          locations={[0, 1]}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <AppHeader
-          title="Daily Check-In"
-          showBackButton
-          onBackPress={() => navigation.goBack()}
-        />
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingTop: 16, paddingBottom: insets.bottom + 24 },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          <CompletedState checkIn={todayCheckIn} onViewPlan={handleViewPlan} />
-        </ScrollView>
-      </View>
-    );
-  }
-
   // Main check-in flow
+  // Note: If user already checked in, we redirect to CheckInCompleteScreen in useEffect
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -908,19 +794,34 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(15, 76, 68, 0.08)',
   },
   summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   summaryLabel: {
     fontFamily: 'Inter_500Medium',
     fontSize: 14,
     color: 'rgba(15, 61, 62, 0.6)',
+    marginBottom: 8,
   },
   summaryValue: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 15,
+    color: '#0F4C44',
+  },
+  symptomsChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  symptomChipDisplay: {
+    backgroundColor: 'rgba(15,76,68,0.07)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  symptomChipDisplayText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
     color: '#0F4C44',
   },
   viewPlanButton: {
@@ -1004,5 +905,73 @@ const styles = StyleSheet.create({
   alcoholButtonTextSelected: {
     color: '#0F4C44',
     fontFamily: 'Inter_600SemiBold',
+  },
+  
+  // Micro-Action Card
+  microActionCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 76, 68, 0.12)',
+    shadowColor: 'rgba(15, 76, 68, 0.1)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 1,
+    elevation: 4,
+  },
+  microActionHeader: {
+    marginBottom: 12,
+  },
+  microActionTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 18,
+    color: '#0F3D3E',
+    marginBottom: 4,
+  },
+  microActionSubtitle: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.6)',
+  },
+  microActionBody: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    color: 'rgba(15, 61, 62, 0.8)',
+    lineHeight: 22,
+  },
+  
+  // Micro-Actions Checklist
+  microActionsChecklist: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 76, 68, 0.08)',
+  },
+  checklistTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    color: '#0F3D3E',
+    marginBottom: 12,
+  },
+  checklistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  checklistIcon: {
+    marginRight: 12,
+  },
+  checklistText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    color: 'rgba(15, 61, 62, 0.8)',
+    flex: 1,
+    lineHeight: 22,
   },
 });

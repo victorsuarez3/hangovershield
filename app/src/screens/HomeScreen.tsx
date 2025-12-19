@@ -4,7 +4,7 @@
  * Consistent with app's calm, premium aesthetic
  */
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { AppMenuSheet, CurrentScreen } from '../components/AppMenuSheet';
 import { AppHeader } from '../components/AppHeader';
 import { useAccessStatus } from '../hooks/useAccessStatus';
 import { useDailyCheckIn } from '../hooks/useDailyCheckIn';
+import { usePlanCompletion } from '../hooks/usePlanCompletion';
 import { useAuth } from '../providers/AuthProvider';
 import { useUserDataStore } from '../stores/useUserDataStore';
 import { useAppNavigation } from '../contexts/AppNavigationContext';
@@ -86,6 +87,9 @@ export const HomeScreen: React.FC = () => {
 
   // Daily check-in status
   const dailyCheckIn = useDailyCheckIn(user?.uid || null);
+  
+  // Plan completion status (single source of truth from Firestore)
+  const planCompletion = usePlanCompletion(user?.uid || null);
 
   // Hydration state - use store as single source of truth
   const { hydrationGoal: storeHydrationGoal, todayHydrationTotal, addHydrationEntry: addToStore, setHydrationLogs } = useUserDataStore();
@@ -129,7 +133,7 @@ export const HomeScreen: React.FC = () => {
         const logs = await getTodayHydrationLog(user.uid);
         
         // Update store (single source of truth)
-        const todayId = new Date().toISOString().split('T')[0];
+        const todayId = getTodayId();
         const hydrationLogs: { [key: string]: any[] } = {};
         hydrationLogs[todayId] = logs;
         setHydrationLogs(hydrationLogs);
@@ -145,15 +149,39 @@ export const HomeScreen: React.FC = () => {
 
   // Daily check-in status (computed early for use in effects)
   const isCheckInCompleted = dailyCheckIn.status === 'completed_today';
+  
+  // Plan completion status
+  const isPlanCompleted = planCompletion.isPlanCompleted;
 
-  // Refresh check-in status when screen comes into focus
+  // Refresh both check-in and plan completion status when screen comes into focus
   // This ensures Home shows correct state after completing plan and returning from Congratulations
+  // Works with AsyncStorage even when Firestore isn't available
+  // Use useRef to store stable references to refresh functions to avoid infinite loops
+  const refreshCheckInRef = useRef(dailyCheckIn.refreshCheckInStatus);
+  const refreshPlanRef = useRef(planCompletion.refreshPlanStatus);
+  
+  // Update refs when functions change
+  useEffect(() => {
+    refreshCheckInRef.current = dailyCheckIn.refreshCheckInStatus;
+    refreshPlanRef.current = planCompletion.refreshPlanStatus;
+  }, [dailyCheckIn.refreshCheckInStatus, planCompletion.refreshPlanStatus]);
+  
   useFocusEffect(
     useCallback(() => {
-      if (user?.uid) {
-        dailyCheckIn.refreshCheckInStatus();
+      // Always refresh - hooks will check AsyncStorage first, then Firestore
+      refreshCheckInRef.current();
+      refreshPlanRef.current();
+      
+      // Debug logging (use current values, not from dependencies to avoid loops)
+      if (__DEV__) {
+        const todayId = getTodayId();
+        console.log('[HomeScreen] Refreshed completion states on focus:', {
+          todayId,
+          hasUserId: !!user?.uid,
+          sourceDocPath: user?.uid ? `users/${user.uid}/dailyCheckIns/${todayId}` : 'AsyncStorage only',
+        });
       }
-    }, [user?.uid, dailyCheckIn])
+    }, [user?.uid]) // Only depend on user?.uid, not the functions
   );
 
   // Load progress data
@@ -399,6 +427,17 @@ export const HomeScreen: React.FC = () => {
   }, [navigation]);
 
   const handleGoToCheckIn = useCallback(() => {
+    // If check-in is completed, navigate to CheckInCompleteScreen (the chosen screen)
+    // Pass skipProcessing=true to skip the processing animation when coming from Home
+    // Otherwise navigate to CheckInScreen to complete it
+    if (isCheckInCompleted) {
+      navigation.navigate('CheckInComplete', { skipProcessing: true });
+    } else {
+      navigation.navigate('CheckIn');
+    }
+  }, [navigation, isCheckInCompleted]);
+  
+  const handleGoToCheckInOld = useCallback(() => {
     navigation.navigate('CheckIn');
   }, [navigation]);
 
@@ -446,7 +485,7 @@ export const HomeScreen: React.FC = () => {
     if (!user?.uid) return;
     
     try {
-      const todayId = new Date().toISOString().split('T')[0];
+      const todayId = getTodayId();
       
       // Create water entry using utility function (consistent with DailyWaterLogScreen)
       const newEntry = createWaterEntry(amountMl);
@@ -485,7 +524,7 @@ export const HomeScreen: React.FC = () => {
   // Dev function to clear today's check-in
   const handleClearTodayCheckIn = useCallback(async () => {
     try {
-      // Clear local storage
+      // Clear local storage (this also clears plan completion)
       await deleteLocalDailyCheckIn();
       
       // Clear Firestore if logged in
@@ -493,19 +532,22 @@ export const HomeScreen: React.FC = () => {
         await deleteTodayDailyCheckIn(user.uid);
       }
       
-      // Refresh check-in status
+      // Refresh both check-in and plan completion status
       if (dailyCheckIn.refreshCheckInStatus) {
         await dailyCheckIn.refreshCheckInStatus();
+      }
+      if (planCompletion.refreshPlanStatus) {
+        await planCompletion.refreshPlanStatus();
       }
       
       // Reload today's check-in data
       setTodayCheckInData(null);
       
-      console.log('✓ Today\'s check-in cleared!');
+      console.log('✓ Today\'s check-in and plan completion cleared!');
     } catch (error) {
       console.error('Error clearing check-in:', error);
     }
-  }, [user?.uid, dailyCheckIn]);
+  }, [user?.uid, dailyCheckIn, planCompletion]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Computed Values
@@ -703,6 +745,19 @@ export const HomeScreen: React.FC = () => {
                   </Text>
                 </View>
               )}
+              {/* Show check-in completed status (optional - can remove if cleaner) */}
+              {isCheckInCompleted && (
+                <View style={[styles.chip, styles.chipCompleted]}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={14}
+                    color="#7AB48B"
+                  />
+                  <Text style={[styles.chipText, styles.chipTextCompleted]}>
+                    Check-in completed
+                  </Text>
+                </View>
+              )}
               {hydrationLogged > 0 && (
                 <View style={styles.chip}>
                   <Ionicons name="water" size={14} color="rgba(15,76,68,0.5)" />
@@ -712,12 +767,16 @@ export const HomeScreen: React.FC = () => {
             </View>
 
             {/* Primary CTA Button */}
+            {/* CRITICAL: Home always points to check-in once completed, regardless of plan status */}
+            {/* This reinforces identity (check-in) over task completion (plan) */}
           <TouchableOpacity
               style={styles.heroButton}
               onPress={(e) => {
                 e.stopPropagation();
                 if (isCheckInCompleted) {
-                  handleRecoveryPlanPress();
+                  // Always navigate to check-in details screen (the hub)
+                  // This preserves the psychological flow: awareness → action
+                  handleGoToCheckIn();
                 } else {
                   handleDailyCheckInPress();
                 }
@@ -729,7 +788,9 @@ export const HomeScreen: React.FC = () => {
                 style={styles.heroButtonGradient}
             >
                 <Text style={styles.heroButtonText}>
-                  {isCheckInCompleted ? "View today's check-in" : "Complete daily check-in"}
+                  {isCheckInCompleted 
+                    ? "View today's check-in"
+                    : "Complete daily check-in"}
               </Text>
                 <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
             </LinearGradient>
@@ -757,15 +818,19 @@ export const HomeScreen: React.FC = () => {
               />
             </View>
             <Text style={styles.recoveryScoreHelper}>
-              Complete today's plan to improve your score.
+              {isPlanCompleted 
+                ? "Great job completing today's plan!"
+                : "Complete today's plan to improve your score."}
             </Text>
-            <TouchableOpacity
-              onPress={handleRecoveryPlanPress}
-              activeOpacity={0.7}
-              style={styles.recoveryScoreCTA}
-            >
-              <Text style={styles.recoveryScoreCTAText}>View today's full plan →</Text>
-            </TouchableOpacity>
+            {!isPlanCompleted && (
+              <TouchableOpacity
+                onPress={handleRecoveryPlanPress}
+                activeOpacity={0.7}
+                style={styles.recoveryScoreCTA}
+              >
+                <Text style={styles.recoveryScoreCTAText}>View today's full plan →</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -1127,6 +1192,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     fontSize: 12,
     color: 'rgba(15,76,68,0.6)',
+  },
+  chipCompleted: {
+    backgroundColor: 'rgba(122, 180, 139, 0.1)',
   },
   chipTextCompleted: {
     color: '#7AB48B',

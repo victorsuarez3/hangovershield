@@ -111,3 +111,5 @@ ssh root@68.183.135.52 "docker restart hangovershield-web-prod"
 - **Por dominio (después de DNS)**: `http://hangovershield.co` ⏳ Pendiente DNS
 - **Por dominio HTTPS (después de SSL)**: `https://hangovershield.co` ⏳ Pendiente SSL
 
+
+

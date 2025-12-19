@@ -327,7 +327,7 @@ export const markPlanCompletedForToday = async (
     const completionData = {
       date: dateId,
       planCompleted: true,
-      completedAt: serverTimestamp(),
+      planCompletedAt: serverTimestamp(),
       stepsCompleted,
       totalSteps,
     };

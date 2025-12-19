@@ -15,12 +15,19 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
-import { getLocalDailyCheckIn } from '../services/dailyCheckInStorage';
+import { AppHeader } from '../components/AppHeader';
+import { 
+  getLocalDailyCheckIn, 
+  wasCheckInCompleteShown,
+  markCheckInCompleteShown,
+  getLocalDayId,
+} from '../services/dailyCheckInStorage';
 import { SEVERITY_LABELS, SYMPTOM_OPTIONS } from '../services/dailyCheckIn';
 import { generatePlan } from '../domain/recovery/planGenerator';
 import { FeelingOption, SymptomKey } from '../navigation/OnboardingNavigator';
+import { getTodayId } from '../utils/dateUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -32,23 +39,66 @@ try {
   // Haptics not available
 }
 
+// Processing messages (shown sequentially)
+const PROCESSING_MESSAGES = [
+  'Evaluating your check-in',
+  'Reviewing your symptoms',
+  'Understanding your recovery needs',
+  'Preparing today\'s plan',
+];
+
 export const CheckInCompleteScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const route = useRoute();
+  const params = route.params as { skipProcessing?: boolean } | undefined;
+  const skipProcessing = params?.skipProcessing || false;
+  
   const [checkIn, setCheckIn] = useState<any>(null);
   const [microAction, setMicroAction] = useState<any>(null);
   const [symptomLabels, setSymptomLabels] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(!skipProcessing);
+  const [processingStep, setProcessingStep] = useState(0);
 
   // Load check-in data and generate micro-action
+  // Only show this screen once per day - if already shown, navigate to Home
   useEffect(() => {
+    let processingInterval: NodeJS.Timeout | null = null;
+    let processingTimeout: NodeJS.Timeout | null = null;
+
     const loadData = async () => {
       try {
+        const todayId = getTodayId();
+        
         const localCheckIn = await getLocalDailyCheckIn();
         if (!localCheckIn) {
           // No check-in found, navigate back to check-in
           navigation.replace('CheckIn');
           return;
         }
+
+        // Verify it's for today
+        if (localCheckIn.id !== todayId) {
+          // Check-in is not for today, navigate to Home
+          navigation.replace('HomeMain');
+          return;
+        }
+        
+        // Check if this screen was already shown today
+        // Only redirect if NOT skipping processing (i.e., coming from check-in flow, not from Home)
+        const alreadyShown = await wasCheckInCompleteShown(todayId);
+        if (alreadyShown && !skipProcessing) {
+          // Already shown today and coming from check-in flow, navigate to Home instead
+          // This prevents showing the screen twice after completing check-in
+          if (__DEV__) {
+            console.log('[CheckInCompleteScreen] Already shown today, navigating to Home');
+          }
+          navigation.replace('HomeMain');
+          return;
+        }
+        
+        // If skipping processing (coming from Home), don't mark as shown again
+        // This allows users to view the screen multiple times from Home
 
         setCheckIn(localCheckIn);
 
@@ -78,9 +128,37 @@ export const CheckInCompleteScreen: React.FC = () => {
         setMicroAction(plan.microAction);
         setSymptomLabels(plan.symptomLabels);
 
-        // Haptic feedback
-        if (Haptics) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // Mark as shown for today (only if coming from check-in flow, not from Home)
+        if (!skipProcessing) {
+          await markCheckInCompleteShown(todayId);
+        }
+
+        // Start processing animation (2-3 seconds total) only if not skipping
+        if (!skipProcessing) {
+          // Cycle through processing messages
+          let currentStep = 0;
+          processingInterval = setInterval(() => {
+            currentStep += 1;
+            if (currentStep < PROCESSING_MESSAGES.length) {
+              setProcessingStep(currentStep);
+            }
+          }, 600); // Change message every 600ms
+
+          // After 2.5 seconds, show results
+          processingTimeout = setTimeout(() => {
+            if (processingInterval) {
+              clearInterval(processingInterval);
+            }
+            setIsProcessing(false);
+            
+            // Haptic feedback when showing results
+            if (Haptics) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+          }, 2500);
+        } else {
+          // Skip processing - show results immediately
+          setIsProcessing(false);
         }
       } catch (error) {
         console.error('[CheckInCompleteScreen] Error loading data:', error);
@@ -89,12 +167,23 @@ export const CheckInCompleteScreen: React.FC = () => {
     };
 
     loadData();
+
+    // Cleanup function
+    return () => {
+      if (processingInterval) {
+        clearInterval(processingInterval);
+      }
+      if (processingTimeout) {
+        clearTimeout(processingTimeout);
+      }
+    };
   }, [navigation]);
 
   const handleViewPlan = useCallback(() => {
     navigation.navigate('SmartPlan');
   }, [navigation]);
 
+  // Show loading state while data is being loaded
   if (!checkIn || !microAction) {
     return (
       <View style={styles.container}>
@@ -105,6 +194,33 @@ export const CheckInCompleteScreen: React.FC = () => {
         />
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Show processing/evaluation state before results
+  if (isProcessing) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={HANGOVER_GRADIENT}
+          locations={[0, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={styles.processingContainer}>
+          <View style={styles.processingIconCircle}>
+            <Ionicons name="analytics-outline" size={48} color="#0F4C44" />
+          </View>
+          <Text style={styles.processingTitle}>
+            {PROCESSING_MESSAGES[processingStep] || PROCESSING_MESSAGES[0]}
+          </Text>
+          <Text style={styles.processingSubtitle}>
+            {processingStep === 0 && 'Reviewing your symptoms'}
+            {processingStep === 1 && 'Understanding your recovery needs'}
+            {processingStep === 2 && 'Preparing today\'s plan'}
+            {processingStep >= 3 && 'Almost ready...'}
+          </Text>
         </View>
       </View>
     );
@@ -123,6 +239,18 @@ export const CheckInCompleteScreen: React.FC = () => {
     return option?.label || key;
   });
 
+  // Format date for header (premium, human-readable format)
+  const formatDateForHeader = (): string => {
+    const today = new Date();
+    return today.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const headerDate = formatDateForHeader();
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -130,12 +258,18 @@ export const CheckInCompleteScreen: React.FC = () => {
         locations={[0, 1]}
         style={StyleSheet.absoluteFillObject}
       />
+      
+      <AppHeader
+        title={headerDate}
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+      />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 },
+          { paddingTop: 16, paddingBottom: insets.bottom + 24 },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -147,12 +281,12 @@ export const CheckInCompleteScreen: React.FC = () => {
         {/* Title */}
         <Text style={styles.title}>You're checked in for today.</Text>
         <Text style={styles.subtitle}>
-          Nice work. Your plan is ready — and your next step is simple.
+          Nice work. Your plan is ready — let's take it step by step.
         </Text>
 
         {/* Summary Card */}
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryCardTitle}>Today</Text>
+          <Text style={styles.summaryCardTitle}>Today's check-in</Text>
           
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Level</Text>
@@ -201,7 +335,7 @@ export const CheckInCompleteScreen: React.FC = () => {
         {/* Micro-Action Card */}
         <View style={styles.microActionCard}>
           <View style={styles.microActionHeader}>
-            <Text style={styles.microActionTitle}>Do this first</Text>
+            <Text style={styles.microActionTitle}>Start here</Text>
             <Text style={styles.microActionSubtitle}>Takes ~{microAction.seconds} seconds</Text>
           </View>
           <Text style={styles.microActionBody}>{microAction.body}</Text>
@@ -217,7 +351,7 @@ export const CheckInCompleteScreen: React.FC = () => {
             colors={['#0F4C44', '#0A3F37']}
             style={styles.ctaGradient}
           >
-            <Text style={styles.ctaText}>View Today's Plan</Text>
+            <Text style={styles.ctaText}>Continue to today's plan</Text>
             <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           </LinearGradient>
         </TouchableOpacity>
@@ -256,6 +390,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(15, 61, 62, 0.7)',
   },
+  
+  // Processing State
+  processingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    paddingTop: 100,
+  },
+  processingIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(15, 76, 68, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+  },
+  processingTitle: {
+    fontFamily: 'CormorantGaramond_600SemiBold',
+    fontSize: 24,
+    color: '#0F3D3E',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  processingSubtitle: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    color: 'rgba(15, 61, 62, 0.6)',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: SCREEN_WIDTH * 0.8,
+  },
 
   // Icon
   iconCircle: {
@@ -291,7 +458,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 16,
     padding: 20,
-    marginBottom: 20,
+    marginBottom: 28,
     width: '100%',
     borderWidth: 1,
     borderColor: 'rgba(15, 76, 68, 0.08)',
