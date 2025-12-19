@@ -9,6 +9,7 @@ import {
   DailyCheckInData,
   DailyCheckInSeverity,
 } from '../services/dailyCheckIn';
+import { getLocalDailyCheckIn } from '../services/dailyCheckInStorage';
 import { getTodayId } from '../utils/dateUtils';
 
 export type DailyCheckInStatus = 
@@ -45,27 +46,75 @@ export const useDailyCheckIn = (userId: string | null): UseDailyCheckInReturn =>
   const [isLoading, setIsLoading] = useState(true);
 
   // Check if user has completed today's check-in
+  // Priority: AsyncStorage (local) first, then Firestore
   const checkTodayStatus = useCallback(async () => {
-    if (!userId) {
-      setStatus('loading');
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      const checkIn = await getTodayDailyCheckIn(userId);
+      // First check AsyncStorage (local) - this is the source of truth when Firestore isn't available
+      const localCheckIn = await getLocalDailyCheckIn();
+      const todayId = getTodayId();
       
-      if (checkIn) {
-        setTodayCheckIn(checkIn);
+      if (localCheckIn && localCheckIn.id === todayId) {
+        // Local check-in exists for today - mark as completed
+        setTodayCheckIn({
+          date: localCheckIn.id,
+          createdAt: null, // Local storage doesn't have Firestore timestamp
+          severity: localCheckIn.level,
+          severityLabel: getSeverityLabel(localCheckIn.level),
+          symptoms: localCheckIn.symptoms,
+          isHungover: localCheckIn.level !== 'none',
+          drankLastNight: localCheckIn.drankLastNight,
+          drinkingToday: localCheckIn.drinkingToday,
+        });
         setStatus('completed_today');
-      } else {
-        setTodayCheckIn(null);
-        setStatus('needs_checkin');
+        if (__DEV__) {
+          console.log('[useDailyCheckIn] Check-in completed (from AsyncStorage):', {
+            todayId,
+            severity: localCheckIn.level,
+            source: 'AsyncStorage',
+          });
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // Fallback to Firestore if no local check-in found
+      if (userId) {
+        try {
+          const checkIn = await getTodayDailyCheckIn(userId);
+          
+          // Check-in is completed only if it exists AND has completedAt timestamp
+          if (checkIn && checkIn.completedAt) {
+            setTodayCheckIn(checkIn);
+            setStatus('completed_today');
+            if (__DEV__) {
+              console.log('[useDailyCheckIn] Check-in completed (from Firestore):', {
+                todayId,
+                source: 'Firestore',
+              });
+            }
+            setIsLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.error('[useDailyCheckIn] Error checking Firestore:', error);
+          // Continue to set needs_checkin
+        }
+      }
+
+      // No check-in found in either source
+      setTodayCheckIn(null);
+      setStatus('needs_checkin');
+      if (__DEV__) {
+        console.log('[useDailyCheckIn] No check-in found:', {
+          todayId,
+          hasLocal: !!localCheckIn,
+          localDateId: localCheckIn?.id,
+        });
       }
     } catch (error) {
-      console.error('Error checking daily check-in status:', error);
+      console.error('[useDailyCheckIn] Error checking daily check-in status:', error);
       // Default to needs check-in if we cannot verify
       setStatus('needs_checkin');
     } finally {

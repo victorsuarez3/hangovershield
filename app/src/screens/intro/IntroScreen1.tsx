@@ -141,3 +141,5 @@ const styles = StyleSheet.create({
 
 export default IntroScreen1;
 
+
+

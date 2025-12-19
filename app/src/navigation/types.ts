@@ -26,6 +26,7 @@ export type RootStackParamList = {
   PurchaseSuccess: undefined;
   EveningCheckIn: undefined;
   EveningCheckInLocked: undefined;
+  EveningCheckInComplete: undefined;
   DailyWaterLog: undefined;
 };
 

@@ -7,14 +7,7 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { WaterEntry } from '../features/water/waterTypes';
 import { HydrationLog } from '../stores/useUserDataStore';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Utility Functions
-// ─────────────────────────────────────────────────────────────────────────────
-
-const getTodayId = (): string => {
-  return new Date().toISOString().split('T')[0];
-};
+import { getTodayId } from '../utils/dateUtils';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Hydration Goal

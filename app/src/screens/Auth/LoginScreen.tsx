@@ -230,6 +230,41 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           >
             <Text style={styles.skipButtonText}>Reset Onboarding</Text>
           </TouchableOpacity>
+
+          {/* Toggle Premium Button */}
+          <TouchableOpacity
+            style={[styles.skipButton, styles.premiumButton]}
+            onPress={async () => {
+              try {
+                const DEV_PREMIUM_KEY = '@hangovershield_dev_premium_enabled';
+                const currentEnabled = await AsyncStorage.getItem(DEV_PREMIUM_KEY);
+                
+                if (currentEnabled === 'true') {
+                  // Disable premium
+                  await AsyncStorage.removeItem(DEV_PREMIUM_KEY);
+                  Alert.alert(
+                    '✅ Dev Premium Disabled',
+                    'Premium features are now disabled for dev. Restart the app to see changes.',
+                    [{ text: 'OK' }]
+                  );
+                } else {
+                  // Enable premium
+                  await AsyncStorage.setItem(DEV_PREMIUM_KEY, 'true');
+                  Alert.alert(
+                    '✅ Dev Premium Enabled',
+                    'Premium features are now enabled for dev. Restart the app to see changes.',
+                    [{ text: 'OK' }]
+                  );
+                }
+              } catch (error) {
+                console.error('Error toggling dev premium:', error);
+                Alert.alert('Error', 'Failed to toggle dev premium');
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.skipButtonText}>Toggle Premium</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -382,6 +417,10 @@ const createStyles = (theme: any, topInset: number, bottomInset: number) =>
     resetButton: {
       backgroundColor: 'rgba(200, 100, 50, 0.15)',
       borderColor: 'rgba(200, 100, 50, 0.3)',
+    },
+    premiumButton: {
+      backgroundColor: 'rgba(100, 200, 100, 0.15)',
+      borderColor: 'rgba(100, 200, 100, 0.3)',
     },
     debugContainer: {
       marginTop: 16,

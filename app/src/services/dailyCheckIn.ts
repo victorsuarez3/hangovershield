@@ -1,6 +1,7 @@
 /**
  * Daily Check-In Service - Hangover Shield
  * Firestore helpers for daily check-in persistence
+ * Single source of truth for daily check-ins and recovery plans
  */
 
 import {
@@ -18,6 +19,9 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getTodayId } from '../utils/dateUtils';
+// Import plan types for unified storage
+import { RecoveryPlan, MicroAction } from '../domain/recovery/planGenerator';
+import { RecoveryAction } from '../screens/TodayRecoveryPlanScreen';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -28,6 +32,7 @@ export type DailyCheckInSeverity = 'mild' | 'moderate' | 'severe' | 'none';
 export interface DailyCheckInData {
   date: string; // "YYYY-MM-DD"
   createdAt: Timestamp | null;
+  completedAt?: Timestamp | null; // When check-in was completed (not plan completion)
   severity: DailyCheckInSeverity;
   severityLabel: string;
   symptoms: string[];
@@ -35,9 +40,19 @@ export interface DailyCheckInData {
   // Alcohol flags (optional for backward compatibility)
   drankLastNight?: boolean;
   drinkingToday?: boolean;
+  // Generated plan (single source of truth)
+  generatedPlan?: {
+    recoveryWindow: { min: number; max: number };
+    recoveryWindowLabel: string;
+    hydrationGoalLiters: number;
+    steps: RecoveryAction[];
+    symptomLabels: string[];
+  };
+  microStep?: MicroAction;
+  recoveryScore?: number; // Inputs for recovery score calculation
   // Plan completion tracking
   planCompleted?: boolean;
-  completedAt?: Timestamp | null;
+  planCompletedAt?: Timestamp | null;
   stepsCompleted?: number;
   totalSteps?: number;
 }
@@ -48,6 +63,17 @@ export interface DailyCheckInInput {
   symptoms: string[];
   drankLastNight?: boolean;
   drinkingToday?: boolean;
+}
+
+export interface DailyCheckInWithPlan extends DailyCheckInData {
+  generatedPlan: {
+    recoveryWindow: { min: number; max: number };
+    recoveryWindowLabel: string;
+    hydrationGoalLiters: number;
+    steps: RecoveryAction[];
+    symptomLabels: string[];
+  };
+  microStep: MicroAction;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -110,6 +136,14 @@ export const getDailyCheckIn = async (
 };
 
 /**
+ * Get today's date key (YYYY-MM-DD) in local timezone
+ * Single source of truth for date keys
+ */
+export const getTodayKey = (): string => {
+  return getTodayId();
+};
+
+/**
  * Get today's daily check-in for a user
  */
 export const getTodayDailyCheckIn = async (
@@ -161,6 +195,105 @@ export const saveTodayDailyCheckIn = async (
 };
 
 /**
+ * Create or update today's check-in with generated plan
+ * Single source of truth: both onboarding and daily check-in use this
+ */
+export const createOrUpdateTodayCheckIn = async (
+  uid: string,
+  input: DailyCheckInInput,
+  plan: RecoveryPlan
+): Promise<boolean> => {
+  try {
+    const todayId = getTodayId();
+    const docRef = doc(db, 'users', uid, 'dailyCheckIns', todayId);
+
+    const data: Omit<DailyCheckInData, 'createdAt' | 'completedAt'> & { 
+      createdAt: ReturnType<typeof serverTimestamp>;
+      completedAt: ReturnType<typeof serverTimestamp>;
+    } = {
+      date: todayId,
+      createdAt: serverTimestamp(),
+      completedAt: serverTimestamp(), // Mark as completed when saved
+      severity: input.severity,
+      severityLabel: input.severityLabel,
+      symptoms: input.symptoms,
+      isHungover: input.severity !== 'none',
+      drankLastNight: input.drankLastNight,
+      drinkingToday: input.drinkingToday,
+      // Store generated plan (single source of truth)
+      generatedPlan: {
+        recoveryWindow: plan.recoveryWindow,
+        recoveryWindowLabel: plan.recoveryWindowLabel,
+        hydrationGoalLiters: plan.hydrationGoalLiters,
+        steps: plan.steps,
+        symptomLabels: plan.symptomLabels,
+      },
+      microStep: plan.microAction,
+    };
+
+    await setDoc(docRef, data);
+    console.log('[createOrUpdateTodayCheckIn] Saved check-in with plan for:', todayId);
+    return true;
+  } catch (error) {
+    console.error('[createOrUpdateTodayCheckIn] Error:', error);
+    return false;
+  }
+};
+
+/**
+ * Ensure today's plan exists - create if missing, return existing if present
+ * Prevents regenerating different plans for the same day
+ */
+export const ensureTodayPlan = async (
+  uid: string,
+  input: DailyCheckInInput
+): Promise<DailyCheckInWithPlan | null> => {
+  try {
+    // Check if today's check-in already exists
+    const existing = await getTodayDailyCheckIn(uid);
+    
+    if (existing && existing.generatedPlan && existing.microStep) {
+      // Plan already exists, return it
+      console.log('[ensureTodayPlan] Using existing plan for today');
+      return existing as DailyCheckInWithPlan;
+    }
+
+    // Generate new plan using centralized generator
+    const { generatePlan } = await import('../domain/recovery/planGenerator');
+    
+    // Map severity to FeelingOption and symptoms to SymptomKey[]
+    const feeling = input.severity as 'mild' | 'moderate' | 'severe' | 'none';
+    const symptomKeys = input.symptoms.filter((s): s is 'headache' | 'nausea' | 'dryMouth' | 'dizziness' | 'fatigue' | 'anxiety' | 'brainFog' | 'poorSleep' | 'noSymptoms' => {
+      return ['headache', 'nausea', 'dryMouth', 'dizziness', 'fatigue', 'anxiety', 'brainFog', 'poorSleep', 'noSymptoms'].includes(s);
+    }) as any[];
+
+    const plan = generatePlan({
+      level: feeling,
+      symptoms: symptomKeys,
+      drankLastNight: input.drankLastNight,
+      drinkingToday: input.drinkingToday,
+    });
+
+    // Save check-in with plan
+    const saved = await createOrUpdateTodayCheckIn(uid, input, plan);
+    if (!saved) {
+      return null;
+    }
+
+    // Return the saved data
+    const savedCheckIn = await getTodayDailyCheckIn(uid);
+    if (savedCheckIn && savedCheckIn.generatedPlan && savedCheckIn.microStep) {
+      return savedCheckIn as DailyCheckInWithPlan;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[ensureTodayPlan] Error:', error);
+    return null;
+  }
+};
+
+/**
  * Check if user has completed today's check-in
  */
 export const hasTodayCheckIn = async (uid: string): Promise<boolean> => {
@@ -194,7 +327,7 @@ export const markPlanCompletedForToday = async (
     const completionData = {
       date: dateId,
       planCompleted: true,
-      completedAt: serverTimestamp(),
+      planCompletedAt: serverTimestamp(),
       stepsCompleted,
       totalSteps,
     };

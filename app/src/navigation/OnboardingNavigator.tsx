@@ -12,13 +12,20 @@ import { RecoveryPlanLoadingScreen } from '../screens/onboarding/RecoveryPlanLoa
 import { TodayRecoveryPlanScreen } from '../screens/TodayRecoveryPlanScreen';
 import { PlanCompleteScreen } from '../screens/PlanCompleteScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
+import { DailyWaterLogScreen } from '../screens/DailyWaterLogScreen';
 import { PaywallSourceType } from '../constants/paywallSources';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback } from 'react';
 import { getRecoveryAnalysis, getKeySymptomLabels } from '../utils/recoveryAnalysis';
-import { markPlanCompletedForToday } from '../services/dailyCheckIn';
+import { 
+  markPlanCompletedForToday, 
+  ensureTodayPlan,
+  getTodayDailyCheckIn,
+  DailyCheckInSeverity,
+  SEVERITY_LABELS,
+} from '../services/dailyCheckIn';
 import { getTodayId } from '../utils/dateUtils';
 import { useAuth } from '../providers/AuthProvider';
 import { grantWelcomeUnlock } from '../services/welcomeUnlock';
@@ -54,9 +61,30 @@ const PlanLoadingScreenWrapper: React.FC = () => {
         console.error('[OnboardingNavigator] Error granting welcome unlock:', error);
         // Non-blocking - continue to recovery plan even if unlock fails
       }
+
+      // Save today's check-in with generated plan (single source of truth)
+      try {
+        const checkInInput = {
+          severity: feeling as DailyCheckInSeverity,
+          severityLabel: SEVERITY_LABELS[feeling as DailyCheckInSeverity],
+          symptoms: symptoms as string[],
+          drankLastNight: false, // Onboarding doesn't ask about this
+          drinkingToday: false, // Onboarding doesn't ask about this
+        };
+
+        const savedCheckIn = await ensureTodayPlan(user.uid, checkInInput);
+        if (savedCheckIn) {
+          console.log('[OnboardingNavigator] Saved today check-in with plan');
+        } else {
+          console.error('[OnboardingNavigator] Failed to save check-in with plan');
+        }
+      } catch (error) {
+        console.error('[OnboardingNavigator] Error saving check-in:', error);
+        // Continue anyway - plan will be generated on the fly
+      }
     }
 
-    // Navigate to Today's Recovery Plan screen
+    // Navigate to Today's Recovery Plan screen (it will read from saved record)
     navigation.replace('TodayRecoveryPlan', { feeling, symptoms });
   };
 
@@ -71,156 +99,134 @@ const FEELING_DISPLAY_LABELS: Record<FeelingOption, string> = {
   none: 'Not hungover',
 };
 
-// Wrapper component for Today's Recovery Plan with data generation
+// Wrapper component for Today's Recovery Plan - reads from unified service
 const TodayRecoveryPlanWrapper: React.FC = () => {
   const route = useRoute<RouteProp<OnboardingStackParamList, 'TodayRecoveryPlan'>>();
   const navigation = useNavigation<NativeStackNavigationProp<OnboardingStackParamList>>();
   const { user } = useAuth();
   const { feeling, symptoms } = route.params;
+  const [planData, setPlanData] = React.useState<{
+    date: string;
+    recoveryWindowLabel: string;
+    symptomLabels: string[];
+    hydrationGoalLiters: number;
+    actions: any[];
+  } | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  // Generate recovery analysis from feeling + symptoms
-  const analysis = getRecoveryAnalysis(feeling, symptoms);
-  const baseSymptomLabels = getKeySymptomLabels(symptoms);
-  
-  // Add feeling label at the start
-  const symptomLabels = feeling !== 'none' 
-    ? [FEELING_DISPLAY_LABELS[feeling], ...baseSymptomLabels]
-    : baseSymptomLabels.length > 0 
-      ? baseSymptomLabels 
-      : ['Feeling okay'];
+  // Load plan from unified service (single source of truth)
+  React.useEffect(() => {
+    const loadPlan = async () => {
+      setIsLoading(true);
+      try {
+        if (!user?.uid) {
+          // Fallback: generate plan on the fly if not authenticated
+          const { generatePlan } = await import('../domain/recovery/planGenerator');
+          const plan = generatePlan({
+            level: feeling,
+            symptoms: symptoms as any[],
+          });
+          
+          const today = new Date();
+          const dateString = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          
+          setPlanData({
+            date: dateString,
+            recoveryWindowLabel: plan.recoveryWindowLabel,
+            symptomLabels: plan.symptomLabels,
+            hydrationGoalLiters: plan.hydrationGoalLiters,
+            actions: plan.steps,
+          });
+          setIsLoading(false);
+          return;
+        }
 
-  // Generate actions based on recommendations + standard recovery steps
-  // Check if user reported poor sleep
-  const hasPoorSleep = symptoms.includes('poorSleep');
-
-  // Base actions - ordered by importance for recovery
-  const allActions = [
-    {
-      id: 'morning-1',
-      timeOfDay: 'morning' as const,
-      time: '6:00 AM',
-      title: 'Soft light & breathing',
-      description: 'Gentle light exposure and slow breathing help calm the nervous system and reduce early morning hangover stress.',
-      durationMinutes: 2,
-      icon: 'sunny-outline',
-      completed: false,
-    },
-    {
-      id: 'morning-2',
-      timeOfDay: 'morning' as const,
-      time: '8:00 AM',
-      title: 'Water + electrolytes',
-      description: 'Rehydrate early to support liver detox and reduce symptoms.',
-      durationMinutes: 1,
-      icon: 'water-outline',
-      completed: false,
-    },
-    {
-      id: 'morning-3',
-      timeOfDay: 'morning' as const,
-      time: '9:00 AM',
-      title: 'Light breakfast',
-      description: 'Easy-to-digest foods stabilize blood sugar and ease nausea (toast, banana, eggs).',
-      durationMinutes: 15,
-      icon: 'cafe-outline',
-      completed: false,
-    },
-    {
-      id: 'midday-1',
-      timeOfDay: 'midday' as const,
-      time: '11:00 AM',
-      title: 'Short walk & check-in',
-      description: 'Light movement boosts circulation and improves cognitive clarity.',
-      durationMinutes: 15,
-      icon: 'walk-outline',
-      completed: false,
-    },
-    {
-      id: 'afternoon-1',
-      timeOfDay: 'afternoon' as const,
-      time: '2:00 PM',
-      title: 'Light meal + rest',
-      description: 'Refuel gently; avoid heavy or greasy foods.',
-      durationMinutes: 20,
-      icon: 'restaurant-outline',
-      completed: false,
-    },
-  ];
-
-  // Power nap action - included based on severity or poor sleep
-  const powerNapAction = hasPoorSleep
-    ? {
-        id: 'midday-nap',
-        timeOfDay: 'midday' as const,
-        time: '1:00 PM',
-        title: 'Restorative power nap',
-        description: 'Your sleep was disrupted; a short nap helps your body catch up.',
-        durationMinutes: 25,
-        icon: 'moon-outline',
-        completed: false,
+        // Try to load from unified service
+        const checkIn = await getTodayDailyCheckIn(user.uid);
+        
+        if (checkIn && checkIn.generatedPlan && checkIn.completedAt) {
+          // Use saved plan (single source of truth)
+          const today = new Date();
+          const dateString = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          
+          setPlanData({
+            date: dateString,
+            recoveryWindowLabel: checkIn.generatedPlan.recoveryWindowLabel,
+            symptomLabels: checkIn.generatedPlan.symptomLabels,
+            hydrationGoalLiters: checkIn.generatedPlan.hydrationGoalLiters,
+            actions: checkIn.generatedPlan.steps,
+          });
+          console.log('[TodayRecoveryPlanWrapper] Loaded plan from unified service');
+        } else {
+          // Fallback: ensure plan exists (should have been created in PlanLoadingScreenWrapper)
+          const checkInInput = {
+            severity: feeling as DailyCheckInSeverity,
+            severityLabel: SEVERITY_LABELS[feeling as DailyCheckInSeverity],
+            symptoms: symptoms as string[],
+            drankLastNight: false,
+            drinkingToday: false,
+          };
+          
+          const savedCheckIn = await ensureTodayPlan(user.uid, checkInInput);
+          
+          if (savedCheckIn && savedCheckIn.generatedPlan) {
+            const today = new Date();
+            const dateString = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            
+            setPlanData({
+              date: dateString,
+              recoveryWindowLabel: savedCheckIn.generatedPlan.recoveryWindowLabel,
+              symptomLabels: savedCheckIn.generatedPlan.symptomLabels,
+              hydrationGoalLiters: savedCheckIn.generatedPlan.hydrationGoalLiters,
+              actions: savedCheckIn.generatedPlan.steps,
+            });
+          } else {
+            console.error('[TodayRecoveryPlanWrapper] Failed to load or create plan');
+            // Fallback to generating on the fly
+            const { generatePlan } = await import('../domain/recovery/planGenerator');
+            const plan = generatePlan({
+              level: feeling,
+              symptoms: symptoms as any[],
+            });
+            
+            const today = new Date();
+            const dateString = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            
+            setPlanData({
+              date: dateString,
+              recoveryWindowLabel: plan.recoveryWindowLabel,
+              symptomLabels: plan.symptomLabels,
+              hydrationGoalLiters: plan.hydrationGoalLiters,
+              actions: plan.steps,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('[TodayRecoveryPlanWrapper] Error loading plan:', error);
+        // Fallback to generating on the fly
+        const { generatePlan } = await import('../domain/recovery/planGenerator');
+        const plan = generatePlan({
+          level: feeling,
+          symptoms: symptoms as any[],
+        });
+        
+        const today = new Date();
+        const dateString = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        
+        setPlanData({
+          date: dateString,
+          recoveryWindowLabel: plan.recoveryWindowLabel,
+          symptomLabels: plan.symptomLabels,
+          hydrationGoalLiters: plan.hydrationGoalLiters,
+          actions: plan.steps,
+        });
+      } finally {
+        setIsLoading(false);
       }
-    : {
-        id: 'midday-nap',
-        timeOfDay: 'midday' as const,
-        time: '11:30 AM',
-        title: 'Power nap',
-        description: 'Short rest helps reset your nervous system and reduce brain fog.',
-        durationMinutes: 15,
-        icon: 'moon-outline',
-        completed: false,
-      };
+    };
 
-  // Build actions based on severity
-  // Power nap is ALWAYS included for moderate/severe OR if user has poor sleep
-  const shouldIncludePowerNap = feeling === 'severe' || feeling === 'moderate' || hasPoorSleep;
-
-  let actions = [];
-  
-  if (feeling === 'severe') {
-    // Severe: All 5 base actions + power nap (6 total)
-    actions = [
-      ...allActions.slice(0, 4), // morning + midday walk
-      powerNapAction,            // power nap after walk
-      allActions[4],             // light meal (afternoon)
-    ];
-  } else if (feeling === 'moderate') {
-    // Moderate: 5 base actions + power nap (6 total)
-    actions = [
-      ...allActions.slice(0, 4), // morning + midday walk
-      powerNapAction,            // power nap
-      allActions[4],             // light meal (afternoon)
-    ];
-  } else if (feeling === 'mild') {
-    // Mild: 5 base actions, power nap only if poor sleep
-    if (hasPoorSleep) {
-      actions = [
-        ...allActions.slice(0, 4), // morning + midday walk
-        powerNapAction,             // power nap (due to poor sleep)
-        allActions[4],              // light meal (afternoon)
-      ];
-    } else {
-      // No power nap, but include afternoon
-      actions = [...allActions]; // all 5 actions
-    }
-  } else {
-    // None: lighter plan, power nap only if poor sleep
-    if (hasPoorSleep) {
-      actions = [
-        ...allActions.slice(0, 3), // morning basics
-        powerNapAction,             // power nap (due to poor sleep)
-      ];
-    } else {
-      actions = allActions.slice(0, 4); // morning + walk
-    }
-  }
-
-  // Get today's date
-  const today = new Date();
-  const dateString = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-  // Convert recovery hours range object to string
-  const { min, max } = analysis.estimatedRecoveryHoursRange;
-  const recoveryWindowLabel = `${min}–${max} hours`;
+    loadPlan();
+  }, [user?.uid, feeling, symptoms]);
 
   // Handler for completing the plan
   const handleCompletePlan = useCallback(async (stepsCompleted: number, totalSteps: number) => {
@@ -244,14 +250,19 @@ const TodayRecoveryPlanWrapper: React.FC = () => {
     navigation.navigate('PlanComplete', { stepsCompleted, totalSteps });
   }, [user?.uid, navigation]);
 
+  if (isLoading || !planData) {
+    // Show loading state or fallback
+    return null; // Or a loading component
+  }
+
   return (
     <TodayRecoveryPlanScreen
-      date={dateString}
-      recoveryWindowLabel={recoveryWindowLabel}
-      symptomLabels={symptomLabels}
-      hydrationGoalLiters={1.5}
+      date={planData.date}
+      recoveryWindowLabel={planData.recoveryWindowLabel}
+      symptomLabels={planData.symptomLabels}
+      hydrationGoalLiters={planData.hydrationGoalLiters}
       hydrationProgress={0}
-      actions={actions}
+      actions={planData.actions}
       onToggleAction={(id, completed) => {
         console.log(`Action ${id} toggled to ${completed}`);
       }}
@@ -301,6 +312,7 @@ export type OnboardingStackParamList = {
     source: PaywallSourceType;
     contextScreen?: string;
   };
+  DailyWaterLog: undefined;
 };
 
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
@@ -344,6 +356,10 @@ export function OnboardingNavigator() {
       <Stack.Screen
         name="Paywall"
         component={PaywallScreen}
+      />
+      <Stack.Screen
+        name="DailyWaterLog"
+        component={DailyWaterLogScreen}
       />
     </Stack.Navigator>
   );

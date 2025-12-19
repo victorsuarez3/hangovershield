@@ -13,6 +13,7 @@ import {
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { CheckInData } from '../stores/useUserDataStore';
+import { getTodayId as getTodayIdUtil, getDateId } from '../utils/dateUtils';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -28,13 +29,13 @@ interface UseInitializeUserDataReturn {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const getTodayId = (): string => {
-  return new Date().toISOString().split('T')[0];
+  return getTodayIdUtil();
 };
 
 const getYesterdayId = (): string => {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  return yesterday.toISOString().split('T')[0];
+  return getDateId(yesterday);
 };
 
 /**

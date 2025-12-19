@@ -15,7 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { Button } from '../components/Button';
 import { useAppNavigation } from '../contexts/AppNavigationContext';
@@ -52,12 +52,28 @@ export const PlanCompleteScreen: React.FC = () => {
 
   // Animations
   const iconScale = useRef(new Animated.Value(0)).current;
-  const iconRotate = useRef(new Animated.Value(0)).current;
   const contentOpacity = useRef(new Animated.Value(0)).current;
   const buttonOpacity = useRef(new Animated.Value(0)).current;
-  const confettiOpacity = useRef(new Animated.Value(0)).current;
+  const confettiOpacity = useRef(new Animated.Value(1)).current; // Start visible
+  const haloScale = useRef(new Animated.Value(1)).current;
+  const haloOpacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
+    // Confetti appears for 1 second then fades out
+    Animated.sequence([
+      Animated.timing(confettiOpacity, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.delay(1000),
+      Animated.timing(confettiOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
     // Staggered entrance animations
     Animated.sequence([
       // Icon bounces in
@@ -75,14 +91,6 @@ export const PlanCompleteScreen: React.FC = () => {
       }),
     ]).start();
 
-    // Confetti fades in with delay
-    Animated.timing(confettiOpacity, {
-      toValue: 1,
-      duration: 600,
-      delay: 200,
-      useNativeDriver: true,
-    }).start();
-
     // Button fades in last
     Animated.timing(buttonOpacity, {
       toValue: 1,
@@ -91,48 +99,69 @@ export const PlanCompleteScreen: React.FC = () => {
       useNativeDriver: true,
     }).start();
 
-    // Subtle icon rotation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(iconRotate, {
+    // Pulsing halo around icon (subtle, 2-3 seconds, then static)
+    Animated.sequence([
+      Animated.loop(
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(haloScale, {
+              toValue: 1.15,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(haloOpacity, {
+              toValue: 0.5,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(haloScale, {
+              toValue: 1,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(haloOpacity, {
+              toValue: 0.3,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
+        { iterations: 2 } // Pulse 2 times (3 seconds total)
+      ),
+      // Then stay static
+      Animated.parallel([
+        Animated.timing(haloScale, {
           toValue: 1,
-          duration: 2000,
+          duration: 200,
           useNativeDriver: true,
         }),
-        Animated.timing(iconRotate, {
-          toValue: 0,
-          duration: 2000,
+        Animated.timing(haloOpacity, {
+          toValue: 0.2,
+          duration: 200,
           useNativeDriver: true,
         }),
-      ])
-    ).start();
+      ]),
+    ]).start();
   }, []);
 
   const handleDone = () => {
-    // Navigate to HomeScreen
-    // Try direct navigation first (if we're in AppNavigator)
-    try {
-      navigation.navigate('HomeMain');
-    } catch (error) {
-      // Fallback to AppNavigationContext if direct navigation fails
-      console.log('[PlanCompleteScreen] Using appNav.goToHome()', {
-        user: user?.uid,
-        context: appNav.currentContext,
-      });
-      
-      if (user) {
-        appNav.goToHome();
-      } else {
-        // If no user, just navigate directly
-        navigation.navigate('HomeMain');
-      }
+    // Navigate to HomeScreen using AppNavigationContext (works from any navigator)
+    // This handles navigation correctly whether we're in AppNavigator or nested navigators
+    if (appNav && typeof appNav.goToHome === 'function') {
+      appNav.goToHome();
+    } else {
+      // Fallback: reset navigation stack to HomeMain
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'HomeMain' }],
+        })
+      );
     }
   };
 
-  const rotateInterpolate = iconRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['-3deg', '3deg'],
-  });
 
   return (
     <View style={styles.container}>
@@ -143,26 +172,34 @@ export const PlanCompleteScreen: React.FC = () => {
       />
 
       <View style={[styles.content, { paddingTop: insets.top + 60 }]}>
-        {/* Confetti emojis */}
+        {/* Confetti emojis - reduced, only 1 second */}
         <Animated.View style={[styles.confettiContainer, { opacity: confettiOpacity }]}>
           <Text style={[styles.confettiEmoji, styles.confettiLeft]}>✨</Text>
           <Text style={[styles.confettiEmoji, styles.confettiRight]}>🎊</Text>
         </Animated.View>
 
-        {/* Main celebration icon */}
+        {/* Main celebration icon with pulsing halo */}
         <Animated.View
           style={[
             styles.iconContainer,
             {
-              transform: [
-                { scale: iconScale },
-                { rotate: rotateInterpolate },
-              ],
+              transform: [{ scale: iconScale }],
             },
           ]}
         >
+          {/* Pulsing halo */}
+          <Animated.View
+            style={[
+              styles.halo,
+              {
+                transform: [{ scale: haloScale }],
+                opacity: haloOpacity,
+              },
+            ]}
+          />
+          
           <View style={styles.iconCircle}>
-            <Text style={styles.celebrationEmoji}>🎉</Text>
+            <Ionicons name="checkmark-circle" size={64} color="#0F4C44" />
           </View>
         </Animated.View>
 
@@ -189,8 +226,7 @@ export const PlanCompleteScreen: React.FC = () => {
           </View>
 
           <Text style={styles.supportingText}>
-            Stay hydrated and we'll be here again tomorrow{'\n'}
-            with a fresh plan tailored to how you feel.
+            Rest now. Tomorrow we'll take care of the rest.
           </Text>
         </Animated.View>
       </View>
@@ -254,6 +290,18 @@ const styles = StyleSheet.create({
   // Icon
   iconContainer: {
     marginBottom: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  halo: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(15, 76, 68, 0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(15, 76, 68, 0.15)',
   },
   iconCircle: {
     width: 120,
@@ -267,9 +315,6 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     shadowOpacity: 1,
     elevation: 8,
-  },
-  celebrationEmoji: {
-    fontSize: 56,
   },
 
   // Text

@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { WaterEntry } from '../features/water/waterTypes';
+import { getTodayId as getTodayIdUtil, getDateId } from '../utils/dateUtils';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -76,13 +77,13 @@ const MOTIVATIONAL_HEADERS = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 const getTodayId = (): string => {
-  return new Date().toISOString().split('T')[0];
+  return getTodayIdUtil();
 };
 
 const getYesterdayId = (): string => {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  return yesterday.toISOString().split('T')[0];
+  return getDateId(yesterday);
 };
 
 const calculateTotalMl = (entries: WaterEntry[]): number => {

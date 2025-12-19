@@ -4,7 +4,7 @@
  * Consistent with app's calm, premium aesthetic
  */
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,16 +14,18 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, CommonActions } from '@react-navigation/native';
+import { useNavigation, CommonActions, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppMenuSheet, CurrentScreen } from '../components/AppMenuSheet';
 import { AppHeader } from '../components/AppHeader';
 import { useAccessStatus } from '../hooks/useAccessStatus';
 import { useDailyCheckIn } from '../hooks/useDailyCheckIn';
+import { usePlanCompletion } from '../hooks/usePlanCompletion';
 import { useAuth } from '../providers/AuthProvider';
 import { useUserDataStore } from '../stores/useUserDataStore';
 import { useAppNavigation } from '../contexts/AppNavigationContext';
 import { WelcomeCountdownBanner } from '../components/WelcomeCountdownBanner';
+import { InfoTooltipModal } from '../components/InfoTooltipModal';
 import { PaywallSource } from '../constants/paywallSources';
 import { Analytics } from '../utils/analytics';
 import {
@@ -40,7 +42,7 @@ import {
   deleteTodayDailyCheckIn,
   DailyCheckInSummary,
 } from '../services/dailyCheckIn';
-import { getLocalDailyCheckIn, deleteLocalDailyCheckIn } from '../services/dailyCheckInStorage';
+import { getLocalDailyCheckIn, deleteLocalDailyCheckIn, hasCompletedEveningCheckInToday } from '../services/dailyCheckInStorage';
 import { getTodayId, getDateId } from '../utils/dateUtils';
 import { typography } from '../design-system/typography';
 import { generatePlan } from '../domain/recovery/planGenerator';
@@ -71,6 +73,9 @@ export const HomeScreen: React.FC = () => {
   const [menuVisible, setMenuVisible] = useState(false);
   const [currentScreen] = useState<CurrentScreen>('home');
 
+  // Hydration tooltip state
+  const [hydrationTooltipVisible, setHydrationTooltipVisible] = useState(false);
+
   // Get user's first name
   const firstName = useMemo(() => {
     const displayName = userDoc?.displayName || '';
@@ -80,12 +85,25 @@ export const HomeScreen: React.FC = () => {
     return null;
   }, [userDoc]);
 
+  // Format today's date for header (e.g., "Wed · Dec 17")
+  const todayDateHeader = useMemo(() => {
+    const today = new Date();
+    const weekday = today.toLocaleDateString('en-US', { weekday: 'short' });
+    const month = today.toLocaleDateString('en-US', { month: 'short' });
+    const day = today.getDate();
+    return `${weekday} · ${month} ${day}`;
+  }, []);
+
   // Daily check-in status
   const dailyCheckIn = useDailyCheckIn(user?.uid || null);
+  
+  // Plan completion status (single source of truth from Firestore)
+  const planCompletion = usePlanCompletion(user?.uid || null);
 
-  // Hydration state
-  const [hydrationGoal, setHydrationGoal] = useState(1500);
-  const [hydrationLogged, setHydrationLogged] = useState(0);
+  // Hydration state - use store as single source of truth
+  const { hydrationGoal: storeHydrationGoal, todayHydrationTotal, addHydrationEntry: addToStore, setHydrationLogs } = useUserDataStore();
+  const hydrationGoal = storeHydrationGoal;
+  const hydrationLogged = todayHydrationTotal;
 
   // Progress state
   const [streak, setStreak] = useState(0);
@@ -101,6 +119,170 @@ export const HomeScreen: React.FC = () => {
     drinkingToday?: boolean;
   } | null>(null);
 
+  // Evening check-in state
+  const [isEveningCheckInCompleted, setIsEveningCheckInCompleted] = useState(false);
+  const [isEveningCheckInLoading, setIsEveningCheckInLoading] = useState(true);
+
+  // Evening check-in is available all day for better visibility and habit formation
+  // Removed time restriction to avoid users missing it
+
+  // Check evening check-in completion status
+  useEffect(() => {
+    const checkEveningCheckInStatus = async () => {
+      setIsEveningCheckInLoading(true);
+      try {
+        // PRIORITY 1: Check AsyncStorage (works in dev mode without user)
+        const hasLocalEvening = await hasCompletedEveningCheckInToday();
+
+        if (__DEV__) {
+          console.log('[HomeScreen] Evening check-in status from AsyncStorage:', hasLocalEvening);
+        }
+
+        // If we have local data, use it
+        if (hasLocalEvening) {
+          setIsEveningCheckInCompleted(true);
+          if (user?.uid) {
+            Analytics.eveningHomeStateClosed(user.uid);
+          }
+          setIsEveningCheckInLoading(false);
+          return;
+        }
+
+        // PRIORITY 2: If logged in and no local data, check Firestore
+        if (user?.uid) {
+          const checkIn = await getTodayDailyCheckIn(user.uid);
+          // Evening check-in completion is tracked by the eveningCheckInCompletedAt field
+          // which is set when user completes the evening check-in form
+          if (checkIn) {
+            // Type assertion to access evening fields that may exist in Firestore but not in TypeScript interface
+            const checkInAny = checkIn as any;
+            // Check for eveningCheckInCompletedAt field which is always set when evening check-in is completed
+            const hasEveningData = checkInAny.eveningCheckInCompletedAt !== undefined;
+
+            if (__DEV__) {
+              console.log('[HomeScreen] Evening check-in status from Firestore:', {
+                hasEveningData,
+                hasEveningCheckInCompletedAt: checkInAny.eveningCheckInCompletedAt !== undefined,
+                eveningReflection: checkInAny.eveningReflection,
+                eveningMood: checkInAny.eveningMood,
+                alcoholToday: checkInAny.alcoholToday,
+              });
+              console.log('[HomeScreen] 🔄 Setting isEveningCheckInCompleted to:', hasEveningData);
+            }
+
+            setIsEveningCheckInCompleted(hasEveningData);
+
+            // Track analytics when day complete state is shown
+            if (hasEveningData) {
+              Analytics.eveningHomeStateClosed(user.uid);
+            }
+          } else {
+            if (__DEV__) console.log('[HomeScreen] No check-in found - evening check-in marked incomplete');
+            setIsEveningCheckInCompleted(false);
+          }
+        } else {
+          // No user and no local data
+          setIsEveningCheckInCompleted(false);
+        }
+      } catch (error) {
+        console.error('[HomeScreen] Error checking evening check-in status:', error);
+        setIsEveningCheckInCompleted(false);
+      } finally {
+        setIsEveningCheckInLoading(false);
+      }
+    };
+
+    checkEveningCheckInStatus();
+  }, [user?.uid]);
+
+  // Refresh evening check-in status when screen comes into focus
+  const refreshEveningCheckInRef = useRef(async () => {
+    try {
+      // PRIORITY 1: Check AsyncStorage (works in dev mode without user)
+      const hasLocalEvening = await hasCompletedEveningCheckInToday();
+
+      if (__DEV__) {
+        console.log('[HomeScreen] Refresh - Evening check-in status from AsyncStorage:', hasLocalEvening);
+      }
+
+      // If we have local data, use it
+      if (hasLocalEvening) {
+        setIsEveningCheckInCompleted(true);
+        return;
+      }
+
+      // PRIORITY 2: If logged in and no local data, check Firestore
+      if (user?.uid) {
+        const checkIn = await getTodayDailyCheckIn(user.uid);
+        if (checkIn) {
+          const checkInAny = checkIn as any;
+          // Check for eveningCheckInCompletedAt field
+          const hasEveningData = checkInAny.eveningCheckInCompletedAt !== undefined;
+          setIsEveningCheckInCompleted(hasEveningData);
+        } else {
+          setIsEveningCheckInCompleted(false);
+        }
+      } else {
+        setIsEveningCheckInCompleted(false);
+      }
+    } catch (error) {
+      console.error('[HomeScreen] Error refreshing evening check-in status:', error);
+    }
+  });
+
+  useEffect(() => {
+    refreshEveningCheckInRef.current = async () => {
+      try {
+        if (__DEV__) console.log('[HomeScreen] Refreshing evening check-in status...');
+
+        // PRIORITY 1: Check AsyncStorage (works in dev mode without user)
+        const hasLocalEvening = await hasCompletedEveningCheckInToday();
+
+        if (__DEV__) {
+          console.log('[HomeScreen] 🔄 REFRESH - Evening check-in status from AsyncStorage:', hasLocalEvening);
+        }
+
+        // If we have local data, use it
+        if (hasLocalEvening) {
+          setIsEveningCheckInCompleted(true);
+          if (__DEV__) console.log('[HomeScreen] 🔄 REFRESH: Setting isEveningCheckInCompleted to: true (from AsyncStorage)');
+          return;
+        }
+
+        // PRIORITY 2: If logged in and no local data, check Firestore
+        if (user?.uid) {
+          const checkIn = await getTodayDailyCheckIn(user.uid);
+          if (checkIn) {
+            const checkInAny = checkIn as any;
+            // Check for eveningCheckInCompletedAt field which is always set when evening check-in is completed
+            const hasEveningData = checkInAny.eveningCheckInCompletedAt !== undefined;
+
+            if (__DEV__) {
+              console.log('[HomeScreen] Refresh - Evening check-in status from Firestore:', {
+                hasEveningData,
+                hasEveningCheckInCompletedAt: checkInAny.eveningCheckInCompletedAt !== undefined,
+                eveningReflection: checkInAny.eveningReflection,
+                eveningMood: checkInAny.eveningMood,
+                alcoholToday: checkInAny.alcoholToday,
+              });
+              console.log('[HomeScreen] 🔄 REFRESH: Setting isEveningCheckInCompleted to:', hasEveningData);
+            }
+
+            setIsEveningCheckInCompleted(hasEveningData);
+          } else {
+            if (__DEV__) console.log('[HomeScreen] Refresh - No check-in found');
+            setIsEveningCheckInCompleted(false);
+          }
+        } else {
+          if (__DEV__) console.log('[HomeScreen] Refresh - No user and no local data');
+          setIsEveningCheckInCompleted(false);
+        }
+      } catch (error) {
+        console.error('[HomeScreen] Error refreshing evening check-in status:', error);
+      }
+    };
+  }, [user?.uid]);
+
   // Micro-action and recovery score
   const [microAction, setMicroAction] = useState<{ title: string; body: string } | null>(null);
   const [recoveryScore, setRecoveryScore] = useState<number | null>(null);
@@ -113,28 +295,72 @@ export const HomeScreen: React.FC = () => {
     isToday: boolean;
   }>>([]);
 
-  // Load hydration data
+  // Load hydration data from service and sync to store (single source of truth)
   useEffect(() => {
     const loadHydrationData = async () => {
       if (!user?.uid) return;
 
       try {
+        // Load from service
         const goal = await getHydrationGoal(user.uid);
-        setHydrationGoal(goal);
-
-        const todayLogs = await getTodayHydrationLog(user.uid);
-        const totalMl = todayLogs.reduce((sum, entry) => sum + entry.amountMl, 0);
-        setHydrationLogged(totalMl);
+        const logs = await getTodayHydrationLog(user.uid);
+        
+        // Update store (single source of truth)
+        const todayId = getTodayId();
+        const hydrationLogs: { [key: string]: any[] } = {};
+        hydrationLogs[todayId] = logs;
+        setHydrationLogs(hydrationLogs);
+        
+        // Store will automatically calculate todayHydrationTotal
       } catch (error) {
         console.error('[HomeScreen] Error loading hydration data:', error);
       }
     };
 
     loadHydrationData();
-  }, [user?.uid]);
+  }, [user?.uid, setHydrationLogs]);
 
   // Daily check-in status (computed early for use in effects)
   const isCheckInCompleted = dailyCheckIn.status === 'completed_today';
+  
+  // Plan completion status
+  const isPlanCompleted = planCompletion.isPlanCompleted;
+
+  // Refresh both check-in and plan completion status when screen comes into focus
+  // This ensures Home shows correct state after completing plan and returning from Congratulations
+  // Works with AsyncStorage even when Firestore isn't available
+  // Use useRef to store stable references to refresh functions to avoid infinite loops
+  const refreshCheckInRef = useRef(dailyCheckIn.refreshCheckInStatus);
+  const refreshPlanRef = useRef(planCompletion.refreshPlanStatus);
+  
+  // Update refs when functions change
+  useEffect(() => {
+    refreshCheckInRef.current = dailyCheckIn.refreshCheckInStatus;
+    refreshPlanRef.current = planCompletion.refreshPlanStatus;
+  }, [dailyCheckIn.refreshCheckInStatus, planCompletion.refreshPlanStatus]);
+  
+  useFocusEffect(
+    useCallback(() => {
+      if (__DEV__) console.log('[HomeScreen] 🔄 useFocusEffect triggered - refreshing all states');
+
+      // Always refresh - hooks will check AsyncStorage first, then Firestore
+      refreshCheckInRef.current();
+      refreshPlanRef.current();
+
+      // Refresh evening check-in status if it's evening time
+      refreshEveningCheckInRef.current();
+
+      // Debug logging (use current values, not from dependencies to avoid loops)
+      if (__DEV__) {
+        const todayId = getTodayId();
+        console.log('[HomeScreen] Refreshed completion states on focus:', {
+          todayId,
+          hasUserId: !!user?.uid,
+          sourceDocPath: user?.uid ? `users/${user.uid}/dailyCheckIns/${todayId}` : 'AsyncStorage only',
+        });
+      }
+    }, [user?.uid]) // Only depend on user?.uid, not the functions
+  );
 
   // Load progress data
   useEffect(() => {
@@ -202,11 +428,25 @@ export const HomeScreen: React.FC = () => {
     setPlanStepsLeft(null); // null means we'll show "Pending"
   }, [isCheckInCompleted, user?.uid]);
 
-  // Load today's check-in data for contextual feedback
+  // Load today's check-in data for contextual feedback (from unified service)
   useEffect(() => {
     const loadTodayCheckIn = async () => {
       try {
-        // Try local first (fast)
+        // Read from unified service (single source of truth)
+        if (user?.uid) {
+          const firestoreCheckIn = await getTodayDailyCheckIn(user.uid);
+          if (firestoreCheckIn && firestoreCheckIn.completedAt) {
+            // Check-in exists and is completed
+            setTodayCheckInData({
+              severity: firestoreCheckIn.severity,
+              drankLastNight: firestoreCheckIn.drankLastNight,
+              drinkingToday: firestoreCheckIn.drinkingToday,
+            });
+            return;
+          }
+        }
+
+        // Fallback to local storage
         const localCheckIn = await getLocalDailyCheckIn();
         if (localCheckIn) {
           const todayId = getTodayId();
@@ -215,19 +455,6 @@ export const HomeScreen: React.FC = () => {
               severity: localCheckIn.level,
               drankLastNight: localCheckIn.drankLastNight,
               drinkingToday: localCheckIn.drinkingToday,
-            });
-            return;
-          }
-        }
-
-        // Try Firestore if logged in
-        if (user?.uid) {
-          const firestoreCheckIn = await getTodayDailyCheckIn(user.uid);
-          if (firestoreCheckIn) {
-            setTodayCheckInData({
-              severity: firestoreCheckIn.severity,
-              drankLastNight: firestoreCheckIn.drankLastNight,
-              drinkingToday: firestoreCheckIn.drinkingToday,
             });
           }
         }
@@ -264,8 +491,13 @@ export const HomeScreen: React.FC = () => {
           }
         }
 
-        // Generate micro-action if check-in exists
-        if (checkIn) {
+        // Read micro-action from unified service (single source of truth)
+        if (checkIn && 'microStep' in checkIn && checkIn.microStep) {
+          // Use saved micro-action from unified service
+          setMicroAction(checkIn.microStep);
+          console.log('[HomeScreen] Loaded micro-action from unified service');
+        } else if (checkIn) {
+          // Fallback: generate if not saved yet (shouldn't happen in normal flow)
           const feeling = checkIn.severity as 'mild' | 'moderate' | 'severe' | 'none';
           const symptomKeys = checkIn.symptoms.filter((s): s is 'headache' | 'nausea' | 'dryMouth' | 'dizziness' | 'fatigue' | 'anxiety' | 'brainFog' | 'poorSleep' | 'noSymptoms' => {
             return ['headache', 'nausea', 'dryMouth', 'dizziness', 'fatigue', 'anxiety', 'brainFog', 'poorSleep', 'noSymptoms'].includes(s);
@@ -373,6 +605,17 @@ export const HomeScreen: React.FC = () => {
   }, [navigation]);
 
   const handleGoToCheckIn = useCallback(() => {
+    // If check-in is completed, navigate to CheckInCompleteScreen (the chosen screen)
+    // Pass skipProcessing=true to skip the processing animation when coming from Home
+    // Otherwise navigate to CheckInScreen to complete it
+    if (isCheckInCompleted) {
+      navigation.navigate('CheckInComplete', { skipProcessing: true });
+    } else {
+      navigation.navigate('CheckIn');
+    }
+  }, [navigation, isCheckInCompleted]);
+  
+  const handleGoToCheckInOld = useCallback(() => {
     navigation.navigate('CheckIn');
   }, [navigation]);
 
@@ -415,27 +658,33 @@ export const HomeScreen: React.FC = () => {
     handleGoToWaterLog();
   }, [logWidgetClick, handleGoToWaterLog]);
 
-  // Quick add water handlers
+  // Quick add water handlers - update store for single source of truth
   const handleQuickAddWater = useCallback(async (amountMl: number) => {
-    if (!user?.uid) return;
-    
     try {
-      // Create water entry inline
-      const newEntry = {
-        id: `water_${Date.now()}`,
-        amountMl,
-        timestamp: Date.now(),
-      };
-      await addWaterEntry(user.uid, newEntry);
+      const todayId = getTodayId();
       
-      // Refresh from service to ensure consistency
-      const todayLogs = await getTodayHydrationLog(user.uid);
-      const totalMl = todayLogs.reduce((sum, entry) => sum + entry.amountMl, 0);
-      setHydrationLogged(totalMl);
+      // Create water entry using utility function (consistent with DailyWaterLogScreen)
+      const newEntry = createWaterEntry(amountMl);
+      
+      // Update store immediately (single source of truth)
+      // This works even without user authentication
+      addToStore(todayId, newEntry);
+      
+      // Save to Firebase if user is authenticated (best-effort, don't block)
+      if (user?.uid) {
+        try {
+          await addWaterEntry(user.uid, newEntry);
+        } catch (error) {
+          console.error('[HomeScreen] Error saving water to Firebase:', error);
+          // Continue - local save succeeded
+        }
+      }
+      
+      // Store will automatically update todayHydrationTotal, which will trigger re-render
     } catch (error) {
       console.error('[HomeScreen] Error adding water:', error);
     }
-  }, [user?.uid]);
+  }, [user?.uid, addToStore]);
 
   const handleProgressPress = useCallback(() => {
     logWidgetClick('progress');
@@ -447,11 +696,6 @@ export const HomeScreen: React.FC = () => {
     handleGoToToday();
   }, [logWidgetClick, handleGoToToday]);
 
-  const handleEveningCheckInPress = useCallback(() => {
-    logWidgetClick('evening_checkin');
-    handleGoToEveningCheckIn();
-  }, [logWidgetClick, handleGoToEveningCheckIn]);
-
   const handleUpgradePress = useCallback(() => {
     navigateToPaywall(PaywallSource.HOME_UPGRADE_BANNER);
   }, [navigateToPaywall]);
@@ -459,27 +703,35 @@ export const HomeScreen: React.FC = () => {
   // Dev function to clear today's check-in
   const handleClearTodayCheckIn = useCallback(async () => {
     try {
-      // Clear local storage
+      // Clear local storage (this also clears plan completion)
       await deleteLocalDailyCheckIn();
-      
+
       // Clear Firestore if logged in
       if (user?.uid) {
         await deleteTodayDailyCheckIn(user.uid);
       }
-      
-      // Refresh check-in status
+
+      // Refresh both check-in and plan completion status
       if (dailyCheckIn.refreshCheckInStatus) {
         await dailyCheckIn.refreshCheckInStatus();
       }
-      
+      if (planCompletion.refreshPlanStatus) {
+        await planCompletion.refreshPlanStatus();
+      }
+
+      // Refresh evening check-in state
+      if (refreshEveningCheckInRef.current) {
+        await refreshEveningCheckInRef.current();
+      }
+
       // Reload today's check-in data
       setTodayCheckInData(null);
-      
-      console.log('✓ Today\'s check-in cleared!');
+
+      console.log('✓ Today\'s check-in, plan completion, and evening check-in cleared!');
     } catch (error) {
       console.error('Error clearing check-in:', error);
     }
-  }, [user?.uid, dailyCheckIn]);
+  }, [user?.uid, dailyCheckIn, planCompletion]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Computed Values
@@ -607,7 +859,7 @@ export const HomeScreen: React.FC = () => {
 
       {/* App Header with Menu */}
       <AppHeader
-        title="Today"
+        title={todayDateHeader}
         showMenuButton
         onMenuPress={() => setMenuVisible(true)}
       />
@@ -629,12 +881,12 @@ export const HomeScreen: React.FC = () => {
           {progressSignal && (
             <Text style={styles.progressSignal}>{progressSignal}</Text>
           )}
-        </View>
+      </View>
 
         {/* Welcome Banner (only for welcome users, small) */}
         {accessInfo.isWelcome && (
           <View style={styles.welcomeBannerContainer}>
-            <WelcomeCountdownBanner />
+      <WelcomeCountdownBanner />
         </View>
         )}
 
@@ -654,29 +906,42 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.heroHeader}>
               <Text style={styles.heroTitle}>
                 {isCheckInCompleted ? "You're on track" : "Check in for today"}
-              </Text>
+          </Text>
               <Text style={styles.heroSubtitle}>
                 {isCheckInCompleted
                   ? "Follow your personalized steps to feel better faster."
                   : "This helps us guide you to feel better today."}
-              </Text>
+          </Text>
             </View>
 
-            {/* Status Chips */}
+            {/* Status Chips - Only show if check-in is pending or if hydration is logged */}
             <View style={styles.heroChips}>
-              <View style={styles.chip}>
-                <Ionicons
-                  name={isCheckInCompleted ? 'checkmark-circle' : 'time-outline'}
-                  size={14}
-                  color={isCheckInCompleted ? '#7AB48B' : 'rgba(15,76,68,0.5)'}
-                />
-                <Text style={[
-                  styles.chipText,
-                  isCheckInCompleted && styles.chipTextCompleted
-                ]}>
-                  Check-in: {isCheckInCompleted ? 'Completed' : 'Pending'}
-                </Text>
-              </View>
+              {/* Only show check-in status chip if check-in is NOT completed */}
+              {!isCheckInCompleted && (
+                <View style={styles.chip}>
+                  <Ionicons
+                    name="time-outline"
+                    size={14}
+                    color="rgba(15,76,68,0.5)"
+                  />
+                  <Text style={styles.chipText}>
+                    Check-in: Pending
+                  </Text>
+                </View>
+              )}
+              {/* Show check-in completed status (optional - can remove if cleaner) */}
+              {isCheckInCompleted && (
+                <View style={[styles.chip, styles.chipCompleted]}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={14}
+                    color="#7AB48B"
+                  />
+                  <Text style={[styles.chipText, styles.chipTextCompleted]}>
+                    Check-in completed
+                  </Text>
+                </View>
+              )}
               {hydrationLogged > 0 && (
                 <View style={styles.chip}>
                   <Ionicons name="water" size={14} color="rgba(15,76,68,0.5)" />
@@ -686,30 +951,110 @@ export const HomeScreen: React.FC = () => {
             </View>
 
             {/* Primary CTA Button */}
-            <TouchableOpacity
+            {/* CRITICAL: Home always points to check-in once completed, regardless of plan status */}
+            {/* This reinforces identity (check-in) over task completion (plan) */}
+          <TouchableOpacity
               style={styles.heroButton}
               onPress={(e) => {
                 e.stopPropagation();
                 if (isCheckInCompleted) {
-                  handleRecoveryPlanPress();
+                  // Always navigate to check-in details screen (the hub)
+                  // This preserves the psychological flow: awareness → action
+                  handleGoToCheckIn();
                 } else {
                   handleDailyCheckInPress();
                 }
               }}
               activeOpacity={0.8}
-            >
-              <LinearGradient
+          >
+            <LinearGradient
                 colors={['#0F4C44', '#0A3F37']}
                 style={styles.heroButtonGradient}
-              >
+            >
                 <Text style={styles.heroButtonText}>
-                  {isCheckInCompleted ? "View today's plan" : "Complete daily check-in"}
-                </Text>
+                  {isCheckInCompleted 
+                    ? "View today's check-in"
+                    : "Complete daily check-in"}
+              </Text>
                 <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
         </TouchableOpacity>
+
+        {/* Evening Check-In Card OR Day Complete State - High priority position (2nd card) */}
+        {!isEveningCheckInLoading && (
+          <>
+            {!isEveningCheckInCompleted ? (
+              // Active state: Evening check-in available - URGENT RITUAL
+              <TouchableOpacity
+                style={[
+                  styles.eveningCheckInCard,
+                  styles.eveningCheckInCardPending,
+                ]}
+                onPress={handleGoToEveningCheckIn}
+                activeOpacity={0.9}
+              >
+                {/* Accent strip for pending ritual */}
+                <View style={styles.eveningAccentStrip} />
+
+                <View style={styles.eveningCheckInContent}>
+                  <View style={styles.eveningCheckInHeader}>
+                    <View style={styles.eveningCheckInIconContainer}>
+                      <Ionicons name="moon" size={28} color="#4A7C7A" />
+                    </View>
+                    <View style={styles.eveningCheckInTextContainer}>
+                      <Text style={styles.eveningCheckInTitle}>Evening check-in</Text>
+                      <Text style={styles.eveningCheckInSubtitle}>
+                        Reflect + sleep prep
+                      </Text>
+                      <Text style={styles.eveningCheckInTiming}>
+                        Takes ~30 seconds
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Primary CTA Button - Same treatment as hero card */}
+                  <TouchableOpacity
+                    style={styles.eveningCheckInButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleGoToEveningCheckIn();
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={['#0F4C44', '#0A3F37']}
+                      style={styles.eveningCheckInButtonGradient}
+                    >
+                      <Text style={styles.eveningCheckInButtonText}>
+                        Complete evening check-in
+                      </Text>
+                      <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              // Completed state: Evening closure - passive state
+              <View style={styles.eveningCheckInCardCompleted}>
+                <View style={styles.eveningCheckInContent}>
+                  <View style={styles.eveningCheckInHeader}>
+                    <View style={styles.eveningCheckInIconContainer}>
+                      <Ionicons name="moon" size={28} color="rgba(74, 124, 122, 0.5)" />
+                    </View>
+                    <View style={styles.eveningCheckInTextContainer}>
+                      <Text style={styles.eveningCheckInTitleCompleted}>Evening check-in completed</Text>
+                      <Text style={styles.eveningCheckInRestMessage}>
+                        Day complete. Rest well.
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+          </>
+        )}
 
         {/* Today's Recovery Score Card - Moved up for immediate feedback */}
         {recoveryScore !== null && (
@@ -717,29 +1062,33 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.recoveryScoreTitle}>Today's Recovery Score</Text>
             <Text style={styles.recoveryScoreSubtitle}>
               Based on how you checked in, hydrated, and completed recovery actions today.
-            </Text>
+          </Text>
             <View style={styles.recoveryScoreCircle}>
               <Text style={styles.recoveryScoreNumber}>{recoveryScore}</Text>
               <Text style={styles.recoveryScoreMax}>/100</Text>
             </View>
             <View style={styles.recoveryScoreBar}>
-              <View 
+              <View
                 style={[
                   styles.recoveryScoreBarFill,
                   { width: `${recoveryScore}%` }
-                ]} 
+                ]}
               />
             </View>
             <Text style={styles.recoveryScoreHelper}>
-              Complete today's plan to improve your score.
+              {isPlanCompleted
+                ? "Great job completing today's plan!"
+                : "Complete today's plan to improve your score."}
             </Text>
-            <TouchableOpacity
-              onPress={handleRecoveryPlanPress}
-              activeOpacity={0.7}
-              style={styles.recoveryScoreCTA}
-            >
-              <Text style={styles.recoveryScoreCTAText}>View today's full plan →</Text>
-            </TouchableOpacity>
+            {!isPlanCompleted && (
+              <TouchableOpacity
+                onPress={handleRecoveryPlanPress}
+                activeOpacity={0.7}
+                style={styles.recoveryScoreCTA}
+              >
+                <Text style={styles.recoveryScoreCTAText}>View today's full plan →</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -761,13 +1110,26 @@ export const HomeScreen: React.FC = () => {
           <View style={styles.waterLogHeader}>
             <Ionicons name="water" size={20} color="#FF8C42" />
             <Text style={styles.waterLogTitle}>Hydration today</Text>
+            <TouchableOpacity
+              onPress={() => setHydrationTooltipVisible(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.infoIconButton}
+              accessibilityLabel="Show hydration guide"
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={18}
+                color="rgba(15, 76, 68, 0.5)"
+              />
+            </TouchableOpacity>
           </View>
 
           {/* Progress */}
           <View style={styles.waterLogProgress}>
             <Text style={styles.waterLogProgressText}>
               Logged: <Text style={styles.waterLogBold}>{hydrationLogged}ml</Text> of {hydrationGoal}ml
-            </Text>
+              </Text>
             <View style={styles.waterLogProgressBar}>
               <View 
                 style={[
@@ -799,7 +1161,7 @@ export const HomeScreen: React.FC = () => {
           {/* Goal Info */}
           <Text style={styles.waterLogGoalText}>
             ~{Math.max(0, hydrationGoal - hydrationLogged)}ml left to reach today's goal
-          </Text>
+              </Text>
 
           {/* View Full Log Link */}
           <TouchableOpacity
@@ -807,19 +1169,22 @@ export const HomeScreen: React.FC = () => {
             activeOpacity={0.7}
           >
             <Text style={styles.waterLogViewLink}>View full water log</Text>
-          </TouchableOpacity>
-        </View>
+            </TouchableOpacity>
+          </View>
 
         {/* Progress Snapshot Card */}
         <View style={styles.progressSnapshotCard}>
           <View style={styles.progressSnapshotHeader}>
-            <Text style={styles.progressSnapshotTitle}>Your progress</Text>
+            <View style={styles.progressSnapshotTitleRow}>
+              <Ionicons name="stats-chart-outline" size={20} color="#0F4C44" style={styles.progressIcon} />
+              <Text style={styles.progressSnapshotTitle}>Your progress</Text>
+        </View>
             {streak > 0 ? (
               <Text style={styles.progressSnapshotSubtitle}>🔥 {streak}-day streak</Text>
             ) : (
               <Text style={styles.progressSnapshotSubtitle}>Start your streak today</Text>
             )}
-          </View>
+      </View>
 
           {/* 7-day tracker */}
           <View style={styles.progressTracker}>
@@ -846,7 +1211,7 @@ export const HomeScreen: React.FC = () => {
                 </Text>
               </View>
             ))}
-          </View>
+      </View>
 
           {/* Motivational copy */}
           <Text style={styles.progressMotivational}>
@@ -859,93 +1224,7 @@ export const HomeScreen: React.FC = () => {
             activeOpacity={0.7}
             style={styles.progressCTA}
           >
-            <Text style={styles.progressCTAText}>View full progress →</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Quick Widgets Grid - 2x2 */}
-        <View style={styles.widgetsGrid}>
-          {/* Water Log Widget */}
-          <TouchableOpacity
-            style={styles.widgetCard}
-            onPress={handleWaterLogPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.widgetIconContainer}>
-              <Ionicons name="water-outline" size={24} color="#0F4C44" />
-      </View>
-            <Text style={styles.widgetTitle}>Water</Text>
-            <Text style={styles.widgetSubtitle}>
-              {hydrationLogged > 0 ? hydrationProgressText : 'Log water'}
-          </Text>
-            <View style={styles.widgetArrow}>
-              <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
-            </View>
-          </TouchableOpacity>
-
-          {/* Progress Widget */}
-          <TouchableOpacity
-            style={styles.widgetCard}
-            onPress={handleProgressPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.widgetIconContainer}>
-              <Ionicons name="stats-chart-outline" size={24} color="#0F4C44" />
-            </View>
-            <Text style={styles.widgetTitle}>Progress</Text>
-            <Text style={styles.widgetSubtitle}>
-              {streak > 0 ? `Streak: ${streak} days` : 'Track progress'}
-          </Text>
-            <View style={styles.widgetArrow}>
-              <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
-            </View>
-          </TouchableOpacity>
-          
-          {/* Today's Plan Widget */}
-          <TouchableOpacity
-            style={styles.widgetCard}
-            onPress={handleRecoveryPlanPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.widgetIconContainer}>
-              <Ionicons name="sunny-outline" size={24} color="#0F4C44" />
-            </View>
-            <Text style={styles.widgetTitle}>Today's Plan</Text>
-            <Text style={styles.widgetSubtitle}>
-              {planStepsLeft !== null ? `${planStepsLeft} steps left` : 'Recovery steps'}
-            </Text>
-            {planStepsLeft !== null && planStepsLeft > 0 && (
-              <Text style={styles.widgetMicroData}>{planStepsLeft} steps left</Text>
-            )}
-            {planStepsLeft === null && isCheckInCompleted && (
-              <Text style={styles.widgetMicroData}>Pending</Text>
-            )}
-            <View style={styles.widgetArrow}>
-              <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
-            </View>
-          </TouchableOpacity>
-
-          {/* Evening Check-In Widget */}
-          <TouchableOpacity
-            style={styles.widgetCard}
-            onPress={handleEveningCheckInPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.widgetIconContainer}>
-              <Ionicons name="moon-outline" size={24} color="#0F4C44" />
-            </View>
-            <Text style={styles.widgetTitle}>Evening check-in</Text>
-            <Text style={styles.widgetSubtitle}>
-              {accessInfo.hasFullAccess ? 'Reflect + sleep prep' : 'Reflect + sleep prep'}
-              </Text>
-            {!accessInfo.hasFullAccess && (
-              <View style={styles.premiumBadge}>
-                <Text style={styles.premiumBadgeText}>Premium</Text>
-              </View>
-            )}
-            <View style={styles.widgetArrow}>
-              <Ionicons name="chevron-forward" size={16} color="rgba(15,76,68,0.3)" />
-            </View>
+            <Text style={styles.progressCTAText}>See your patterns →</Text>
           </TouchableOpacity>
         </View>
 
@@ -1002,6 +1281,19 @@ export const HomeScreen: React.FC = () => {
         onGoToAccount={handleGoToAccount}
         onGoToSubscription={handleGoToSubscription}
         currentScreen={currentScreen}
+      />
+
+      {/* Hydration Tooltip Modal */}
+      <InfoTooltipModal
+        visible={hydrationTooltipVisible}
+        onClose={() => setHydrationTooltipVisible(false)}
+        title="Hydration guide"
+        items={[
+          'A typical glass of water is ~200ml',
+          '+200ml = one glass • +500ml = a small bottle',
+          'Your daily goal is a general guideline to support recovery',
+        ]}
+        ctaLabel="Got it"
       />
     </View>
   );
@@ -1132,6 +1424,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(15,76,68,0.6)',
   },
+  chipCompleted: {
+    backgroundColor: 'rgba(122, 180, 139, 0.1)',
+  },
   chipTextCompleted: {
     color: '#7AB48B',
   },
@@ -1177,6 +1472,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
     color: '#0F3D3E',
+    flex: 1,
+  },
+  infoIconButton: {
+    marginLeft: 'auto',
   },
   waterLogProgress: {
     marginBottom: 16,
@@ -1284,11 +1583,18 @@ const styles = StyleSheet.create({
   progressSnapshotHeader: {
     marginBottom: 16,
   },
+  progressSnapshotTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  progressIcon: {
+    marginRight: 8,
+  },
   progressSnapshotTitle: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
     color: '#0F3D3E',
-    marginBottom: 4,
   },
   progressSnapshotSubtitle: {
     fontFamily: 'Inter_400Regular',
@@ -1427,6 +1733,189 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#0F4C44',
   },
+  // Evening Check-In Card
+  eveningCheckInCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    marginTop: 12,
+    marginBottom: 12,
+    shadowColor: 'rgba(15, 76, 68, 0.1)',
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 20,
+    shadowOpacity: 1,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 76, 68, 0.08)',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  eveningCheckInCardPending: {
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+  },
+  eveningAccentStrip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(15, 76, 68, 0.12)',
+  },
+  eveningCheckInContent: {
+    gap: 20,
+  },
+  eveningCheckInHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  eveningCheckInIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(74, 124, 122, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eveningCheckInTextContainer: {
+    flex: 1,
+    gap: 8,
+  },
+  eveningCheckInTitle: {
+    fontFamily: 'CormorantGaramond_600SemiBold',
+    fontSize: 22,
+    color: '#0F3D3E',
+    lineHeight: 28,
+  },
+  eveningCheckInSubtitle: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    color: 'rgba(15, 61, 62, 0.7)',
+    lineHeight: 22,
+  },
+  eveningCheckInTiming: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: 'rgba(15, 61, 62, 0.5)',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  eveningCheckInCTA: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  eveningCheckInCTAText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#0F4C44',
+  },
+  // Evening Check-In Button (Primary CTA - Same as hero card)
+  eveningCheckInButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  eveningCheckInButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  eveningCheckInButtonText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  eveningCheckInCompleted: {
+    marginTop: 4,
+  },
+  eveningCheckInCompletedText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.6)',
+  },
+  // Evening Check-In Card - Completed State (Passive)
+  eveningCheckInCardCompleted: {
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 20,
+    padding: 24,
+    marginTop: 12,
+    marginBottom: 12,
+    shadowColor: 'rgba(15, 76, 68, 0.04)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    shadowOpacity: 1,
+    elevation: 2,
+  },
+  eveningCheckInTitleCompleted: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 16,
+    color: 'rgba(15, 61, 62, 0.5)',
+    lineHeight: 22,
+  },
+  eveningCheckInCompletedMessage: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 15,
+    color: 'rgba(15, 61, 62, 0.65)',
+    marginTop: 2,
+    lineHeight: 22,
+  },
+  eveningCheckInRestMessage: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: 'rgba(15, 61, 62, 0.45)',
+    marginTop: 4,
+    lineHeight: 20,
+  },
+  // Day Complete Card (passive state after evening check-in)
+  dayCompleteCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: 20,
+    padding: 26,
+    marginTop: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 76, 68, 0.06)',
+    shadowColor: 'rgba(15, 76, 68, 0.04)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    shadowOpacity: 1,
+    elevation: 2,
+  },
+  dayCompleteContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  dayCompleteIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(15, 76, 68, 0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayCompleteIcon: {
+    fontSize: 24,
+  },
+  dayCompleteTextContainer: {
+    flex: 1,
+  },
+  dayCompleteTitle: {
+    fontFamily: 'CormorantGaramond_600SemiBold',
+    fontSize: 20,
+    color: 'rgba(15, 61, 62, 0.5)',
+    marginBottom: 4,
+    lineHeight: 26,
+  },
+  dayCompleteSubtitle: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: 'rgba(15, 61, 62, 0.4)',
+    lineHeight: 20,
+  },
   // Widgets Grid
   widgetsGrid: {
     flexDirection: 'row',
@@ -1509,6 +1998,56 @@ const styles = StyleSheet.create({
     color: '#0F4C44',
     fontFamily: 'Inter_600SemiBold',
     letterSpacing: 0.5,
+  },
+
+  // Evening Check-In Widget (single card, not in grid)
+  eveningWidgetCard: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(15,76,68,0.08)',
+    shadowColor: 'rgba(15,76,68,0.06)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 1,
+    elevation: 3,
+  },
+  eveningWidgetContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  eveningWidgetLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  eveningWidgetIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(15,76,68,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  eveningWidgetText: {
+    flex: 1,
+  },
+  eveningWidgetTitle: {
+    ...typography.bodyMedium,
+    fontSize: 15,
+    color: '#0F3D3E',
+    marginBottom: 2,
+  },
+  eveningWidgetSubtitle: {
+    ...typography.bodySmall,
+    fontSize: 13,
+    color: 'rgba(15,61,62,0.6)',
+    lineHeight: 18,
   },
 
   // Upgrade Card
