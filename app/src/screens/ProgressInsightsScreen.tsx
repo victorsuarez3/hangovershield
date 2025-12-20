@@ -4,7 +4,7 @@
  * Makes users feel understood, not analyzed
  */
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,9 @@ import {
   RefreshControl,
   Dimensions,
   FlatList,
+  Modal,
+  Animated,
+  Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -123,6 +126,51 @@ const getTodayInsight = (): string => {
   const today = new Date();
   const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
   return INSIGHTS[dayOfYear % INSIGHTS.length];
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tooltip Modal (reusable)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface InfoTooltipProps {
+  visible: boolean;
+  title: string;
+  body: string;
+  onClose: () => void;
+}
+
+const InfoTooltipModal: React.FC<InfoTooltipProps> = ({ visible, title, body, onClose }) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: 0, duration: 180, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      ]).start();
+    } else {
+      opacity.setValue(0);
+      translateY.setValue(20);
+    }
+  }, [visible, opacity, translateY]);
+
+  if (!visible) return null;
+
+  return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
+      <View style={styles.tooltipBackdrop}>
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
+        <Animated.View style={[styles.tooltipCard, { opacity, transform: [{ translateY }] }]}>
+          <Text style={styles.tooltipTitle}>{title}</Text>
+          <Text style={styles.tooltipBody}>{body}</Text>
+          <TouchableOpacity style={styles.tooltipButton} onPress={onClose} activeOpacity={0.8}>
+            <Text style={styles.tooltipButtonText}>Got it</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
 };
 
 // Generate mock calendar data (variable count)
@@ -287,6 +335,8 @@ export const ProgressInsightsScreen: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [legendVisible, setLegendVisible] = useState(false);
+  const [recoveryTooltipVisible, setRecoveryTooltipVisible] = useState(false);
+  const [reflectionTooltipVisible, setReflectionTooltipVisible] = useState(false);
   const [currentScreen] = useState<CurrentScreen>('progress');
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('30d');
   const [gridWidth, setGridWidth] = useState<number>(0);
@@ -460,7 +510,21 @@ export const ProgressInsightsScreen: React.FC = () => {
 
         {/* 2. Recovery Trend */}
         <View style={styles.trendCard}>
-          <Text style={styles.trendTitle}>Recovery Trend</Text>
+          <View style={styles.trendHeader}>
+            <Text style={styles.trendTitle}>Recovery Trend</Text>
+            <TouchableOpacity
+              style={styles.infoIconButton}
+              onPress={() => setRecoveryTooltipVisible(true)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel="How to read Recovery Trend"
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={18}
+                color="rgba(15, 76, 68, 0.5)"
+              />
+            </TouchableOpacity>
+          </View>
           <RecoveryTrendLineChart
             data={trendData}
             interpretation={trendInterpretation}
@@ -552,7 +616,21 @@ export const ProgressInsightsScreen: React.FC = () => {
         {/* 5. Reflection Memory (Premium) */}
         {accessInfo.hasFullAccess ? (
           <View style={styles.reflectionCard}>
-            <Text style={styles.reflectionTitle}>Reflection Memory</Text>
+            <View style={styles.reflectionHeader}>
+              <Text style={styles.reflectionTitle}>Reflection Memory</Text>
+              <TouchableOpacity
+                style={styles.infoIconButton}
+                onPress={() => setReflectionTooltipVisible(true)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel="Why Reflection Memory matters"
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={18}
+                  color="rgba(15, 76, 68, 0.5)"
+                />
+              </TouchableOpacity>
+            </View>
             <Text style={styles.reflectionSubtitle}>
               Your reflections help shape how tomorrow feels.
             </Text>
@@ -615,6 +693,20 @@ export const ProgressInsightsScreen: React.FC = () => {
         onGoToAccount={handleGoToAccount}
         onGoToSubscription={handleGoToSubscription}
       />
+
+      {/* Tooltips */}
+      <InfoTooltipModal
+        visible={recoveryTooltipVisible}
+        title="How to read this"
+        body={"This line reflects your overall recovery based on daily check-ins.\n\nHigher points mean your body is bouncing back more easily.\nDips are normal — patterns matter more than single days."}
+        onClose={() => setRecoveryTooltipVisible(false)}
+      />
+      <InfoTooltipModal
+        visible={reflectionTooltipVisible}
+        title="Why this matters"
+        body={"Short reflections help you notice what actually improves your recovery.\n\nOver time, patterns emerge — not rules, but awareness."}
+        onClose={() => setReflectionTooltipVisible(false)}
+      />
     </View>
   );
 };
@@ -675,11 +767,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(15, 76, 68, 0.08)',
   },
+  trendHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   trendTitle: {
     ...typography.sectionTitle,
     fontSize: 22,
     color: '#0F3D3E',
-    marginBottom: 20,
+    marginBottom: 0,
   },
 
   // Small Insight Card
@@ -806,6 +904,12 @@ const styles = StyleSheet.create({
     ...typography.sectionTitle,
     fontSize: 22,
     color: '#0F3D3E',
+    marginBottom: 0,
+  },
+  reflectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 6,
   },
   reflectionSubtitle: {
@@ -881,6 +985,56 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
     letterSpacing: 0.2,
+  },
+
+  // Tooltip modal (aligned with Rhythm modal)
+  tooltipBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 61, 62, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  tooltipCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 24,
+    shadowColor: 'rgba(15, 76, 68, 0.15)',
+    shadowOffset: { width: 0, height: -4 },
+    shadowRadius: 16,
+    shadowOpacity: 1,
+    elevation: 14,
+  },
+  tooltipTitle: {
+    fontFamily: 'CormorantGaramond_600SemiBold',
+    fontSize: 22,
+    color: '#0F3D3E',
+    marginBottom: 10,
+  },
+  tooltipBody: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    color: 'rgba(15, 61, 62, 0.78)',
+    lineHeight: 22,
+    marginBottom: 18,
+  },
+  tooltipButton: {
+    alignSelf: 'center',
+    backgroundColor: '#0F4C44',
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 14,
+    shadowColor: 'rgba(15,76,68,0.25)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    shadowOpacity: 1,
+    elevation: 6,
+  },
+  tooltipButtonText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 15,
+    color: '#FFFFFF',
   },
 });
 
