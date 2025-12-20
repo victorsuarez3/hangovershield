@@ -27,6 +27,7 @@ import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { getTodayDailyCheckIn } from './src/services/dailyCheckIn';
 import { initializeRevenueCat, identifyUser } from './src/services/revenuecat';
 import Constants from 'expo-constants';
+import { SHOW_DEV_TOOLS } from './src/config/flags';
 
 // Debug: Verify RevenueCat exports are available
 console.log('RC exports check:', {
@@ -156,7 +157,7 @@ function AppContent() {
 
   const ensureMainAppVisible = React.useCallback(async () => {
     // In guest/test mode (skipAuthMode) or development builds, allow navigation without auth
-    if (!user && !skipAuthMode && !__DEV__) {
+    if (!user && !skipAuthMode && !SHOW_DEV_TOOLS) {
       console.warn('[AppNavigation] User not authenticated, cannot navigate');
       return false;
     }
@@ -185,7 +186,7 @@ function AppContent() {
         if (attempts < maxAttempts) {
           setTimeout(tryFlush, 50);
         } else {
-          if (__DEV__) {
+          if (SHOW_DEV_TOOLS) {
             console.warn('[AppNavigation] Navigation ref not ready after max attempts');
           }
         }
@@ -195,13 +196,13 @@ function AppContent() {
       const rootState = navigationRef.getRootState();
       const routeNames = rootState?.routeNames ?? [];
 
-      if (__DEV__ && attempts === 1) {
+      if (SHOW_DEV_TOOLS && attempts === 1) {
         console.log('[AppNavigation] Attempting to flush pendingNav', { pendingNav, routeNames });
       }
 
       if (pendingNav.kind === 'screen') {
         if (routeNames.includes(pendingNav.screen)) {
-          if (__DEV__) {
+          if (SHOW_DEV_TOOLS) {
             console.log('[AppNavigation] Navigating to screen', pendingNav.screen);
           }
           navigationRef.navigate(pendingNav.screen as any, pendingNav.params);
@@ -213,7 +214,7 @@ function AppContent() {
       if (attempts < maxAttempts) {
         setTimeout(tryFlush, 50);
       } else {
-        if (__DEV__) {
+        if (SHOW_DEV_TOOLS) {
           console.warn('[AppNavigation] Failed to flush pendingNav after max attempts', { pendingNav, routeNames });
         }
       }
@@ -235,17 +236,17 @@ function AppContent() {
 
   // Navigation handlers for global menu (works from onboarding/daily_checkin/app)
   const handleGoToHome = React.useCallback(async () => {
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[AppNavigation] handleGoToHome called', { user: !!user, skipAuthMode });
     }
     const ok = await ensureMainAppVisible();
     if (!ok) {
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.warn('[AppNavigation] handleGoToHome blocked by ensureMainAppVisible');
       }
       return;
     }
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[AppNavigation] handleGoToHome setting pendingNav to HomeMain');
     }
     setPendingNav({ kind: 'screen', screen: 'HomeMain' });
@@ -258,17 +259,17 @@ function AppContent() {
   }, [ensureMainAppVisible]);
 
   const handleGoToProgress = React.useCallback(async () => {
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[AppNavigation] handleGoToProgress called', { user: !!user, skipAuthMode });
     }
     const ok = await ensureMainAppVisible();
     if (!ok) {
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.warn('[AppNavigation] handleGoToProgress blocked by ensureMainAppVisible');
       }
       return;
     }
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[AppNavigation] handleGoToProgress setting pendingNav to Progress');
     }
     setPendingNav({ kind: 'screen', screen: 'Progress' });

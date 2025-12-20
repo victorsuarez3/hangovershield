@@ -34,6 +34,7 @@ import { useAccessStatus } from '../hooks/useAccessStatus';
 import { Analytics } from '../utils/analytics';
 import { PAYWALL_FEATURES, getCTAText } from '../utils/paywallCopy';
 import { PaywallSourceType } from '../constants/paywallSources';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 
 // Includes section items (grouped)
 const PAYWALL_INCLUDES = {
@@ -104,7 +105,7 @@ export const PaywallScreen: React.FC = () => {
   const offeringsLoaded = packages.length > 0;
   // Allow purchases if RevenueCat is available and packages are loaded
   // OR if we're in dev mode (for testing UI)
-  const purchasesReady = (isRevenueCatAvailable && offeringsLoaded) || __DEV__;
+  const purchasesReady = (isRevenueCatAvailable && offeringsLoaded) || SHOW_DEV_TOOLS;
 
   const selectedPackage = useMemo(() => {
     if (selectedPlan === 'yearly') return yearlyPackage ?? null;
@@ -135,7 +136,7 @@ export const PaywallScreen: React.FC = () => {
 
   const handlePurchase = async () => {
     // In dev mode without RevenueCat, simulate success
-    if (__DEV__ && !isRevenueCatAvailable) {
+    if (SHOW_DEV_TOOLS && !isRevenueCatAvailable) {
       Alert.alert(
         'Dev Mode',
         'RevenueCat is not available. In production, this would complete the purchase.',
@@ -244,7 +245,7 @@ export const PaywallScreen: React.FC = () => {
   const isLoading = isLoadingPackages || isPurchasing || isRestoring;
 
   // Debug logging
-  if (__DEV__) {
+  if (SHOW_DEV_TOOLS) {
     console.log('[PaywallScreen] Button state:', {
       purchasesReady,
       isLoading,

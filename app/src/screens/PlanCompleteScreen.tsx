@@ -24,6 +24,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { useOnboardingCompletion } from '../contexts/OnboardingCompletionContext';
 import { RECOVERY_PLAN_COPY } from '../constants/recoveryPlanCopy';
 import { markFirstLoginOnboardingCompleted } from '../services/auth';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -154,7 +155,7 @@ export const PlanCompleteScreen: React.FC = () => {
   const handleDone = async () => {
     // If we're in onboarding context, complete onboarding and navigate to Home
     if (appNav.currentContext === 'onboarding') {
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.log('[PlanCompleteScreen] In onboarding context - completing onboarding');
       }
 
@@ -168,7 +169,7 @@ export const PlanCompleteScreen: React.FC = () => {
           await markFirstLoginOnboardingCompleted(user.uid);
         }
 
-        if (__DEV__) {
+        if (SHOW_DEV_TOOLS) {
           console.log('[PlanCompleteScreen] ✅ Onboarding marked as completed');
           console.log('[PlanCompleteScreen] App.tsx will re-render and switch to AppNavigator with key="app-nav"');
         }
@@ -191,7 +192,7 @@ export const PlanCompleteScreen: React.FC = () => {
     }
 
     // If we're NOT in onboarding context (user accessed plan from Home), navigate back to Home
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[PlanCompleteScreen] Not in onboarding context - navigating to Home');
     }
 

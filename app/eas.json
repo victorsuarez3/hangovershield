@@ -13,6 +13,9 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SHOW_DEV_TOOLS": "false"
+      },
       "ios": {
         "simulator": false
       },
@@ -21,6 +24,9 @@
       }
     },
     "production": {
+      "env": {
+        "EXPO_PUBLIC_SHOW_DEV_TOOLS": "false"
+      },
       "ios": {
         "simulator": false
       },

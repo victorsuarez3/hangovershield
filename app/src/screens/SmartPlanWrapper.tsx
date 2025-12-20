@@ -18,6 +18,7 @@ import {
   saveLocalPlanStepsState,
 } from '../services/dailyCheckInStorage';
 import { getTodayId } from '../utils/dateUtils';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 import { markPlanCompletedForToday } from '../services/dailyCheckIn';
 import { FeelingOption, SymptomKey } from '../navigation/OnboardingNavigator';
 import { generatePlan } from '../domain/recovery/planGenerator';
@@ -102,7 +103,7 @@ export const SmartPlanWrapper: React.FC = () => {
               actions: actionsWithState,
             });
             
-            if (__DEV__) {
+            if (SHOW_DEV_TOOLS) {
               console.log('[SmartPlanWrapper] Loaded plan from local check-in:', {
                 stepsCount: actionsWithState.length,
                 completedSteps: actionsWithState.filter(a => a.completed).length,
@@ -150,7 +151,7 @@ export const SmartPlanWrapper: React.FC = () => {
             actions: actionsWithState,
           });
           
-          if (__DEV__) {
+          if (SHOW_DEV_TOOLS) {
             console.log('[SmartPlanWrapper] Loaded plan from unified service:', {
               stepsCount: actionsWithState.length,
               completedSteps: actionsWithState.filter(a => a.completed).length,
@@ -210,7 +211,7 @@ export const SmartPlanWrapper: React.FC = () => {
             actions: actionsWithState,
           });
           
-          if (__DEV__) {
+          if (SHOW_DEV_TOOLS) {
             console.log('[SmartPlanWrapper] Generated plan from local check-in:', {
               stepsCount: actionsWithState.length,
               completedSteps: actionsWithState.filter(a => a.completed).length,
@@ -326,7 +327,7 @@ export const SmartPlanWrapper: React.FC = () => {
     // Save to AsyncStorage
     try {
       await updateLocalPlanStepState(dateId, stepId, completed);
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.log('[SmartPlanWrapper] Saved step state:', { stepId, completed });
       }
     } catch (error) {
@@ -346,7 +347,7 @@ export const SmartPlanWrapper: React.FC = () => {
       
       try {
         await saveLocalPlanStepsState(dateId, allStepsCompleted);
-        if (__DEV__) {
+        if (SHOW_DEV_TOOLS) {
           console.log('[SmartPlanWrapper] Saved all steps as completed');
         }
       } catch (error) {
@@ -357,7 +358,7 @@ export const SmartPlanWrapper: React.FC = () => {
     // Save completion to AsyncStorage first (source of truth when Firestore isn't available)
     try {
       await saveLocalPlanCompletion(dateId, stepsCompleted, totalSteps);
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.log('[SmartPlanWrapper] Saved plan completion to AsyncStorage:', {
           dateId,
           stepsCompleted,
@@ -378,7 +379,7 @@ export const SmartPlanWrapper: React.FC = () => {
           stepsCompleted,
           totalSteps,
         });
-        if (__DEV__) {
+        if (SHOW_DEV_TOOLS) {
           console.log('[SmartPlanWrapper] Saved plan completion to Firestore');
         }
       } catch (error) {

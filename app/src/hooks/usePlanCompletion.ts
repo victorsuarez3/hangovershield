@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getTodayDailyCheckIn } from '../services/dailyCheckIn';
 import { getLocalPlanCompletion } from '../services/dailyCheckInStorage';
 import { getTodayId } from '../utils/dateUtils';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 
 export interface UsePlanCompletionReturn {
   isPlanCompleted: boolean;
@@ -39,7 +40,7 @@ export const usePlanCompletion = (userId: string | null): UsePlanCompletionRetur
       if (localCompletion && localCompletion.dateId === todayId && localCompletion.completed) {
         // Local plan completion exists for today
         setIsPlanCompleted(true);
-        if (__DEV__) {
+        if (SHOW_DEV_TOOLS) {
           console.log('[usePlanCompletion] Plan completed (from AsyncStorage):', {
             todayId,
             stepsCompleted: localCompletion.stepsCompleted,
@@ -60,7 +61,7 @@ export const usePlanCompletion = (userId: string | null): UsePlanCompletionRetur
           const completed = checkIn?.planCompleted === true;
           setIsPlanCompleted(completed);
           
-          if (__DEV__) {
+          if (SHOW_DEV_TOOLS) {
             console.log('[usePlanCompletion] Plan status checked (from Firestore):', {
               todayId,
               checkInExists: !!checkIn,
@@ -79,7 +80,7 @@ export const usePlanCompletion = (userId: string | null): UsePlanCompletionRetur
 
       // No plan completion found in either source
       setIsPlanCompleted(false);
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.log('[usePlanCompletion] Plan not completed:', {
           todayId,
           hasLocal: !!localCompletion,

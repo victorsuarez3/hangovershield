@@ -11,6 +11,7 @@ import {
 } from '../services/dailyCheckIn';
 import { getLocalDailyCheckIn } from '../services/dailyCheckInStorage';
 import { getTodayId } from '../utils/dateUtils';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 
 export type DailyCheckInStatus = 
   | 'loading'
@@ -68,7 +69,7 @@ export const useDailyCheckIn = (userId: string | null): UseDailyCheckInReturn =>
           drinkingToday: localCheckIn.drinkingToday,
         });
         setStatus('completed_today');
-        if (__DEV__) {
+        if (SHOW_DEV_TOOLS) {
           console.log('[useDailyCheckIn] Check-in completed (from AsyncStorage):', {
             todayId,
             severity: localCheckIn.level,
@@ -88,7 +89,7 @@ export const useDailyCheckIn = (userId: string | null): UseDailyCheckInReturn =>
           if (checkIn && checkIn.completedAt) {
             setTodayCheckIn(checkIn);
             setStatus('completed_today');
-            if (__DEV__) {
+            if (SHOW_DEV_TOOLS) {
               console.log('[useDailyCheckIn] Check-in completed (from Firestore):', {
                 todayId,
                 source: 'Firestore',
@@ -106,7 +107,7 @@ export const useDailyCheckIn = (userId: string | null): UseDailyCheckInReturn =>
       // No check-in found in either source
       setTodayCheckIn(null);
       setStatus('needs_checkin');
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.log('[useDailyCheckIn] No check-in found:', {
           todayId,
           hasLocal: !!localCheckIn,

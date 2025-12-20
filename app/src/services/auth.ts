@@ -18,6 +18,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import Constants from 'expo-constants';
 import { auth, db, storage } from '../firebase/config';
 import { UserDoc } from '../models/firestore';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 
 /**
  * Sign up a new user with email and password
@@ -203,7 +204,7 @@ export const markFirstLoginOnboardingCompleted = async (userId: string): Promise
       { merge: true }
     );
 
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[auth] First-login onboarding marked as completed in Firestore:', userId);
     }
   } catch (error) {

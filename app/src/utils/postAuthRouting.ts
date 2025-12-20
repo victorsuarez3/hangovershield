@@ -12,6 +12,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getFirstLoginOnboardingStatus } from '../services/dailyCheckInStorage';
 import { UserDoc } from '../models/firestore';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 
 export type PostAuthDestination =
   | 'FirstLoginOnboarding'  // User needs first-login onboarding (3 screens)
@@ -35,7 +36,7 @@ export const resolvePostAuthRoute = async (userId: string): Promise<PostAuthRout
     const localStatus = await getFirstLoginOnboardingStatus();
 
     if (localStatus.completed) {
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.log('[postAuthRouting] User completed onboarding (from AsyncStorage)', {
           version: localStatus.version,
         });
@@ -56,7 +57,7 @@ export const resolvePostAuthRoute = async (userId: string): Promise<PostAuthRout
 
         // Check if onboarding field exists and is completed
         if (userData.onboarding?.firstLoginCompleted) {
-          if (__DEV__) {
+          if (SHOW_DEV_TOOLS) {
             console.log('[postAuthRouting] User completed onboarding (from Firestore)', {
               completedAt: userData.onboarding.firstLoginCompletedAt,
               version: userData.onboarding.firstLoginVersion,
@@ -75,7 +76,7 @@ export const resolvePostAuthRoute = async (userId: string): Promise<PostAuthRout
 
     // DEFAULT: Show first-login onboarding
     // Neither local storage nor Firestore shows completion
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[postAuthRouting] User needs first-login onboarding', {
         localCompleted: localStatus.completed,
       });

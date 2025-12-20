@@ -7,6 +7,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getTodayId } from '../utils/dateUtils';
 import { DailyCheckInSeverity } from './dailyCheckIn';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -125,7 +126,7 @@ export const deleteLocalDailyCheckIn = async (dateId?: string): Promise<boolean>
     const checkInCompleteShownKey = `checkInCompleteShown:${targetDateId}`;
     await AsyncStorage.removeItem(checkInCompleteShownKey);
     
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[dailyCheckInStorage] Cleared all local data for:', targetDateId);
     }
     
@@ -167,7 +168,7 @@ export const saveLocalPlanCompletion = async (
     };
     
     await AsyncStorage.setItem(storageKey, JSON.stringify(completion));
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[dailyCheckInStorage] Saved plan completion:', {
         dateId,
         stepsCompleted,
@@ -232,7 +233,7 @@ export const saveLocalPlanStepsState = async (
     };
     
     await AsyncStorage.setItem(storageKey, JSON.stringify(state));
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[dailyCheckInStorage] Saved plan steps state:', {
         dateId,
         stepsCount: Object.keys(steps).length,
@@ -364,7 +365,7 @@ export const saveLocalEveningCheckIn = async (
         ...eveningData,
       };
       await AsyncStorage.setItem(storageKey, JSON.stringify(minimalCheckIn));
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.log('[dailyCheckInStorage] Created new check-in with evening data:', dateId);
       }
       return true;
@@ -378,7 +379,7 @@ export const saveLocalEveningCheckIn = async (
     };
 
     await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[dailyCheckInStorage] Updated check-in with evening data:', {
         dateId,
         hasReflection: !!eveningData.eveningReflection,
@@ -473,7 +474,7 @@ export const setFirstLoginOnboardingCompleted = async (): Promise<boolean> => {
       CURRENT_ONBOARDING_VERSION.toString()
     );
 
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[dailyCheckInStorage] First-login onboarding marked as completed');
     }
 
@@ -495,7 +496,7 @@ export const clearFirstLoginOnboardingForDev = async (): Promise<boolean> => {
     await AsyncStorage.removeItem(FIRST_LOGIN_ONBOARDING_KEY);
     await AsyncStorage.removeItem(FIRST_LOGIN_ONBOARDING_VERSION_KEY);
 
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[dailyCheckInStorage] First-login onboarding state cleared for dev');
     }
 

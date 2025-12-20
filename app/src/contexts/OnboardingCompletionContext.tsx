@@ -8,6 +8,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 
 // Storage key for onboarding completion (single source of truth)
 const ONBOARDING_COMPLETED_KEY = 'onboardingCompleted';
@@ -54,7 +55,7 @@ export const OnboardingCompletionProvider: React.FC<OnboardingCompletionProvider
         await AsyncStorage.removeItem(LEGACY_ONBOARDING_KEY);
       }
 
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.log('[OnboardingCompletionContext] Hydrated onboarding status:', completed);
       }
 
@@ -77,7 +78,7 @@ export const OnboardingCompletionProvider: React.FC<OnboardingCompletionProvider
       await AsyncStorage.setItem(ONBOARDING_COMPLETED_KEY, completed ? 'true' : 'false');
       setOnboardingCompletedState(completed);
 
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.log('[OnboardingCompletionContext] State updated -> onboardingCompleted:', completed);
       }
     } catch (error) {
@@ -92,7 +93,7 @@ export const OnboardingCompletionProvider: React.FC<OnboardingCompletionProvider
       await AsyncStorage.removeItem(ONBOARDING_COMPLETED_KEY);
       await AsyncStorage.removeItem(LEGACY_ONBOARDING_KEY);
       setOnboardingCompletedState(false);
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.log('[OnboardingCompletionContext] ✅ Onboarding reset - reload app to test flow again');
       }
     } catch (error) {
@@ -102,7 +103,7 @@ export const OnboardingCompletionProvider: React.FC<OnboardingCompletionProvider
 
   // Log state changes
   React.useEffect(() => {
-    if (__DEV__) {
+    if (SHOW_DEV_TOOLS) {
       console.log('[OnboardingCompletionContext] State changed - onboardingCompleted:', onboardingCompleted);
     }
   }, [onboardingCompleted]);

@@ -10,6 +10,7 @@
  */
 
 import { Platform } from 'react-native';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -141,7 +142,7 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
   try {
     // Set log level
     const LOG_LEVEL = getLogLevel();
-    if (LOG_LEVEL && __DEV__) {
+    if (LOG_LEVEL && SHOW_DEV_TOOLS) {
       Purchases.setLogLevel(LOG_LEVEL.DEBUG);
     }
 

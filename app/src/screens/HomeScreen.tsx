@@ -47,6 +47,7 @@ import { getLocalDailyCheckIn, deleteLocalDailyCheckIn, hasCompletedEveningCheck
 import { getTodayId, getDateId } from '../utils/dateUtils';
 import { typography } from '../design-system/typography';
 import { generatePlan } from '../domain/recovery/planGenerator';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -136,7 +137,7 @@ export const HomeScreen: React.FC = () => {
         // PRIORITY 1: Check AsyncStorage (works in dev mode without user)
         const hasLocalEvening = await hasCompletedEveningCheckInToday();
 
-        if (__DEV__) {
+        if (SHOW_DEV_TOOLS) {
           console.log('[HomeScreen] Evening check-in status from AsyncStorage:', hasLocalEvening);
         }
 
@@ -161,7 +162,7 @@ export const HomeScreen: React.FC = () => {
             // Check for eveningCheckInCompletedAt field which is always set when evening check-in is completed
             const hasEveningData = checkInAny.eveningCheckInCompletedAt !== undefined;
 
-            if (__DEV__) {
+            if (SHOW_DEV_TOOLS) {
               console.log('[HomeScreen] Evening check-in status from Firestore:', {
                 hasEveningData,
                 hasEveningCheckInCompletedAt: checkInAny.eveningCheckInCompletedAt !== undefined,
@@ -179,7 +180,7 @@ export const HomeScreen: React.FC = () => {
               Analytics.eveningHomeStateClosed(user.uid);
             }
           } else {
-            if (__DEV__) console.log('[HomeScreen] No check-in found - evening check-in marked incomplete');
+            if (SHOW_DEV_TOOLS) console.log('[HomeScreen] No check-in found - evening check-in marked incomplete');
             setIsEveningCheckInCompleted(false);
           }
         } else {
@@ -203,7 +204,7 @@ export const HomeScreen: React.FC = () => {
       // PRIORITY 1: Check AsyncStorage (works in dev mode without user)
       const hasLocalEvening = await hasCompletedEveningCheckInToday();
 
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         console.log('[HomeScreen] Refresh - Evening check-in status from AsyncStorage:', hasLocalEvening);
       }
 
@@ -235,19 +236,19 @@ export const HomeScreen: React.FC = () => {
   useEffect(() => {
     refreshEveningCheckInRef.current = async () => {
       try {
-        if (__DEV__) console.log('[HomeScreen] Refreshing evening check-in status...');
+        if (SHOW_DEV_TOOLS) console.log('[HomeScreen] Refreshing evening check-in status...');
 
         // PRIORITY 1: Check AsyncStorage (works in dev mode without user)
         const hasLocalEvening = await hasCompletedEveningCheckInToday();
 
-        if (__DEV__) {
+        if (SHOW_DEV_TOOLS) {
           console.log('[HomeScreen] 🔄 REFRESH - Evening check-in status from AsyncStorage:', hasLocalEvening);
         }
 
         // If we have local data, use it
         if (hasLocalEvening) {
           setIsEveningCheckInCompleted(true);
-          if (__DEV__) console.log('[HomeScreen] 🔄 REFRESH: Setting isEveningCheckInCompleted to: true (from AsyncStorage)');
+          if (SHOW_DEV_TOOLS) console.log('[HomeScreen] 🔄 REFRESH: Setting isEveningCheckInCompleted to: true (from AsyncStorage)');
           return;
         }
 
@@ -259,7 +260,7 @@ export const HomeScreen: React.FC = () => {
             // Check for eveningCheckInCompletedAt field which is always set when evening check-in is completed
             const hasEveningData = checkInAny.eveningCheckInCompletedAt !== undefined;
 
-            if (__DEV__) {
+            if (SHOW_DEV_TOOLS) {
               console.log('[HomeScreen] Refresh - Evening check-in status from Firestore:', {
                 hasEveningData,
                 hasEveningCheckInCompletedAt: checkInAny.eveningCheckInCompletedAt !== undefined,
@@ -272,11 +273,11 @@ export const HomeScreen: React.FC = () => {
 
             setIsEveningCheckInCompleted(hasEveningData);
           } else {
-            if (__DEV__) console.log('[HomeScreen] Refresh - No check-in found');
+            if (SHOW_DEV_TOOLS) console.log('[HomeScreen] Refresh - No check-in found');
             setIsEveningCheckInCompleted(false);
           }
         } else {
-          if (__DEV__) console.log('[HomeScreen] Refresh - No user and no local data');
+          if (SHOW_DEV_TOOLS) console.log('[HomeScreen] Refresh - No user and no local data');
           setIsEveningCheckInCompleted(false);
         }
       } catch (error) {
@@ -343,7 +344,7 @@ export const HomeScreen: React.FC = () => {
   
   useFocusEffect(
     useCallback(() => {
-      if (__DEV__) console.log('[HomeScreen] 🔄 useFocusEffect triggered - refreshing all states');
+      if (SHOW_DEV_TOOLS) console.log('[HomeScreen] 🔄 useFocusEffect triggered - refreshing all states');
 
       // Always refresh - hooks will check AsyncStorage first, then Firestore
       refreshCheckInRef.current();
@@ -353,7 +354,7 @@ export const HomeScreen: React.FC = () => {
       refreshEveningCheckInRef.current();
 
       // Debug logging (use current values, not from dependencies to avoid loops)
-      if (__DEV__) {
+      if (SHOW_DEV_TOOLS) {
         const todayId = getTodayId();
         console.log('[HomeScreen] Refreshed completion states on focus:', {
           todayId,
@@ -1290,7 +1291,7 @@ export const HomeScreen: React.FC = () => {
         </View>
 
         {/* Dev buttons (only in development) */}
-        {__DEV__ && (
+        {SHOW_DEV_TOOLS && (
           <View style={styles.devButtonsRow}>
             <TouchableOpacity
               style={[styles.devButton, styles.devButtonHalf]}
