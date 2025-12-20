@@ -846,7 +846,14 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         }}
         onGoToCheckIn={() => {
           setMenuVisible(false);
-          navigation.navigate('CheckIn' as never);
+          // If we came from Daily Check-In, a back takes us there; otherwise fall back to global nav
+          setTimeout(() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              appNav.goToDailyCheckIn();
+            }
+          }, 60);
         }}
         onGoToWaterLog={() => {
           setMenuVisible(false);
