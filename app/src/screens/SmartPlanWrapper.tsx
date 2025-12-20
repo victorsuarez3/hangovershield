@@ -389,6 +389,7 @@ export const SmartPlanWrapper: React.FC = () => {
     // Show loading state or TodayRecoveryPlanScreen with default data
     return (
       <TodayRecoveryPlanScreen
+        mode="app"
         date={planData?.date}
         recoveryWindowLabel={planData?.recoveryWindowLabel}
         symptomLabels={planData?.symptomLabels}
@@ -403,6 +404,7 @@ export const SmartPlanWrapper: React.FC = () => {
 
   return (
     <TodayRecoveryPlanScreen
+      mode="app"
       date={planData.date}
       recoveryWindowLabel={planData.recoveryWindowLabel}
       symptomLabels={planData.symptomLabels}

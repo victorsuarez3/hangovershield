@@ -29,6 +29,7 @@ import { PaywallSource } from '../constants/paywallSources';
 import { useAuth } from '../providers/AuthProvider';
 import { useUserDataStore } from '../stores/useUserDataStore';
 import { getTodayHydrationLog, getHydrationGoal } from '../services/hydrationService';
+import { RECOVERY_PLAN_COPY } from '../constants/recoveryPlanCopy';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -50,6 +51,7 @@ export type RecoveryAction = {
 };
 
 export type TodayRecoveryPlanScreenProps = {
+  mode?: 'onboarding' | 'app';
   date?: string;
   recoveryWindowLabel?: string;
   symptomLabels?: string[];
@@ -453,6 +455,13 @@ const ProgressSection: React.FC<ProgressSectionProps> = ({ completed, total }) =
       <Text style={styles.progressFooterCopy}>
         Small improvements throughout the day make the biggest difference.
       </Text>
+      
+      {/* Habit reinforcement - only show when all steps completed */}
+      {completed === total && total > 0 && (
+        <Text style={styles.habitReinforcementText}>
+          {RECOVERY_PLAN_COPY.habitReinforcement}
+        </Text>
+      )}
     </View>
   );
 };
@@ -467,7 +476,10 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
   const appNav = useAppNavigation();
   const accessInfo = useAccessStatus();
   const { user } = useAuth();
-  
+
+  // Hide menu during onboarding (psychological tunnel - user focuses on completing first plan)
+  const isOnboarding = props.mode === 'onboarding' || appNav.currentContext === 'onboarding';
+
   // Menu state
   const [menuVisible, setMenuVisible] = useState(false);
 
@@ -581,53 +593,38 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
   const ctaText = allCompleted 
     ? "I've completed today's plan" 
     : completedActions === 0 
-      ? 'Start My First Step'
-      : 'Continue My Plan';
+      ? 'Start recovery'
+      : 'Continue';
 
   // Handler for completing the plan
   const handleCompletePlan = useCallback(() => {
-    const doComplete = () => {
+    // Only complete if all steps are actually completed
+    if (completedActions === totalActions && totalActions > 0) {
       if (onCompletePlan) {
         onCompletePlan(completedActions, totalActions);
       } else {
-        // Fallback alert if no handler provided
-        Alert.alert(
-          '🎉 Amazing work!',
-          "You've completed all your recovery steps. Your body thanks you!",
-          [{ text: 'Awesome' }]
-        );
+        // Navigate to premium completion screen
+        navigation.navigate('PlanComplete', { 
+          stepsCompleted: completedActions, 
+          totalSteps: totalActions 
+        });
       }
-    };
-
-    // If not all steps completed, ask for confirmation
-    if (completedActions < totalActions && totalActions > 0) {
-      Alert.alert(
-        "Finish today's plan?",
-        `You've only completed ${completedActions} of ${totalActions} steps. Are you sure you want to finish today's plan?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Finish anyway',
-            style: 'default',
-            onPress: doComplete,
-          },
-        ]
-      );
-    } else {
-      doComplete();
     }
-  }, [completedActions, totalActions, onCompletePlan]);
+  }, [completedActions, totalActions, onCompletePlan, navigation]);
 
   // CTA handler - mark next step or complete plan
   const handleCtaPress = useCallback(() => {
     if (allCompleted) {
       // All steps done - trigger completion
       handleCompletePlan();
-    } else if (nextStepId) {
-      // Not all done - mark next step as completed
-      handleToggleAction(nextStepId, true);
+    } else {
+      // Mark next step as completed (or first step if none completed)
+      const stepToComplete = nextStepId || (localActions.length > 0 ? localActions[0].id : null);
+      if (stepToComplete) {
+        handleToggleAction(stepToComplete, true);
+      }
     }
-  }, [allCompleted, nextStepId, handleToggleAction, handleCompletePlan]);
+  }, [allCompleted, nextStepId, handleToggleAction, handleCompletePlan, localActions]);
 
   // Build flat list with section markers
   const timelineItems = useMemo(() => {
@@ -669,10 +666,11 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
       />
 
       {/* App Header with Back Button and Menu */}
+      {/* IMPORTANT: Hide menu during onboarding to create focused "tunnel" experience */}
       <AppHeader
         showBackButton
         onBackPress={() => navigation.goBack()}
-        showMenuButton
+        showMenuButton={!isOnboarding}
         onMenuPress={() => setMenuVisible(true)}
       />
 
@@ -720,9 +718,10 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
                   {isFirstNonMorningHeader && !accessInfo.hasFullAccess && (
                     <SoftGateCard
                       title="Unlock full recovery plan"
-                      description="See midday, afternoon, and evening steps tailored to your recovery."
+                      description={RECOVERY_PLAN_COPY.unlockDescription}
                       source={PaywallSource.RECOVERY_PLAN_SOFT_GATE}
                       contextScreen="TodayRecoveryPlan"
+                      showLossFraming={false}
                     />
                   )}
                   <SectionHeader label={TIME_OF_DAY_LABELS[item.timeOfDay]} />
@@ -777,22 +776,14 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
           )}
         </TouchableOpacity>
         
-        {/* Secondary action - Finish plan early */}
-        {!allCompleted && completedActions > 0 && (
-          <TouchableOpacity
-            style={styles.finishEarlyButton}
-            onPress={handleCompletePlan}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.finishEarlyText}>Finish today's plan</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* App Menu Sheet */}
-      <AppMenuSheet
-        visible={menuVisible}
-        onClose={() => setMenuVisible(false)}
+      {/* IMPORTANT: Don't render menu during onboarding at all */}
+      {!isOnboarding && (
+        <AppMenuSheet
+          visible={menuVisible}
+          onClose={() => setMenuVisible(false)}
         currentScreen="today"
         onGoToHome={() => {
           setMenuVisible(false);
@@ -827,6 +818,7 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
           appNav.goToSubscription(source, 'TodayRecoveryPlan');
         }}
       />
+      )}
     </View>
   );
 };
@@ -1284,6 +1276,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     fontStyle: 'italic',
+    paddingHorizontal: 24,
+  },
+  habitReinforcementText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: 'rgba(15,61,62,0.5)',
+    textAlign: 'center',
+    marginTop: 8,
     paddingHorizontal: 24,
   },
 

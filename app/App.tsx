@@ -4,11 +4,12 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import * as SplashScreenNative from 'expo-splash-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SkipAuthProvider } from './src/contexts/SkipAuthContext';
 import { AppNavigationProvider } from './src/contexts/AppNavigationContext';
+import { OnboardingCompletionProvider, useOnboardingCompletion } from './src/contexts/OnboardingCompletionContext';
 
 // Keep splash screen visible until fonts are loaded
 SplashScreenNative.preventAutoHideAsync();
@@ -17,15 +18,14 @@ import { ThemeProvider } from './src/hooks/useTheme';
 import { AuthProvider, useAuth } from './src/providers/AuthProvider';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { AuthNavigator } from './src/navigation/AuthNavigator';
-import { OnboardingNavigator } from './src/navigation/OnboardingNavigator';
 import { IntroOnboardingNavigator } from './src/navigation/IntroOnboardingNavigator';
+import { FirstLoginOnboardingNavigator } from './src/navigation/FirstLoginOnboardingNavigator';
 import { DailyCheckInNavigator } from './src/navigation/DailyCheckInNavigator';
 import { SplashScreen } from './src/screens/SplashScreen';
 import { AlertManager } from './src/utils/alert';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { getTodayDailyCheckIn } from './src/services/dailyCheckIn';
-import { getTodayId } from './src/utils/dateUtils';
-import { initializeRevenueCat, identifyUser, logOutRevenueCat } from './src/services/revenuecat';
+import { initializeRevenueCat, identifyUser } from './src/services/revenuecat';
 import Constants from 'expo-constants';
 
 // Debug: Verify RevenueCat exports are available
@@ -37,23 +37,17 @@ console.log('RC exports check:', {
 
 // Async storage keys for onboarding state
 const INTRO_ONBOARDING_KEY = '@hangovershield_intro_onboarding_completed'; // NEW pre-auth intro
-const FEELING_ONBOARDING_KEY = '@hangovershield_feeling_onboarding_completed'; // Daily check-in flow
 
 // Global navigation ref so app-wide actions can navigate across conditional navigators
 export const navigationRef = createNavigationContainerRef<any>();
 
 function AppContent() {
   const { user, userDoc, loading } = useAuth();
+  const { onboardingCompleted, isHydrated } = useOnboardingCompletion();
   const [showSplash, setShowSplash] = React.useState(true);
-  // NEW: Intro onboarding (pre-auth, explains app value)
   const [showIntroOnboarding, setShowIntroOnboarding] = React.useState(false);
   const [introOnboardingCompleted, setIntroOnboardingCompleted] = React.useState<boolean | null>(null);
-  // Existing: Daily check-in flow (post-auth)
-  const [feelingOnboardingCompleted, setFeelingOnboardingCompleted] = React.useState(false);
-  // Temporary: Skip auth mode for testing/exploration (enabled via "Skip OAuth" button)
-  // NOTE: Keep default false so the Auth screen (and Skip OAuth button) still appears.
   const [skipAuthMode, setSkipAuthMode] = React.useState(false);
-  // Daily check-in status for returning users
   const [dailyCheckInStatus, setDailyCheckInStatus] = React.useState<'loading' | 'needs_checkin' | 'completed'>('loading');
   const [checkingDailyStatus, setCheckingDailyStatus] = React.useState(false);
   const [pendingNav, setPendingNav] = React.useState<
@@ -106,28 +100,34 @@ function AppContent() {
     identifyToRevenueCat();
   }, [user?.uid, isRealDevice]);
 
-  // Check if onboarding has been completed
+  // Check if intro onboarding has been completed
   React.useEffect(() => {
     const checkOnboarding = async () => {
       try {
         const introCompleted = await AsyncStorage.getItem(INTRO_ONBOARDING_KEY);
-        const feelingCompleted = await AsyncStorage.getItem(FEELING_ONBOARDING_KEY);
-        
         setIntroOnboardingCompleted(introCompleted === 'true');
-        setFeelingOnboardingCompleted(feelingCompleted === 'true');
       } catch (error) {
         console.error('Error checking onboarding status:', error);
         setIntroOnboardingCompleted(false);
-        setFeelingOnboardingCompleted(false);
       }
     };
     checkOnboarding();
   }, []);
 
+  // Onboarding status is now managed by OnboardingCompletionContext
+  // No need for separate useEffect - context handles AsyncStorage hydration
+
   // Check daily check-in status for authenticated users who completed onboarding
   React.useEffect(() => {
     const checkDailyStatus = async () => {
-      if (!user || !feelingOnboardingCompleted) {
+      // Skip daily check-in enforcement for guest/skip-auth users
+      if (!user) {
+        setDailyCheckInStatus('completed');
+        setCheckingDailyStatus(false);
+        return;
+      }
+
+      if (!onboardingCompleted) {
         setDailyCheckInStatus('loading');
         return;
       }
@@ -150,35 +150,21 @@ function AppContent() {
     };
 
     checkDailyStatus();
-  }, [user, feelingOnboardingCompleted]);
+  }, [user, onboardingCompleted]);
+
+  // Single root navigation tree - no reloads or hacks.
 
   const ensureMainAppVisible = React.useCallback(async () => {
-    // In guest/test mode (skipAuthMode), allow navigating without authentication
-    // This enables full app exploration during development/testing
-    if (!user && !skipAuthMode) {
+    // In guest/test mode (skipAuthMode) or development builds, allow navigation without auth
+    if (!user && !skipAuthMode && !__DEV__) {
       console.warn('[AppNavigation] User not authenticated, cannot navigate');
       return false;
     }
 
-    // Mark onboarding as completed if in onboarding flow
-    // This ensures we switch from OnboardingNavigator to AppNavigator
-    // Save to AsyncStorage FIRST, then update state synchronously
-    if (!feelingOnboardingCompleted) {
-      try {
-        await AsyncStorage.setItem(FEELING_ONBOARDING_KEY, 'true');
-        setFeelingOnboardingCompleted(true);
-      } catch (error) {
-        console.error('Error saving onboarding completion:', error);
-        // Still set state even if AsyncStorage fails
-        setFeelingOnboardingCompleted(true);
-      }
-    }
-    
-    // Ensure we are not stuck behind the daily check-in gate when user explicitly navigates.
     setCheckingDailyStatus(false);
     setDailyCheckInStatus('completed');
     return true;
-  }, [user, feelingOnboardingCompleted, skipAuthMode]);
+  }, [user, skipAuthMode]);
 
   // Flush pending navigation once the correct navigator tree is mounted.
   // IMPORTANT: AppContent conditionally renders different navigators; routeNames change AFTER state updates.
@@ -233,9 +219,9 @@ function AppContent() {
       }
     };
 
-    // Small delay when navigator tree just switched (feelingOnboardingCompleted changed)
+    // Small delay when navigator tree just switched (onboardingCompleted changed)
     // This gives React time to mount the new navigator tree
-    const initialDelay = feelingOnboardingCompleted ? 100 : 0;
+    const initialDelay = onboardingCompleted ? 100 : 0;
     setTimeout(() => {
       if (!cancelled) {
         tryFlush();
@@ -245,7 +231,7 @@ function AppContent() {
     return () => {
       cancelled = true;
     };
-  }, [pendingNav, feelingOnboardingCompleted]);
+  }, [pendingNav, onboardingCompleted]);
 
   // Navigation handlers for global menu (works from onboarding/daily_checkin/app)
   const handleGoToHome = React.useCallback(async () => {
@@ -318,6 +304,8 @@ function AppContent() {
     });
   }, [ensureMainAppVisible]);
 
+  const allowGuestMode = skipAuthMode || !!user;
+
   // Wait for onboarding status to be loaded
   if (introOnboardingCompleted === null) {
     return (
@@ -334,23 +322,18 @@ function AppContent() {
     return (
       <SplashScreen
         onFinish={() => {
-          // Set intro onboarding BEFORE hiding splash to avoid flash
           if (!introOnboardingCompleted && !user) {
             setShowIntroOnboarding(true);
           }
-          // Small delay to ensure state update propagates
           setTimeout(() => setShowSplash(false), 50);
         }}
         showContinueButton={!loading && !user && introOnboardingCompleted}
-        onContinue={() => {
-          setShowSplash(false);
-        }}
+        onContinue={() => setShowSplash(false)}
       />
     );
   }
 
   // Auth loading gate: Wait for userDoc to load when user exists
-  // This prevents UI flicker and ensures useAccessStatus has correct data
   if (loading || (user && !userDoc)) {
     return (
       <SplashScreen
@@ -361,8 +344,7 @@ function AppContent() {
     );
   }
 
-  // Show NEW intro onboarding (pre-auth, 3 screens + notifications)
-  // This condition runs AFTER showSplash is false
+  // Intro onboarding (pre-auth)
   if (showIntroOnboarding && !user) {
     return (
       <IntroOnboardingNavigator
@@ -375,76 +357,35 @@ function AppContent() {
     );
   }
 
-  // Unauthenticated: show auth navigator (login) OR guest mode if Skip OAuth was pressed
-  if (!user) {
-    // Guest/Test mode: enabled only after pressing "Skip OAuth"
-    // Allows exploring the app and navigation without being logged in.
-    if (skipAuthMode) {
-      const hasCompletedFeelingOnboarding = feelingOnboardingCompleted;
-
-      if (!hasCompletedFeelingOnboarding) {
-        return (
-          <AppNavigationProvider
-            currentContext="onboarding"
-            goToHome={handleGoToHome}
-            goToToday={handleGoToToday}
-            goToProgress={handleGoToProgress}
-            goToDailyCheckIn={handleGoToDailyCheckIn}
-            goToWaterLog={handleGoToWaterLog}
-            goToEveningCheckIn={handleGoToEveningCheckIn}
-            goToSubscription={handleGoToSubscription}
-          >
-            <OnboardingNavigator />
-          </AppNavigationProvider>
-        );
-      }
-
-      return (
-        <AppNavigationProvider
-          currentContext="app"
-          goToHome={handleGoToHome}
-          goToToday={handleGoToToday}
-          goToProgress={handleGoToProgress}
-          goToDailyCheckIn={handleGoToDailyCheckIn}
-          goToWaterLog={handleGoToWaterLog}
-          goToEveningCheckIn={handleGoToEveningCheckIn}
-          goToSubscription={handleGoToSubscription}
-        >
-          <AppNavigator allowGuestMode={skipAuthMode} />
-        </AppNavigationProvider>
-      );
-    }
-
+  // Unauthenticated: show auth navigator (login) OR enable guest mode
+  if (!user && !skipAuthMode) {
     return (
-      <SkipAuthProvider onSkipAuth={async () => {
-        // Reset the feeling onboarding flag so the user goes to OnboardingNavigator
-        try {
-          await AsyncStorage.removeItem(FEELING_ONBOARDING_KEY);
-          setFeelingOnboardingCompleted(false);
-        } catch (error) {
-          console.error('Error resetting feeling onboarding:', error);
-        }
-        setSkipAuthMode(true);
-      }}>
-        <AuthNavigator
-          onAuthSuccess={() => {
-            // User is now authenticated, component will re-render automatically
-          }}
-        />
+      <SkipAuthProvider
+        onSkipAuth={async () => {
+          setSkipAuthMode(true);
+        }}
+      >
+        <AuthNavigator onAuthSuccess={() => {}} />
       </SkipAuthProvider>
     );
   }
 
-  // Authenticated: check if feeling onboarding is completed
-  // TODO: In the future, read hasCompletedFeelingOnboarding from Firestore user document
-  // For now, use AsyncStorage flag
-  // Note: This flag is set to false by default, so new users will see onboarding after login
-  const hasCompletedFeelingOnboarding = feelingOnboardingCompleted;
+  // Wait for onboarding context hydration
+  if (!isHydrated) {
+    return (
+      <SplashScreen
+        onFinish={() => {}}
+        showContinueButton={false}
+        onContinue={() => {}}
+      />
+    );
+  }
 
-  // Show feeling onboarding if user hasn't completed it yet
-  if (!hasCompletedFeelingOnboarding) {
+  // Onboarding tunnel (no menu until completion) — use the new 3-screen flow
+  if (!onboardingCompleted) {
     return (
       <AppNavigationProvider
+        key="onboarding-nav"
         currentContext="onboarding"
         goToHome={handleGoToHome}
         goToToday={handleGoToToday}
@@ -454,13 +395,13 @@ function AppContent() {
         goToEveningCheckIn={handleGoToEveningCheckIn}
         goToSubscription={handleGoToSubscription}
       >
-        <OnboardingNavigator />
+        <FirstLoginOnboardingNavigator />
       </AppNavigationProvider>
     );
   }
 
-  // Show loading while checking daily check-in status
-  if (checkingDailyStatus || dailyCheckInStatus === 'loading') {
+  // Show loading while checking daily check-in status (authenticated only)
+  if (user && (checkingDailyStatus || dailyCheckInStatus === 'loading')) {
     return (
       <SplashScreen
         onFinish={() => {}}
@@ -471,7 +412,7 @@ function AppContent() {
   }
 
   // Authenticated + onboarding completed + needs daily check-in
-  if (dailyCheckInStatus === 'needs_checkin') {
+  if (user && dailyCheckInStatus === 'needs_checkin') {
     return (
       <AppNavigationProvider
         currentContext="daily_checkin"
@@ -493,9 +434,10 @@ function AppContent() {
     );
   }
 
-  // Authenticated and onboarding completed and daily check-in done: show main app
+  // Main app navigation (menu enabled)
   return (
     <AppNavigationProvider
+      key="app-nav"
       currentContext="app"
       goToHome={handleGoToHome}
       goToToday={handleGoToToday}
@@ -505,7 +447,7 @@ function AppContent() {
       goToEveningCheckIn={handleGoToEveningCheckIn}
       goToSubscription={handleGoToSubscription}
     >
-      <AppNavigator allowGuestMode={skipAuthMode} />
+      <AppNavigator allowGuestMode={allowGuestMode} />
     </AppNavigationProvider>
   );
 }
@@ -543,11 +485,13 @@ export default function App() {
         <SafeAreaProvider>
           <ThemeProvider>
             <AuthProvider>
-              <NavigationContainer ref={navigationRef}>
-                <AppContent />
-                <StatusBar style="dark" />
-              </NavigationContainer>
-              <AlertManager />
+              <OnboardingCompletionProvider>
+                <NavigationContainer ref={navigationRef}>
+                  <AppContent />
+                  <StatusBar style="dark" />
+                </NavigationContainer>
+                <AlertManager />
+              </OnboardingCompletionProvider>
             </AuthProvider>
           </ThemeProvider>
         </SafeAreaProvider>

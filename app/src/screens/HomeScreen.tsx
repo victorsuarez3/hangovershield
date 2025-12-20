@@ -24,6 +24,7 @@ import { usePlanCompletion } from '../hooks/usePlanCompletion';
 import { useAuth } from '../providers/AuthProvider';
 import { useUserDataStore } from '../stores/useUserDataStore';
 import { useAppNavigation } from '../contexts/AppNavigationContext';
+import { useOnboardingCompletion } from '../contexts/OnboardingCompletionContext';
 import { WelcomeCountdownBanner } from '../components/WelcomeCountdownBanner';
 import { InfoTooltipModal } from '../components/InfoTooltipModal';
 import { PaywallSource } from '../constants/paywallSources';
@@ -42,7 +43,7 @@ import {
   deleteTodayDailyCheckIn,
   DailyCheckInSummary,
 } from '../services/dailyCheckIn';
-import { getLocalDailyCheckIn, deleteLocalDailyCheckIn, hasCompletedEveningCheckInToday } from '../services/dailyCheckInStorage';
+import { getLocalDailyCheckIn, deleteLocalDailyCheckIn, hasCompletedEveningCheckInToday, clearFirstLoginOnboardingForDev } from '../services/dailyCheckInStorage';
 import { getTodayId, getDateId } from '../utils/dateUtils';
 import { typography } from '../design-system/typography';
 import { generatePlan } from '../domain/recovery/planGenerator';
@@ -68,6 +69,7 @@ export const HomeScreen: React.FC = () => {
   const { user, userDoc } = useAuth();
   const accessInfo = useAccessStatus();
   const appNav = useAppNavigation();
+  const { setOnboardingCompleted } = useOnboardingCompletion();
   
   // Menu state
   const [menuVisible, setMenuVisible] = useState(false);
@@ -733,6 +735,59 @@ export const HomeScreen: React.FC = () => {
     }
   }, [user?.uid, dailyCheckIn, planCompletion]);
 
+  // Dev function to clear first-login onboarding (for testing)
+  const handleClearFirstLoginOnboarding = useCallback(async () => {
+    try {
+      // Import AsyncStorage
+      const AsyncStorage = await import('@react-native-async-storage/async-storage').then(m => m.default);
+
+      // Clear first-login onboarding flag
+      await clearFirstLoginOnboardingForDev();
+
+      // Note: Old feeling onboarding flag no longer exists - we only use first-login onboarding now
+
+      // Also clear Firestore flags if logged in
+      if (user?.uid) {
+        const { doc, setDoc } = await import('firebase/firestore');
+        const { db } = await import('../firebase/config');
+        const userRef = doc(db, 'users', user.uid);
+        await setDoc(
+          userRef,
+          {
+            onboarding: {
+              firstLoginCompleted: false,
+              firstLoginVersion: 0,
+            },
+          },
+          { merge: true }
+        );
+      }
+
+      console.log('✓ First-login onboarding cleared! Reloading app...');
+
+      // Force reload the app to reset all React state
+      // Try to use expo-updates if available (may not be in all environments)
+      try {
+        // Use dynamic require to avoid TypeScript errors if module doesn't exist
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const Updates = require('expo-updates');
+        if (Updates && typeof Updates.reloadAsync === 'function') {
+          await Updates.reloadAsync();
+          return; // Exit early if reload succeeds
+        }
+      } catch (reloadError) {
+        // expo-updates not available or failed, continue to manual reload instruction
+        console.warn('[HomeScreen] expo-updates not available, user will need to manually reload');
+      }
+      
+      // Fallback: Show alert asking user to manually reload
+      alert('First-login onboarding cleared!\n\nPlease manually reload the app (shake device → Reload) to test the onboarding flow again.');
+    } catch (error) {
+      console.error('Error clearing first-login onboarding:', error);
+      alert('Error clearing first-login onboarding. Check console.');
+    }
+  }, [user?.uid]);
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Computed Values
   // ─────────────────────────────────────────────────────────────────────────────
@@ -836,6 +891,17 @@ export const HomeScreen: React.FC = () => {
     
     return questions[Math.floor(Math.random() * questions.length)];
   }, [isCheckInCompleted]);
+
+  // DEV: quick reset to re-run onboarding without reinstalling
+  const handleResetOnboarding = useCallback(async () => {
+    try {
+      await setOnboardingCompleted(false);
+      await clearFirstLoginOnboardingForDev();
+      console.log('[HomeScreen] Onboarding reset (dev)');
+    } catch (error) {
+      console.error('[HomeScreen] Error resetting onboarding:', error);
+    }
+  }, [setOnboardingCompleted]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Render
@@ -1228,15 +1294,24 @@ export const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Dev: Clear Check-In Button (only in development) */}
+        {/* Dev buttons (only in development) */}
         {__DEV__ && (
-          <TouchableOpacity
-            style={styles.devButton}
-            onPress={handleClearTodayCheckIn}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.devButtonText}>🧹 Clear Today's Check-In (Dev)</Text>
-          </TouchableOpacity>
+          <View style={styles.devButtonsRow}>
+            <TouchableOpacity
+              style={[styles.devButton, styles.devButtonHalf]}
+              onPress={handleClearTodayCheckIn}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.devButtonText}>🧹 Clear Check-In (Dev)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.devButton, styles.devButtonHalf]}
+              onPress={handleClearFirstLoginOnboarding}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.devButtonText}>🔄 Reset Onboarding (Dev)</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* Premium CTA (only for free users, subtle) */}
@@ -1305,6 +1380,34 @@ export const HomeScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  devResetContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  devResetButton: {
+    backgroundColor: '#FFE8D1',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  devResetText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+    color: '#C25500',
+  },
+  devButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  devButtonHalf: {
     flex: 1,
   },
   scrollView: {

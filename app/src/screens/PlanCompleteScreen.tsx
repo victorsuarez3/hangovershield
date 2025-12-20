@@ -15,11 +15,15 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { navigationRef } from '../../App';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { Button } from '../components/Button';
 import { useAppNavigation } from '../contexts/AppNavigationContext';
 import { useAuth } from '../providers/AuthProvider';
+import { useOnboardingCompletion } from '../contexts/OnboardingCompletionContext';
+import { RECOVERY_PLAN_COPY } from '../constants/recoveryPlanCopy';
+import { markFirstLoginOnboardingCompleted } from '../services/auth';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -47,7 +51,8 @@ export const PlanCompleteScreen: React.FC = () => {
   const route = useRoute<PlanCompleteRouteProp>();
   const appNav = useAppNavigation();
   const { user } = useAuth();
-  
+  const { setOnboardingCompleted } = useOnboardingCompletion();
+
   const { stepsCompleted = 0, totalSteps = 0 } = route.params || {};
 
   // Animations
@@ -146,19 +151,54 @@ export const PlanCompleteScreen: React.FC = () => {
     ]).start();
   }, []);
 
-  const handleDone = () => {
-    // Navigate to HomeScreen using AppNavigationContext (works from any navigator)
-    // This handles navigation correctly whether we're in AppNavigator or nested navigators
+  const handleDone = async () => {
+    // If we're in onboarding context, complete onboarding and navigate to Home
+    if (appNav.currentContext === 'onboarding') {
+      if (__DEV__) {
+        console.log('[PlanCompleteScreen] In onboarding context - completing onboarding');
+      }
+
+      try {
+        // Mark onboarding as completed in the global context
+        // This updates BOTH state and AsyncStorage
+        await setOnboardingCompleted(true);
+
+        // Also save to Firestore for cross-device sync
+        if (user?.uid) {
+          await markFirstLoginOnboardingCompleted(user.uid);
+        }
+
+        if (__DEV__) {
+          console.log('[PlanCompleteScreen] ✅ Onboarding marked as completed');
+          console.log('[PlanCompleteScreen] App.tsx will re-render and switch to AppNavigator with key="app-nav"');
+        }
+
+        // Move the root navigator to Home as soon as AppNavigator mounts
+        setTimeout(() => {
+          if (navigationRef.isReady()) {
+            navigationRef.reset({
+              index: 0,
+              routes: [{ name: 'HomeMain' as never }],
+            });
+          }
+        }, 30);
+
+        return; // Prevent fallback navigation below
+      } catch (error) {
+        console.error('[PlanCompleteScreen] Error marking onboarding complete:', error);
+        alert('There was an error completing onboarding. Please try again.');
+      }
+    }
+
+    // If we're NOT in onboarding context (user accessed plan from Home), navigate back to Home
+    if (__DEV__) {
+      console.log('[PlanCompleteScreen] Not in onboarding context - navigating to Home');
+    }
+
     if (appNav && typeof appNav.goToHome === 'function') {
       appNav.goToHome();
     } else {
-      // Fallback: reset navigation stack to HomeMain
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'HomeMain' }],
-        })
-      );
+      console.warn('[PlanCompleteScreen] AppNavigationContext not available');
     }
   };
 
@@ -248,6 +288,12 @@ export const PlanCompleteScreen: React.FC = () => {
             textStyle={{ color: '#FFFFFF' }}
           />
         </View>
+        <Text style={styles.continuityText}>
+          {RECOVERY_PLAN_COPY.continuityMessage}
+        </Text>
+        <Text style={styles.habitFormingText}>
+          {RECOVERY_PLAN_COPY.habitFormingMessage}
+        </Text>
       </Animated.View>
     </View>
   );
@@ -394,6 +440,22 @@ const styles = StyleSheet.create({
   },
   ctaButtonWrapper: {
     width: '100%',
+  },
+  continuityText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: 'rgba(15, 61, 62, 0.5)',
+    textAlign: 'center',
+    marginTop: 12,
+    paddingHorizontal: 24,
+  },
+  habitFormingText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: 'rgba(15, 61, 62, 0.5)',
+    textAlign: 'center',
+    marginTop: 6,
+    paddingHorizontal: 24,
   },
 });
 
