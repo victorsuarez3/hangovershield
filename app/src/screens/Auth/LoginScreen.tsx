@@ -33,6 +33,7 @@ import {
   PrivacyPolicyContent,
 } from '../../components/LegalContent';
 import { useSkipAuth } from '../../contexts/SkipAuthContext';
+import { SHOW_DEV_TOOLS } from '../../config/flags';
 
 interface LoginScreenProps {
   onGoogleSignIn: () => void;
@@ -192,80 +193,82 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </BlurView>
         </Animated.View>
 
-        {/* Testing Buttons */}
-        <View style={styles.testingButtonsContainer}>
-          {/* Skip Auth Button */}
-          {skipAuthContext && (
+        {/* Testing Buttons (dev-only) */}
+        {SHOW_DEV_TOOLS && (
+          <View style={styles.testingButtonsContainer}>
+            {/* Skip Auth Button */}
+            {skipAuthContext && (
+              <TouchableOpacity
+                style={styles.skipButton}
+                onPress={() => {
+                  console.log('🟢 Skip button PRESSED - using context');
+                  skipAuthContext.skipAuth();
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.skipButtonText}>Skip Auth</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Reset Onboarding Button */}
             <TouchableOpacity
-              style={styles.skipButton}
-              onPress={() => {
-                console.log('🟢 Skip button PRESSED - using context');
-                skipAuthContext.skipAuth();
+              style={[styles.skipButton, styles.resetButton]}
+              onPress={async () => {
+                try {
+                  await AsyncStorage.multiRemove([
+                    '@hangovershield_intro_onboarding_completed',
+                    '@hangovershield_feeling_onboarding_completed',
+                  ]);
+                  Alert.alert(
+                    '✅ Onboarding Reset',
+                    'Close and reopen the app to see the onboarding again.',
+                    [{ text: 'OK' }]
+                  );
+                } catch (error) {
+                  console.error('Error resetting onboarding:', error);
+                }
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.skipButtonText}>Skip Auth</Text>
+              <Text style={styles.skipButtonText}>Reset Onboarding</Text>
             </TouchableOpacity>
-          )}
 
-          {/* Reset Onboarding Button */}
-          <TouchableOpacity
-            style={[styles.skipButton, styles.resetButton]}
-            onPress={async () => {
-              try {
-                await AsyncStorage.multiRemove([
-                  '@hangovershield_intro_onboarding_completed',
-                  '@hangovershield_feeling_onboarding_completed',
-                ]);
-                Alert.alert(
-                  '✅ Onboarding Reset',
-                  'Close and reopen the app to see the onboarding again.',
-                  [{ text: 'OK' }]
-                );
-              } catch (error) {
-                console.error('Error resetting onboarding:', error);
-              }
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.skipButtonText}>Reset Onboarding</Text>
-          </TouchableOpacity>
-
-          {/* Toggle Premium Button */}
-          <TouchableOpacity
-            style={[styles.skipButton, styles.premiumButton]}
-            onPress={async () => {
-              try {
-                const DEV_PREMIUM_KEY = '@hangovershield_dev_premium_enabled';
-                const currentEnabled = await AsyncStorage.getItem(DEV_PREMIUM_KEY);
-                
-                if (currentEnabled === 'true') {
-                  // Disable premium
-                  await AsyncStorage.removeItem(DEV_PREMIUM_KEY);
-                  Alert.alert(
-                    '✅ Dev Premium Disabled',
-                    'Premium features are now disabled for dev. Restart the app to see changes.',
-                    [{ text: 'OK' }]
-                  );
-                } else {
-                  // Enable premium
-                  await AsyncStorage.setItem(DEV_PREMIUM_KEY, 'true');
-                  Alert.alert(
-                    '✅ Dev Premium Enabled',
-                    'Premium features are now enabled for dev. Restart the app to see changes.',
-                    [{ text: 'OK' }]
-                  );
+            {/* Toggle Premium Button */}
+            <TouchableOpacity
+              style={[styles.skipButton, styles.premiumButton]}
+              onPress={async () => {
+                try {
+                  const DEV_PREMIUM_KEY = '@hangovershield_dev_premium_enabled';
+                  const currentEnabled = await AsyncStorage.getItem(DEV_PREMIUM_KEY);
+                  
+                  if (currentEnabled === 'true') {
+                    // Disable premium
+                    await AsyncStorage.removeItem(DEV_PREMIUM_KEY);
+                    Alert.alert(
+                      '✅ Dev Premium Disabled',
+                      'Premium features are now disabled for dev. Restart the app to see changes.',
+                      [{ text: 'OK' }]
+                    );
+                  } else {
+                    // Enable premium
+                    await AsyncStorage.setItem(DEV_PREMIUM_KEY, 'true');
+                    Alert.alert(
+                      '✅ Dev Premium Enabled',
+                      'Premium features are now enabled for dev. Restart the app to see changes.',
+                      [{ text: 'OK' }]
+                    );
+                  }
+                } catch (error) {
+                  console.error('Error toggling dev premium:', error);
+                  Alert.alert('Error', 'Failed to toggle dev premium');
                 }
-              } catch (error) {
-                console.error('Error toggling dev premium:', error);
-                Alert.alert('Error', 'Failed to toggle dev premium');
-              }
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.skipButtonText}>Toggle Premium</Text>
-          </TouchableOpacity>
-        </View>
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.skipButtonText}>Toggle Premium</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Legal Modals */}
