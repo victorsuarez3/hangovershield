@@ -58,9 +58,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
       <View style={styles.profileSection}>
         <ProfileAvatar
-          user={userDoc}
+          imageUrl={userDoc?.photoUrl}
+          name={userDoc?.displayName || user?.email || 'User'}
           onImageSelected={handleImageSelected}
           size={100}
+          editable
+          theme={theme}
         />
         <Text style={[styles.name, { color: theme.colors.text }]}>
           {userDoc?.displayName || user?.email || 'User'}

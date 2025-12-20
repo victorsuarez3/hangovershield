@@ -30,6 +30,12 @@ import { useAuth } from '../providers/AuthProvider';
 import { useUserDataStore } from '../stores/useUserDataStore';
 import { getTodayHydrationLog, getHydrationGoal } from '../services/hydrationService';
 import { RECOVERY_PLAN_COPY } from '../constants/recoveryPlanCopy';
+import {
+  updateLocalPlanStepState,
+  saveLocalPlanStepsState,
+  saveLocalPlanCompletion,
+  getLocalDayId,
+} from '../services/dailyCheckInStorage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -519,6 +525,7 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
     : DEFAULT_MOCK_DATA.actions;
   
   const [localActions, setLocalActions] = useState<RecoveryAction[]>(safeInitialActions);
+  const dateId = useMemo(() => getLocalDayId(), []);
 
   // Update localActions when initialActions prop changes (e.g., when plan loads)
   useEffect(() => {
@@ -607,8 +614,13 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
       // We no longer auto-log hydration from step completion to maintain single source of truth
 
       onToggleAction?.(id, completed);
+
+      // Persist step state locally (keeps onboarding/app in sync when reopening)
+      updateLocalPlanStepState(dateId, id, completed).catch((err) =>
+        console.error('[TodayRecoveryPlanScreen] Error saving step state:', err)
+      );
     },
-    [onToggleAction]
+    [onToggleAction, dateId]
   );
 
   // CTA text - changes based on completion status
@@ -622,6 +634,18 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
   const handleCompletePlan = useCallback(() => {
     // Only complete if all steps are actually completed
     if (completedActions === totalActions && totalActions > 0) {
+      // Persist all steps as completed and mark plan completion locally
+      const allStepsCompleted: Record<string, boolean> = {};
+      localActions.forEach((action) => {
+        allStepsCompleted[action.id] = true;
+      });
+      saveLocalPlanStepsState(dateId, allStepsCompleted).catch((err) =>
+        console.error('[TodayRecoveryPlanScreen] Error saving all steps completed:', err)
+      );
+      saveLocalPlanCompletion(dateId, totalActions, totalActions).catch((err) =>
+        console.error('[TodayRecoveryPlanScreen] Error saving plan completion:', err)
+      );
+
       if (onCompletePlan) {
         onCompletePlan(completedActions, totalActions);
       } else {
@@ -835,6 +859,10 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         onGoToEveningCheckInLocked={() => {
           setMenuVisible(false);
           appNav.goToEveningCheckIn();
+        }}
+        onGoToAccount={() => {
+          setMenuVisible(false);
+          navigation.navigate('ProfileMain' as never);
         }}
         onGoToSubscription={(source) => {
           setMenuVisible(false);

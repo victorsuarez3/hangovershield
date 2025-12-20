@@ -44,7 +44,7 @@ interface ProfileAvatarProps {
   /** Callback when a new image is selected */
   onImageSelected?: (uri: string) => Promise<void>;
   /** Theme object for styling */
-  theme: any;
+  theme?: any;
   /** Whether to show the enlarged view on long press */
   enableEnlarge?: boolean;
 }
@@ -77,6 +77,23 @@ export const ProfileAvatar = memo(({
     .join('')
     .toUpperCase()
     .slice(0, 2) || 'U';
+
+  const defaultTheme = {
+    colors: {
+      softCream: '#FFFFFF',
+      warmGold: '#E8A957',
+      background: '#FFFFFF',
+      text: '#0F3D3E',
+      textSecondary: 'rgba(15,61,62,0.7)',
+    },
+    typography: {
+      heroTitle: { fontFamily: 'Inter_700Bold' },
+      sectionTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 18 },
+      caption: { fontFamily: 'Inter_400Regular', fontSize: 12 },
+    },
+  };
+
+  const safeTheme = theme || defaultTheme;
 
   const hasValidImage = imageUrl && !imageError;
 
@@ -339,22 +356,22 @@ const createStyles = (theme: any, size: number) =>
       width: '100%',
       height: '100%',
       borderRadius: size / 2,
-      backgroundColor: theme.colors.softCream + '15',
+      backgroundColor: (theme.colors?.softCream || '#FFFFFF') + '15',
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
-      borderColor: theme.colors.warmGold,
+      borderColor: theme.colors?.warmGold || '#E8A957',
     },
     avatarImage: {
       width: '100%',
       height: '100%',
       borderRadius: size / 2,
       borderWidth: 1,
-      borderColor: theme.colors.warmGold,
+      borderColor: theme.colors?.warmGold || '#E8A957',
     },
     avatarText: {
-      ...theme.typography.heroTitle,
-      color: theme.colors.softCream,
+      ...(theme.typography?.heroTitle || { fontFamily: 'Inter_700Bold' }),
+      color: theme.colors?.softCream || '#FFFFFF',
       fontSize: size * 0.45,
     },
     editButton: {
@@ -364,17 +381,17 @@ const createStyles = (theme: any, size: number) =>
       width: size * 0.33,
       height: size * 0.33,
       borderRadius: (size * 0.33) / 2,
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors?.background || '#FFFFFF',
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 2,
-      borderColor: theme.colors.background,
+      borderColor: theme.colors?.background || '#FFFFFF',
     },
     editButtonInner: {
       width: '100%',
       height: '100%',
       borderRadius: (size * 0.33) / 2,
-      backgroundColor: theme.colors.warmGold,
+      backgroundColor: theme.colors?.warmGold || '#E8A957',
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -393,8 +410,8 @@ const createStyles = (theme: any, size: number) =>
       justifyContent: 'center',
     },
     enlargedName: {
-      ...theme.typography.sectionTitle,
-      color: theme.colors.text,
+      ...(theme.typography?.sectionTitle || { fontFamily: 'Inter_600SemiBold', fontSize: 18 }),
+      color: theme.colors?.text || '#0F3D3E',
       fontSize: 24,
       marginBottom: 20,
       textShadowColor: 'rgba(0, 0, 0, 0.5)',
@@ -406,9 +423,9 @@ const createStyles = (theme: any, size: number) =>
       height: ENLARGED_SIZE,
       borderRadius: ENLARGED_SIZE / 2,
       borderWidth: 2,
-      borderColor: theme.colors.warmGold,
+      borderColor: theme.colors?.warmGold || '#E8A957',
       overflow: 'hidden',
-      shadowColor: theme.colors.warmGold,
+      shadowColor: theme.colors?.warmGold || '#E8A957',
       shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0.4,
       shadowRadius: 20,
@@ -419,8 +436,8 @@ const createStyles = (theme: any, size: number) =>
       height: '100%',
     },
     hintText: {
-      ...theme.typography.caption,
-      color: theme.colors.textSecondary,
+      ...(theme.typography?.caption || { fontFamily: 'Inter_400Regular', fontSize: 12 }),
+      color: theme.colors?.textSecondary || 'rgba(15,61,62,0.7)',
       marginTop: 24,
       opacity: 0.8,
     },
