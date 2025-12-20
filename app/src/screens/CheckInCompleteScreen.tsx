@@ -91,9 +91,7 @@ export const CheckInCompleteScreen: React.FC = () => {
         if (alreadyShown && !skipProcessing) {
           // Already shown today and coming from check-in flow, navigate to Home instead
           // This prevents showing the screen twice after completing check-in
-      if (SHOW_DEV_TOOLS) {
-        if (SHOW_DEV_TOOLS) {
-    if (SHOW_DEV_TOOLS) {
+          if (SHOW_DEV_TOOLS) {
             console.log('[CheckInCompleteScreen] Already shown today, navigating to Home');
           }
           navigation.replace('HomeMain');
