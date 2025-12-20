@@ -846,7 +846,7 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         }}
         onGoToCheckIn={() => {
           setMenuVisible(false);
-          appNav.goToDailyCheckIn();
+          navigation.navigate('CheckIn' as never);
         }}
         onGoToWaterLog={() => {
           setMenuVisible(false);
