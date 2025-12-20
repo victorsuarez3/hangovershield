@@ -17,10 +17,9 @@ import { PaywallSourceType } from '../constants/paywallSources';
 import { getRecoveryAnalysis, getKeySymptomLabels } from '../utils/recoveryAnalysis';
 import { 
   DailyCheckInSeverity, 
-  markPlanCompletedForToday,
   getTodayDailyCheckIn,
 } from '../services/dailyCheckIn';
-import { getTodayId } from '../utils/dateUtils';
+import { markTodayPlanCompleted } from '../services/todayState';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -222,12 +221,9 @@ const DailyRecoveryPlanWrapper: React.FC<DailyRecoveryPlanWrapperProps> = ({ use
 
   // Handler for completing the plan
   const handleCompletePlan = useCallback(async (stepsCompleted: number, totalSteps: number) => {
-    // Save completion to Firestore
-    const dateId = getTodayId();
     try {
-      await markPlanCompletedForToday({
+      await markTodayPlanCompleted({
         uid: userId,
-        dateId,
         stepsCompleted,
         totalSteps,
       });

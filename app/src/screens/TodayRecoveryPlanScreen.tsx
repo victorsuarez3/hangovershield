@@ -29,6 +29,7 @@ import { PaywallSource } from '../constants/paywallSources';
 import { useAuth } from '../providers/AuthProvider';
 import { useUserDataStore } from '../stores/useUserDataStore';
 import { getTodayHydrationLog, getHydrationGoal } from '../services/hydrationService';
+import { getLocalHydrationEntries, getLocalHydrationGoal } from '../services/hydrationStorage';
 import { RECOVERY_PLAN_COPY } from '../constants/recoveryPlanCopy';
 import {
   updateLocalPlanStepState,
@@ -543,15 +544,21 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
   // Hydration State - Single Source of Truth
   // Read directly from store for real-time updates
   // ─────────────────────────────────────────────────────────────────────────
-  const { hydrationGoal: storeHydrationGoal, todayHydrationTotal } = useUserDataStore();
+  const { hydrationGoal: storeHydrationGoal, todayHydrationTotal, setHydrationLogs, setHydrationGoal } = useUserDataStore();
   const [hydrationGoalLitersState, setHydrationGoalLitersState] = useState<number>(hydrationGoalLiters);
 
   // Load hydration goal from service on mount (store may not have it initially)
   useEffect(() => {
     const loadHydrationGoal = async () => {
       if (!user?.uid) {
-        // Fallback to props if no user
-        setHydrationGoalLitersState(hydrationGoalLiters);
+        // Fallback to cached local goal (ml) or props if no user
+        const cachedGoal = await getLocalHydrationGoal();
+        if (cachedGoal && cachedGoal > 0) {
+          setHydrationGoalLitersState(cachedGoal / 1000);
+          setHydrationGoal(cachedGoal);
+        } else {
+          setHydrationGoalLitersState(hydrationGoalLiters);
+        }
         return;
       }
 
@@ -560,6 +567,9 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         const goalMl = await getHydrationGoal(user.uid);
         const goalLiters = goalMl / 1000; // Convert ml to liters
         setHydrationGoalLitersState(goalLiters || hydrationGoalLiters);
+        if (goalMl) {
+          setHydrationGoal(goalMl);
+        }
       } catch (error) {
         console.error('[TodayRecoveryPlanScreen] Error loading hydration goal:', error);
         // Fallback to props
@@ -568,7 +578,27 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
     };
 
     loadHydrationGoal();
-  }, [user?.uid, hydrationGoalLiters]);
+  }, [user?.uid, hydrationGoalLiters, setHydrationGoal]);
+
+  // Load hydration log into store (Firestore if logged in, otherwise local cache)
+  useEffect(() => {
+    const loadHydrationLog = async () => {
+      try {
+        const todayId = getLocalDayId();
+        if (user?.uid) {
+          const log = await getTodayHydrationLog(user.uid);
+          setHydrationLogs({ [todayId]: log });
+        } else {
+          const log = await getLocalHydrationEntries(todayId);
+          setHydrationLogs({ [todayId]: log });
+        }
+      } catch (error) {
+        console.error('[TodayRecoveryPlanScreen] Error loading hydration log:', error);
+      }
+    };
+
+    loadHydrationLog();
+  }, [user?.uid, setHydrationLogs]);
 
   // Update goal from store if it changes (user may have updated it in DailyWaterLogScreen)
   useEffect(() => {

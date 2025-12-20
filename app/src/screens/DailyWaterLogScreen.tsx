@@ -31,6 +31,7 @@ import {
 import { addWaterEntry, deleteWaterEntry, setHydrationGoal as saveHydrationGoal } from '../services/hydrationService';
 import { WaterEntry } from '../features/water/waterTypes';
 import { getTodayId } from '../utils/dateUtils';
+import { addLocalHydrationEntry, getLocalHydrationEntries, saveLocalHydrationEntries, getLocalHydrationGoal, saveLocalHydrationGoal } from '../services/hydrationStorage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -50,6 +51,7 @@ export const DailyWaterLogScreen: React.FC = () => {
     todayHydrationTotal,
     setHydrationGoal,
     addHydrationEntry: addToStore,
+    setHydrationLogs,
   } = useUserDataStore();
 
   // Local state
@@ -74,6 +76,20 @@ export const DailyWaterLogScreen: React.FC = () => {
 
   // Celebration animation when goal is reached
   useEffect(() => {
+    // Load local hydration goal & log if no user (offline/onboarding)
+    if (user?.uid) return;
+    const loadLocal = async () => {
+      const entries = await getLocalHydrationEntries(todayId);
+      setHydrationLogs({ [todayId]: entries });
+      const cachedGoal = await getLocalHydrationGoal();
+      if (cachedGoal && cachedGoal > 0) {
+        setHydrationGoal(cachedGoal);
+      }
+    };
+    loadLocal();
+  }, [user?.uid, todayId, setHydrationLogs, setHydrationGoal]);
+
+  useEffect(() => {
     if (todayHydrationTotal >= hydrationGoal && todayHydrationTotal > 0) {
       Animated.sequence([
         Animated.spring(celebrationScale, {
@@ -96,6 +112,8 @@ export const DailyWaterLogScreen: React.FC = () => {
 
     // Add to store
     addToStore(todayId, newEntry);
+    // Persist locally for offline / no-user flows
+    await addLocalHydrationEntry(todayId, newEntry);
 
     // Save to Firebase
     if (user?.uid) {
@@ -139,13 +157,16 @@ export const DailyWaterLogScreen: React.FC = () => {
     // Update store
     setHydrationGoal(goalMl);
 
-    // Save to Firebase
+    // Save to Firebase or local cache
     if (user?.uid) {
       try {
         await saveHydrationGoal(user.uid, goalMl);
       } catch (error) {
         console.error('[DailyWaterLog] Error saving goal:', error);
       }
+    } else {
+      await saveLocalHydrationGoal(goalMl);
+      await saveLocalHydrationEntries(todayId, hydrationLogs[todayId] || []);
     }
 
     setGoalModalVisible(false);
