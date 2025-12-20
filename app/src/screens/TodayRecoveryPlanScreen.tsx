@@ -862,7 +862,7 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         }}
         onGoToAccount={() => {
           setMenuVisible(false);
-          navigation.navigate('ProfileMain' as never);
+          navigation.navigate('Account' as never);
         }}
         onGoToSubscription={(source) => {
           setMenuVisible(false);

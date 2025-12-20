@@ -16,9 +16,7 @@ import { SmartPlanWrapper } from '../screens/SmartPlanWrapper';
 import { PlanCompleteScreen } from '../screens/PlanCompleteScreen';
 import { ToolsScreen } from '../screens/ToolsScreen';
 import { ProgressInsightsScreen } from '../screens/ProgressInsightsScreen';
-import { ProfileScreen } from '../screens/ProfileScreen';
 import { AccountScreen } from '../screens/AccountScreen';
-import { SettingsScreen } from '../screens/SettingsScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
 import { EveningCheckInScreen } from '../screens/EveningCheckInScreen';
 import { EveningCheckInLockedScreen } from '../screens/EveningCheckInLockedScreen';
@@ -52,7 +50,6 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({ allowGuestMode = fal
         <Stack.Screen name="SmartPlan" component={SmartPlanWrapper} />
         <Stack.Screen name="Tools" component={ToolsScreen} />
         <Stack.Screen name="Progress" component={ProgressInsightsScreen} />
-        <Stack.Screen name="ProfileMain" component={ProfileScreen} />
         <Stack.Screen name="Account" component={AccountScreen} />
         
         {/* Nested screens */}
@@ -64,7 +61,6 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({ allowGuestMode = fal
         <Stack.Screen name="EveningCheckInLocked" component={EveningCheckInLockedScreen} />
         <Stack.Screen name="EveningCheckInComplete" component={EveningCheckInCompleteScreen} />
         <Stack.Screen name="DailyWaterLog" component={DailyWaterLogScreen} />
-        <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>
     </ProtectedRoute>
   );

@@ -16,9 +16,7 @@ export type RootStackParamList = {
   };
   Tools: undefined;
   Progress: undefined;
-  ProfileMain: undefined;
   Account: undefined;
-  Settings: undefined;
   Paywall: {
     source: PaywallSourceType;
     contextScreen?: string;
@@ -38,6 +36,4 @@ export type CheckInScreenProps = NativeStackScreenProps<RootStackParamList, 'Che
 export type SmartPlanScreenProps = NativeStackScreenProps<RootStackParamList, 'SmartPlan'>;
 export type ToolsScreenProps = NativeStackScreenProps<RootStackParamList, 'Tools'>;
 export type ProgressScreenProps = NativeStackScreenProps<RootStackParamList, 'Progress'>;
-export type ProfileScreenProps = NativeStackScreenProps<RootStackParamList, 'ProfileMain'>;
-export type SettingsScreenProps = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
