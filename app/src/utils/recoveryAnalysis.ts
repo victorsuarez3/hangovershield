@@ -40,12 +40,14 @@ const SYMPTOM_PRIORITY: SymptomKey[] = [
 ];
 
 /**
- * Get the 1-2 most relevant symptom labels to display as pills
+ * Get the prioritized symptom labels (all selected, ordered by impact)
  */
 export function getKeySymptomLabels(symptoms: SymptomKey[]): string[] {
   const filtered = symptoms.filter((s) => s !== 'noSymptoms');
-  const sorted = SYMPTOM_PRIORITY.filter((key) => filtered.includes(key));
-  return sorted.slice(0, 2).map((key) => SYMPTOM_LABELS[key]);
+  const prioritized = SYMPTOM_PRIORITY.filter((key) => filtered.includes(key));
+  const remaining = filtered.filter((s) => !SYMPTOM_PRIORITY.includes(s));
+  const ordered = [...prioritized, ...remaining];
+  return ordered.map((key) => SYMPTOM_LABELS[key] || key);
 }
 
 /**

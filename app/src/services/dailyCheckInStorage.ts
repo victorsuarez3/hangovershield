@@ -1,6 +1,7 @@
 /**
  * Daily Check-In Local Storage Service
  * Handles local caching of daily check-ins for fast access
+ * Also manages first-login onboarding completion state
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -401,6 +402,106 @@ export const hasCompletedEveningCheckInToday = async (dateId?: string): Promise<
     return checkIn?.eveningCheckInCompletedAt !== undefined;
   } catch (error) {
     console.error('[dailyCheckInStorage] Error checking evening check-in status:', error);
+    return false;
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// First Login Onboarding Storage
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FIRST_LOGIN_ONBOARDING_KEY = 'hs_first_login_onboarding_completed';
+const FIRST_LOGIN_ONBOARDING_VERSION_KEY = 'hs_first_login_onboarding_version';
+const CURRENT_ONBOARDING_VERSION = 1;
+
+type OnboardingListener = () => void;
+const firstLoginOnboardingListeners = new Set<OnboardingListener>();
+
+const notifyFirstLoginOnboardingCompleted = () => {
+  firstLoginOnboardingListeners.forEach((listener) => {
+    try {
+      listener();
+    } catch (error) {
+      console.error('[dailyCheckInStorage] Error notifying onboarding listener:', error);
+    }
+  });
+};
+
+export const onFirstLoginOnboardingCompleted = (listener: OnboardingListener) => {
+  firstLoginOnboardingListeners.add(listener);
+  return () => {
+    firstLoginOnboardingListeners.delete(listener);
+  };
+};
+
+export interface FirstLoginOnboardingStatus {
+  completed: boolean;
+  version: number;
+}
+
+/**
+ * Get first-login onboarding completion status from AsyncStorage
+ * Returns { completed: boolean, version: number }
+ */
+export const getFirstLoginOnboardingStatus = async (): Promise<FirstLoginOnboardingStatus> => {
+  try {
+    const completed = await AsyncStorage.getItem(FIRST_LOGIN_ONBOARDING_KEY);
+    const version = await AsyncStorage.getItem(FIRST_LOGIN_ONBOARDING_VERSION_KEY);
+
+    return {
+      completed: completed === 'true',
+      version: version ? parseInt(version, 10) : 0,
+    };
+  } catch (error) {
+    console.error('[dailyCheckInStorage] Error getting first-login onboarding status:', error);
+    return {
+      completed: false,
+      version: 0,
+    };
+  }
+};
+
+/**
+ * Mark first-login onboarding as completed
+ * Saves to AsyncStorage immediately for fast local access
+ */
+export const setFirstLoginOnboardingCompleted = async (): Promise<boolean> => {
+  try {
+    await AsyncStorage.setItem(FIRST_LOGIN_ONBOARDING_KEY, 'true');
+    await AsyncStorage.setItem(
+      FIRST_LOGIN_ONBOARDING_VERSION_KEY,
+      CURRENT_ONBOARDING_VERSION.toString()
+    );
+
+    if (__DEV__) {
+      console.log('[dailyCheckInStorage] First-login onboarding marked as completed');
+    }
+
+    notifyFirstLoginOnboardingCompleted();
+
+    return true;
+  } catch (error) {
+    console.error('[dailyCheckInStorage] Error setting first-login onboarding completed:', error);
+    return false;
+  }
+};
+
+/**
+ * Clear first-login onboarding state (for dev/testing)
+ * Removes completion flag from AsyncStorage
+ */
+export const clearFirstLoginOnboardingForDev = async (): Promise<boolean> => {
+  try {
+    await AsyncStorage.removeItem(FIRST_LOGIN_ONBOARDING_KEY);
+    await AsyncStorage.removeItem(FIRST_LOGIN_ONBOARDING_VERSION_KEY);
+
+    if (__DEV__) {
+      console.log('[dailyCheckInStorage] First-login onboarding state cleared for dev');
+    }
+
+    return true;
+  } catch (error) {
+    console.error('[dailyCheckInStorage] Error clearing first-login onboarding:', error);
     return false;
   }
 };

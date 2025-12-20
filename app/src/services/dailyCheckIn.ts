@@ -72,6 +72,7 @@ export interface DailyCheckInWithPlan extends DailyCheckInData {
     hydrationGoalLiters: number;
     steps: RecoveryAction[];
     symptomLabels: string[];
+    levelLabel?: string;
   };
   microStep: MicroAction;
 }
@@ -227,6 +228,7 @@ export const createOrUpdateTodayCheckIn = async (
         hydrationGoalLiters: plan.hydrationGoalLiters,
         steps: plan.steps,
         symptomLabels: plan.symptomLabels,
+        levelLabel: plan.levelLabel,
       },
       microStep: plan.microAction,
     };

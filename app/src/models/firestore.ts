@@ -20,6 +20,12 @@ export interface UserDoc {
   photoUrl?: string | null;
   createdAt: any; // Firestore Timestamp
   updatedAt?: any;
+  // First-login onboarding tracking
+  onboarding?: {
+    firstLoginCompleted: boolean;
+    firstLoginCompletedAt?: any; // Firestore Timestamp
+    firstLoginVersion: number; // Version for future onboarding updates
+  };
 }
 
 export interface ApplicationDoc {

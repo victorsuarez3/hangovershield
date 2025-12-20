@@ -38,6 +38,11 @@ export const signUp = async (
       displayName: fullName,
       email,
       createdAt: serverTimestamp(),
+      // Initialize first-login onboarding state (default: not completed)
+      onboarding: {
+        firstLoginCompleted: false,
+        firstLoginVersion: 1,
+      },
     };
 
     const userRef = doc(db, 'users', firebaseUser.uid);
@@ -150,6 +155,11 @@ const createOrUpdateUserDoc = async (
         email: additionalData?.email || firebaseUser.email || null,
         photoUrl: firebaseUser.photoURL || null,
         createdAt: serverTimestamp(),
+        // Initialize first-login onboarding state (default: not completed)
+        onboarding: {
+          firstLoginCompleted: false,
+          firstLoginVersion: 1,
+        },
       };
       await setDoc(userRef, userDoc);
     } else {
@@ -171,6 +181,35 @@ const createOrUpdateUserDoc = async (
   } catch (error) {
     console.error('Error creating/updating user document:', error);
     // Don't throw - auth succeeded even if Firestore update fails
+  }
+};
+
+/**
+ * Mark first-login onboarding as completed in Firestore
+ * Called after user completes the first-login onboarding flow
+ */
+export const markFirstLoginOnboardingCompleted = async (userId: string): Promise<void> => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await setDoc(
+      userRef,
+      {
+        onboarding: {
+          firstLoginCompleted: true,
+          firstLoginCompletedAt: serverTimestamp(),
+          firstLoginVersion: 1,
+        },
+      },
+      { merge: true }
+    );
+
+    if (__DEV__) {
+      console.log('[auth] First-login onboarding marked as completed in Firestore:', userId);
+    }
+  } catch (error) {
+    console.error('[auth] Error marking first-login onboarding as completed:', error);
+    // Don't throw - onboarding completion succeeded even if Firestore update fails
+    // AsyncStorage will still have the flag
   }
 };
 

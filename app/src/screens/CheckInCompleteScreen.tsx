@@ -275,7 +275,7 @@ export const CheckInCompleteScreen: React.FC = () => {
       >
         {/* Success Icon */}
         <View style={styles.iconCircle}>
-          <Ionicons name="checkmark-circle" size={64} color="#7AB48B" />
+          <Ionicons name="checkmark-circle" size={64} color="#0F4C44" />
         </View>
 
         {/* Title */}
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: 'rgba(122, 180, 139, 0.15)',
+    backgroundColor: 'rgba(15, 76, 68, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     color: 'rgba(15, 61, 62, 0.7)',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 32,
+    marginBottom: 28,
     maxWidth: SCREEN_WIDTH * 0.85,
   },
 
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 16,
-    padding: 20,
+    padding: 22,
     marginBottom: 28,
     width: '100%',
     borderWidth: 1,
@@ -465,17 +465,17 @@ const styles = StyleSheet.create({
   },
   summaryCardTitle: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 16,
+    fontSize: 17,
     color: '#0F3D3E',
-    marginBottom: 16,
+    marginBottom: 18,
   },
   summaryRow: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   summaryLabel: {
     fontFamily: 'Inter_500Medium',
     fontSize: 14,
-    color: 'rgba(15, 61, 62, 0.6)',
+    color: 'rgba(15, 61, 62, 0.75)',
     marginBottom: 6,
   },
   summaryValue: {

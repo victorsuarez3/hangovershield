@@ -143,6 +143,7 @@ const DailyRecoveryPlanWrapper: React.FC<DailyRecoveryPlanWrapperProps> = ({ use
     date: string;
     recoveryWindowLabel: string;
     symptomLabels: string[];
+    levelLabel?: string;
     hydrationGoalLiters: number;
     actions: any[];
   } | null>(null);
@@ -165,6 +166,7 @@ const DailyRecoveryPlanWrapper: React.FC<DailyRecoveryPlanWrapperProps> = ({ use
             date: dateString,
             recoveryWindowLabel: checkIn.generatedPlan.recoveryWindowLabel,
             symptomLabels: checkIn.generatedPlan.symptomLabels,
+            levelLabel: checkIn.generatedPlan.levelLabel || checkIn.severityLabel,
             hydrationGoalLiters: checkIn.generatedPlan.hydrationGoalLiters,
             actions: checkIn.generatedPlan.steps,
           });
@@ -185,6 +187,7 @@ const DailyRecoveryPlanWrapper: React.FC<DailyRecoveryPlanWrapperProps> = ({ use
             date: dateString,
             recoveryWindowLabel: plan.recoveryWindowLabel,
             symptomLabels: plan.symptomLabels,
+            levelLabel: plan.levelLabel,
             hydrationGoalLiters: plan.hydrationGoalLiters,
             actions: plan.steps,
           });
@@ -205,6 +208,7 @@ const DailyRecoveryPlanWrapper: React.FC<DailyRecoveryPlanWrapperProps> = ({ use
           date: dateString,
           recoveryWindowLabel: plan.recoveryWindowLabel,
           symptomLabels: plan.symptomLabels,
+          levelLabel: plan.levelLabel,
           hydrationGoalLiters: plan.hydrationGoalLiters,
           actions: plan.steps,
         });
@@ -248,6 +252,7 @@ const DailyRecoveryPlanWrapper: React.FC<DailyRecoveryPlanWrapperProps> = ({ use
       date={planData.date}
       recoveryWindowLabel={planData.recoveryWindowLabel}
       symptomLabels={planData.symptomLabels}
+      levelLabel={planData.levelLabel}
       hydrationGoalLiters={planData.hydrationGoalLiters}
       hydrationProgress={0}
       actions={planData.actions}

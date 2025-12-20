@@ -15,12 +15,15 @@ import { useNavigation } from '@react-navigation/native';
 import { logAnalyticsEvent } from '../utils/analytics';
 import { useAccessStatus } from '../hooks/useAccessStatus';
 import { PaywallSourceType } from '../constants/paywallSources';
+import { RECOVERY_PLAN_COPY } from '../constants/recoveryPlanCopy';
+import { useAppNavigation } from '../contexts/AppNavigationContext';
 
 interface SoftGateCardProps {
   title: string;
   description: string;
   source: PaywallSourceType; // MUST use PaywallSource constants
   contextScreen: string; // Screen name for analytics
+  showLossFraming?: boolean; // Optional: show loss framing micro-line for recovery plan
 }
 
 export const SoftGateCard: React.FC<SoftGateCardProps> = ({
@@ -28,8 +31,10 @@ export const SoftGateCard: React.FC<SoftGateCardProps> = ({
   description,
   source,
   contextScreen,
+  showLossFraming = false,
 }) => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
+  const appNav = useAppNavigation();
   const accessInfo = useAccessStatus();
   const hasLoggedImpression = useRef(false);
 
@@ -45,10 +50,30 @@ export const SoftGateCard: React.FC<SoftGateCardProps> = ({
       accessStatus: accessInfo.status,
     });
 
-    navigation.navigate('Paywall' as any, {
-      source,
-      contextScreen,
-    });
+    // Use AppNavigation context first (works across all navigators)
+    if (appNav.goToSubscription) {
+      appNav.goToSubscription(source, contextScreen);
+      return;
+    }
+
+    // Fallback: try direct navigation within same navigator
+    try {
+      navigation.navigate('Paywall', {
+        source,
+        contextScreen,
+      });
+    } catch (error) {
+      // Last resort: use navigationRef (works from anywhere)
+      const { navigationRef } = require('../../App');
+      if (navigationRef?.isReady()) {
+        navigationRef.navigate('Paywall' as any, {
+          source,
+          contextScreen,
+        });
+      } else {
+        console.error('[SoftGateCard] Navigation failed - no navigator available');
+      }
+    }
   };
 
   // Log soft gate shown (ONCE per mount - prevent duplicate events)
@@ -71,6 +96,9 @@ export const SoftGateCard: React.FC<SoftGateCardProps> = ({
       <View style={styles.content}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.description}>{description}</Text>
+        {showLossFraming && (
+          <Text style={styles.lossFramingText}>{RECOVERY_PLAN_COPY.unlockLossFraming}</Text>
+        )}
       </View>
       <TouchableOpacity
         style={styles.ctaButton}
@@ -119,6 +147,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(15, 61, 62, 0.6)',
     lineHeight: 16,
+    marginBottom: 6,
+  },
+  lossFramingText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: 'rgba(15, 61, 62, 0.5)',
+    lineHeight: 15,
+    marginTop: 2,
   },
   ctaButton: {
     flexDirection: 'row',

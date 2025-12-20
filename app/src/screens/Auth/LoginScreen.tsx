@@ -163,7 +163,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
               {/* Trust Microcopy */}
               <Text style={styles.trustLine}>
-                No magic pills. Just science-based recovery.
+              Drink sometimes. Feel better, every time.
               </Text>
 
               {/* Legal Text */}

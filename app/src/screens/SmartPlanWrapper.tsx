@@ -37,6 +37,7 @@ export const SmartPlanWrapper: React.FC = () => {
     date: string;
     recoveryWindowLabel: string;
     symptomLabels: string[];
+    levelLabel?: string;
     actions: RecoveryAction[];
   } | null>(null);
 
@@ -97,6 +98,7 @@ export const SmartPlanWrapper: React.FC = () => {
               date: dateString,
               recoveryWindowLabel: plan.recoveryWindowLabel,
               symptomLabels: plan.symptomLabels,
+              levelLabel: plan.levelLabel,
               actions: actionsWithState,
             });
             
@@ -144,6 +146,7 @@ export const SmartPlanWrapper: React.FC = () => {
             date: dateString,
             recoveryWindowLabel: checkIn.generatedPlan.recoveryWindowLabel,
             symptomLabels: checkIn.generatedPlan.symptomLabels,
+            levelLabel: checkIn.generatedPlan.levelLabel || checkIn.severityLabel,
             actions: actionsWithState,
           });
           
@@ -203,6 +206,7 @@ export const SmartPlanWrapper: React.FC = () => {
             date: dateString,
             recoveryWindowLabel: plan.recoveryWindowLabel,
             symptomLabels: plan.symptomLabels,
+            levelLabel: plan.levelLabel,
             actions: actionsWithState,
           });
           
@@ -253,6 +257,7 @@ export const SmartPlanWrapper: React.FC = () => {
               date: dateString,
               recoveryWindowLabel: plan.recoveryWindowLabel,
               symptomLabels: plan.symptomLabels,
+            levelLabel: plan.levelLabel,
               actions: plan.steps,
             });
           } catch (fallbackError) {
@@ -296,6 +301,7 @@ export const SmartPlanWrapper: React.FC = () => {
       date: dateString,
       recoveryWindowLabel: plan.recoveryWindowLabel,
       symptomLabels: plan.symptomLabels,
+            levelLabel: plan.levelLabel,
       actions: plan.steps,
     });
   };
@@ -393,6 +399,7 @@ export const SmartPlanWrapper: React.FC = () => {
         date={planData?.date}
         recoveryWindowLabel={planData?.recoveryWindowLabel}
         symptomLabels={planData?.symptomLabels}
+        levelLabel={planData?.levelLabel}
         hydrationGoalLiters={1.5}
         hydrationProgress={0}
         actions={planData?.actions || []}
@@ -408,6 +415,7 @@ export const SmartPlanWrapper: React.FC = () => {
       date={planData.date}
       recoveryWindowLabel={planData.recoveryWindowLabel}
       symptomLabels={planData.symptomLabels}
+      levelLabel={planData.levelLabel}
       hydrationGoalLiters={1.5}
       hydrationProgress={0}
       actions={planData.actions}

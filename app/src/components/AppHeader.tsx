@@ -27,6 +27,8 @@ export interface AppHeaderProps {
   onMenuPress?: () => void;
   style?: ViewStyle;
   transparent?: boolean;
+  titleSize?: number;
+  subtitleSize?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,6 +44,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onMenuPress,
   style,
   transparent = true,
+  titleSize,
+  subtitleSize,
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -70,8 +74,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
       {/* Center - Title and Subtitle */}
       <View style={styles.centerContainer}>
-        {title && <Text style={styles.title}>{title}</Text>}
-        {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+        {title && (
+          <Text style={[styles.title, titleSize && { fontSize: titleSize }]}>
+            {title}
+          </Text>
+        )}
+        {subtitle && (
+          <Text style={[styles.subtitle, subtitleSize && { fontSize: subtitleSize }]}>
+            {subtitle}
+          </Text>
+        )}
       </View>
 
       {/* Right side - Menu button */}
@@ -148,7 +160,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(15, 61, 62, 0.6)',
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: 4,
+    lineHeight: 18,
   },
   menuButton: {
     padding: 4,

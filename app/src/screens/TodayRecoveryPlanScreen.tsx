@@ -55,6 +55,7 @@ export type TodayRecoveryPlanScreenProps = {
   date?: string;
   recoveryWindowLabel?: string;
   symptomLabels?: string[];
+  levelLabel?: string;
   hydrationGoalLiters?: number;
   hydrationProgress?: number;
   actions?: RecoveryAction[];
@@ -70,7 +71,8 @@ export type TodayRecoveryPlanScreenProps = {
 const DEFAULT_MOCK_DATA: Required<Omit<TodayRecoveryPlanScreenProps, 'onToggleAction'>> = {
   date: 'Wed, Dec 10',
   recoveryWindowLabel: '6–12 hours',
-  symptomLabels: ['Mild hangover', 'Fatigue', 'Dry mouth'],
+  symptomLabels: ['Fatigue', 'Dry mouth'],
+  levelLabel: 'Mild hangover',
   hydrationGoalLiters: 1.5,
   hydrationProgress: 0,
   actions: [
@@ -184,6 +186,7 @@ const SymptomChip: React.FC<{ label: string }> = ({ label }) => (
 // Today at a Glance Card
 interface GlanceCardProps {
   recoveryWindow: string;
+  levelLabel: string;
   symptoms: string[];
   hydrationGoal: number;
   hydrationLogged: number;
@@ -192,6 +195,7 @@ interface GlanceCardProps {
 
 const GlanceCard: React.FC<GlanceCardProps> = ({
   recoveryWindow,
+  levelLabel,
   symptoms,
   hydrationGoal,
   hydrationLogged,
@@ -227,6 +231,19 @@ const GlanceCard: React.FC<GlanceCardProps> = ({
           <Text style={styles.glanceRowLabel}>Recovery window</Text>
         </View>
         <Text style={styles.glanceRowValue}>{recoveryWindow}</Text>
+      </View>
+
+      <View style={styles.glanceDivider} />
+
+      {/* Level */}
+      <View style={styles.glanceRow}>
+        <View style={styles.glanceRowLeft}>
+          <View style={styles.glanceIconBox}>
+            <Ionicons name="speedometer-outline" size={18} color="#0F4C44" />
+          </View>
+          <Text style={styles.glanceRowLabel}>Level</Text>
+        </View>
+        <Text style={styles.glanceRowValue}>{levelLabel}</Text>
       </View>
 
       <View style={styles.glanceDivider} />
@@ -487,6 +504,7 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
     date = DEFAULT_MOCK_DATA.date,
     recoveryWindowLabel = DEFAULT_MOCK_DATA.recoveryWindowLabel,
     symptomLabels = DEFAULT_MOCK_DATA.symptomLabels,
+    levelLabel: levelLabelProp = DEFAULT_MOCK_DATA.levelLabel,
     // Hydration goal - can be made dynamic in the future by passing via props
     hydrationGoalLiters = DEFAULT_MOCK_DATA.hydrationGoalLiters,
     hydrationProgress: initialHydrationProgress = DEFAULT_MOCK_DATA.hydrationProgress,
@@ -566,6 +584,10 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
   const completedActions = localActions.filter((a) => a.completed).length;
   const allCompleted = completedActions >= totalActions;
   const groupedActions = useMemo(() => groupActionsByTimeOfDay(localActions), [localActions]);
+
+  // Resolve level + symptoms
+  const levelLabel = levelLabelProp || 'Level';
+  const symptomsForDisplay = symptomLabels;
 
   // Find the first incomplete action (next step)
   const nextStepId = useMemo(() => {
@@ -692,7 +714,8 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
         {/* Today at a Glance */}
         <GlanceCard
           recoveryWindow={recoveryWindowLabel}
-          symptoms={symptomLabels}
+          levelLabel={levelLabel}
+          symptoms={symptomsForDisplay}
           hydrationGoal={hydrationGoalLitersState}
           hydrationLogged={hydrationLoggedLiters}
           onHydrationPress={handleHydrationPress}

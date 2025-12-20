@@ -69,7 +69,7 @@ export const HomeScreen: React.FC = () => {
   const { user, userDoc } = useAuth();
   const accessInfo = useAccessStatus();
   const appNav = useAppNavigation();
-  const { setOnboardingCompleted } = useOnboardingCompletion();
+  const { setOnboardingCompleted, resetOnboarding } = useOnboardingCompletion();
   
   // Menu state
   const [menuVisible, setMenuVisible] = useState(false);
@@ -738,13 +738,8 @@ export const HomeScreen: React.FC = () => {
   // Dev function to clear first-login onboarding (for testing)
   const handleClearFirstLoginOnboarding = useCallback(async () => {
     try {
-      // Import AsyncStorage
-      const AsyncStorage = await import('@react-native-async-storage/async-storage').then(m => m.default);
-
-      // Clear first-login onboarding flag
-      await clearFirstLoginOnboardingForDev();
-
-      // Note: Old feeling onboarding flag no longer exists - we only use first-login onboarding now
+      // Use the global context reset function (clears both AsyncStorage keys)
+      await resetOnboarding();
 
       // Also clear Firestore flags if logged in
       if (user?.uid) {
@@ -763,7 +758,7 @@ export const HomeScreen: React.FC = () => {
         );
       }
 
-      console.log('✓ First-login onboarding cleared! Reloading app...');
+      console.log('✅ First-login onboarding cleared! Reloading app...');
 
       // Force reload the app to reset all React state
       // Try to use expo-updates if available (may not be in all environments)
@@ -779,14 +774,14 @@ export const HomeScreen: React.FC = () => {
         // expo-updates not available or failed, continue to manual reload instruction
         console.warn('[HomeScreen] expo-updates not available, user will need to manually reload');
       }
-      
+
       // Fallback: Show alert asking user to manually reload
-      alert('First-login onboarding cleared!\n\nPlease manually reload the app (shake device → Reload) to test the onboarding flow again.');
+      alert('✅ Onboarding reset!\n\nPlease manually reload the app (shake device → Reload) to test the onboarding flow again.');
     } catch (error) {
       console.error('Error clearing first-login onboarding:', error);
       alert('Error clearing first-login onboarding. Check console.');
     }
-  }, [user?.uid]);
+  }, [user?.uid, resetOnboarding]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Computed Values

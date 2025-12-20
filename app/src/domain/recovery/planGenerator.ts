@@ -25,6 +25,7 @@ export interface RecoveryPlan {
   microAction: MicroAction;
   steps: RecoveryAction[];
   symptomLabels: string[];
+  levelLabel: string;
 }
 
 export interface PlanGeneratorInput {
@@ -58,13 +59,8 @@ export function generatePlan(input: PlanGeneratorInput): RecoveryPlan {
   // Generate recovery analysis
   const analysis = getRecoveryAnalysis(level, symptoms);
   const baseSymptomLabels = getKeySymptomLabels(symptoms);
-  
-  // Add feeling label at the start
-  const symptomLabels = level !== 'none' 
-    ? [FEELING_DISPLAY_LABELS[level], ...baseSymptomLabels]
-    : baseSymptomLabels.length > 0 
-      ? baseSymptomLabels 
-      : ['Feeling okay'];
+  const levelLabel = FEELING_DISPLAY_LABELS[level];
+  const symptomLabels = baseSymptomLabels.length > 0 ? baseSymptomLabels : ['Feeling okay'];
 
   // Recovery window
   const recoveryWindow = analysis.estimatedRecoveryHoursRange;
@@ -95,6 +91,7 @@ export function generatePlan(input: PlanGeneratorInput): RecoveryPlan {
     microAction,
     steps,
     symptomLabels,
+    levelLabel,
   };
 }
 
