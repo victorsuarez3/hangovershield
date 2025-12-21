@@ -241,26 +241,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await firebaseSignOut(auth);
       setUser(null);
       setUserDoc(null);
-      setSkipAuthMode?.(false);
-
-      // Navigation reset is optional; only do it if the Auth route exists in the current navigator
-      try {
-        const { navigationRef } = require('../../App');
-        if (navigationRef?.isReady()) {
-          const routeNames = navigationRef.getRootState()?.routeNames ?? [];
-          if (routeNames.includes('Auth')) {
-            navigationRef.reset({
-              index: 0,
-              routes: [{ name: 'Auth' as never }],
-            });
-          } else {
-            // Fallback: navigate if reset target isn't present
-            navigationRef.navigate('Auth' as never);
-          }
-        }
-      } catch (navError) {
-        console.warn('Navigation reset after logout failed (non-fatal):', navError);
-      }
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
