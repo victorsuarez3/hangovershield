@@ -66,7 +66,10 @@ export const RhythmLegendModal: React.FC<RhythmLegendModalProps> = ({
           {/* Content */}
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: Math.max(insets.bottom, 16) + 96 },
+            ]}
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
@@ -203,7 +206,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollView: {
-    maxHeight: 300,
   },
   scrollContent: {
     paddingBottom: 8,
