@@ -28,7 +28,16 @@ import { getTodayDailyCheckIn } from './src/services/dailyCheckIn';
 import { initializeRevenueCat, identifyUser, getCustomerInfo, isRevenueCatInitialized } from './src/services/revenuecat';
 import Constants from 'expo-constants';
 import { SHOW_DEV_TOOLS } from './src/config/flags';
-import NetInfo from '@react-native-community/netinfo';
+
+// Lazy NetInfo getter to avoid dependency issues in Expo/preview
+function getNetInfo() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('@react-native-community/netinfo');
+  } catch {
+    return null;
+  }
+}
 
 // Debug: Verify RevenueCat exports are available
 console.log('RC exports check:', {
@@ -90,6 +99,8 @@ function AppContent() {
   // Refresh RevenueCat on reconnect (prod builds only)
   React.useEffect(() => {
     if (!user?.uid || !isRealDevice) return;
+    const NetInfo = getNetInfo();
+    if (!NetInfo?.addEventListener) return;
     let timeout: NodeJS.Timeout | null = null;
     const unsubscribe = NetInfo.addEventListener((state) => {
       if (state.isConnected && isRevenueCatInitialized()) {
