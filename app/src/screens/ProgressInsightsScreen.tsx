@@ -180,6 +180,7 @@ interface CalendarDay {
   hasCheckIn: boolean;
   hasEveningCheckIn: boolean;
   hasAlcohol: boolean;
+  hasHydrationGoal: boolean;
   recoveryScore: number;
 }
 
@@ -198,6 +199,7 @@ const generateMockCalendarData = (count: number): CalendarDay[] => {
     const hasCheckIn = Math.random() > 0.15; // 85% check-in rate
     const hasEveningCheckIn = hasCheckIn && Math.random() > 0.4; // 60% evening rate if check-in exists
     const hasAlcohol = Math.random() > 0.65; // 35% alcohol days
+    const hasHydrationGoal = hasCheckIn && Math.random() > 0.5; // 50% of check-in days hit hydration goal
     
     // Recovery score: higher for days with check-in, varies based on alcohol
     let recoveryScore = 0;
@@ -214,6 +216,7 @@ const generateMockCalendarData = (count: number): CalendarDay[] => {
       hasCheckIn,
       hasEveningCheckIn,
       hasAlcohol,
+      hasHydrationGoal,
       recoveryScore: Math.round(recoveryScore),
     });
   }
@@ -302,6 +305,15 @@ const RhythmTile: React.FC<RhythmTileProps> = ({ item, size, todayId }) => {
         <View style={[styles.rhythmTileIconBadge, { backgroundColor: badgeBg }]}>
           <Ionicons
             name="moon"
+            size={11}
+            color={iconColor}
+          />
+        </View>
+      )}
+      {day.hasHydrationGoal && !isFuture && (
+        <View style={[styles.rhythmTileIconBadge, styles.rhythmTileIconBadgeLeft, { backgroundColor: badgeBg }]}>
+          <Ionicons
+            name="water"
             size={11}
             color={iconColor}
           />
@@ -885,6 +897,11 @@ const styles = StyleSheet.create({
     right: 'auto',
     bottom: 3,
     left: 3,
+  },
+  rhythmTileIconBadgeLeft: {
+    top: 3,
+    left: 3,
+    right: 'auto',
   },
 
   // Reflection Memory Card

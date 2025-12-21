@@ -115,6 +115,20 @@ export const RhythmLegendModal: React.FC<RhythmLegendModalProps> = ({
                     </Text>
                   </View>
                 </View>
+
+              <View style={styles.legendRow}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="water" size={20} color="#0F4C44" />
+                </View>
+                <View style={styles.iconTextContainer}>
+                  <Text style={styles.legendText}>
+                    Hydration goal reached
+                  </Text>
+                  <Text style={styles.legendTextSecondary}>
+                    Staying hydrated supports steady recovery.
+                  </Text>
+                </View>
+              </View>
               </View>
 
               {/* Section 3 - Behavior */}
