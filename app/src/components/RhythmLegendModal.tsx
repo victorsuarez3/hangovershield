@@ -245,12 +245,16 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: 'rgba(15, 61, 62, 0.7)',
     marginBottom: 4,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   legendTextSecondary: {
     fontFamily: 'Inter_400Regular',
     fontSize: 14,
     lineHeight: 20,
     color: 'rgba(15, 61, 62, 0.6)',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   footer: {
     paddingTop: 16,
