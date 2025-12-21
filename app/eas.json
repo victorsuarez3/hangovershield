@@ -15,7 +15,8 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_SHOW_DEV_TOOLS": "false",
-        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_DUWvCsBbLXFfbPMvhusEFMHDPBV"
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_DUWvCsBbLXFfbPMvhusEFMHDPBV",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "251175596798-i2k3l2od98f1rucpuuvgcple05t4cv13.apps.googleusercontent.com"
       },
       "ios": {
         "simulator": false
@@ -27,7 +28,8 @@
     "production": {
       "env": {
         "EXPO_PUBLIC_SHOW_DEV_TOOLS": "false",
-        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_DUWvCsBbLXFfbPMvhusEFMHDPBV"
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_DUWvCsBbLXFfbPMvhusEFMHDPBV",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "251175596798-i2k3l2od98f1rucpuuvgcple05t4cv13.apps.googleusercontent.com"
       },
       "ios": {
         "simulator": false
