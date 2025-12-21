@@ -1196,7 +1196,7 @@ export const HomeScreen: React.FC = () => {
               </Text>
               {hydrationGoalReached && (
                 <View style={styles.waterLogBadge}>
-                  <Ionicons name="checkmark" size={12} color="#0F4C44" />
+                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
                   <Text style={styles.waterLogBadgeText}>Goal hit</Text>
                 </View>
               )}
@@ -1627,15 +1627,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(15, 76, 68, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: '#0F4C44',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 999,
   },
   waterLogBadgeText: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 12,
-    color: '#0F4C44',
+    color: '#FFFFFF',
   },
   waterLogQuickAdd: {
     flexDirection: 'row',
