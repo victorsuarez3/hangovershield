@@ -16,12 +16,12 @@ import { SHOW_DEV_TOOLS } from '../config/flags';
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
+const iosApiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
+const androidApiKey = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY;
+
 export const REVENUECAT_CONFIG = {
-  // API Keys (same for both platforms in your case)
-  IOS_API_KEY: 'test_jhvVKNubAfntmhKiCaOISDpoFrJ',
-  ANDROID_API_KEY: 'test_jhvVKNubAfntmhKiCaOISDpoFrJ',
-  
-  // Entitlement identifier (must match RevenueCat dashboard)
+  IOS_API_KEY: iosApiKey,
+  ANDROID_API_KEY: androidApiKey,
   ENTITLEMENT_ID: 'pro',
 } as const;
 
@@ -147,8 +147,11 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
     : REVENUECAT_CONFIG.ANDROID_API_KEY;
 
   // Guard missing keys or missing configure
-  if (!apiKey || typeof Purchases.configure !== 'function') {
-    console.warn('[RevenueCat] Missing apiKey or configure(), skipping init');
+  if (!apiKey) {
+    throw new Error('RevenueCat API key missing for this platform');
+  }
+  if (typeof Purchases.configure !== 'function') {
+    console.error('[RevenueCat] configure() is not available on Purchases');
     return;
   }
 

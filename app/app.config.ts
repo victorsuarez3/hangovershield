@@ -29,19 +29,20 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-font',
+    '@react-native-community/datetimepicker',
   ],
   extra: {
-    // Firebase Configuration
-    firebaseApiKey: 'AIzaSyBhx-k9zkZLJfkYBtw7YEhQa3Nm9BYcMqs',
-    firebaseAuthDomain: 'xxx-test-f2f64.firebaseapp.com',
-    firebaseProjectId: 'xxx-test-f2f64',
-    firebaseStorageBucket: 'xxx-test-f2f64.firebasestorage.app',
-    firebaseMessagingSenderId: '251175596798',
-    firebaseAppId: '1:251175596798:ios:6c21f371ade723e2342baf',
+    // Firebase & Auth (must be provided via env at build time)
+    firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+    firebaseAuthDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    firebaseProjectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+    firebaseStorageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    firebaseMessagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    firebaseAppId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
     // Google Sign-In Configuration
-    googleIosClientId: '251175596798-i2k3l2od98f1rucpuuvgcple05t4cv13.apps.googleusercontent.com',
-    googleAndroidClientId: '251175596798-i2k3l2od98f1rucpuuvgcple05t4cv13.apps.googleusercontent.com',
-    googleWebClientId: '251175596798-vg13p7km1oerm0gnqbkihjrt73g8k7sc.apps.googleusercontent.com',
+    googleIosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    googleAndroidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
   },
 };
 

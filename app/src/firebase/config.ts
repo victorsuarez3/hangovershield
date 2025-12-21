@@ -4,8 +4,6 @@
  * Uses Expo Constants to access Firebase config from app.config.ts
  * This ensures the config works in both development and production builds
  *
- * TODO: Replace placeholder values in app.config.ts with actual Hangover Shield Firebase credentials
- *
  * Required Firebase services:
  * - Authentication (Email/Password)
  * - Cloud Firestore
@@ -31,9 +29,8 @@ const firebaseConfig = {
 };
 
 // Validate Firebase config
-if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-  console.error('Firebase configuration is missing. Check app.config.ts');
-  throw new Error('Firebase configuration is incomplete. Please check your app.config.ts file.');
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.appId) {
+  throw new Error('Firebase configuration is incomplete. Provide EXPO_PUBLIC_FIREBASE_* env vars.');
 }
 
 let app: FirebaseApp;
@@ -51,9 +48,8 @@ export const firebaseApp = app;
 // For production, consider adding AsyncStorage persistence if needed
 export const auth = getAuth(app);
 
-// Initialize Firestore with named database (Native Mode)
-// TODO: Replace 'hangovershield-app' with actual database name once Firebase project is created
-export const db = getFirestore(app, 'hangovershield-app');
+// Initialize Firestore with default database (Native Mode)
+export const db = getFirestore(app);
 
 // Initialize Firebase Storage for profile photos and media
 export const storage = getStorage(app);
