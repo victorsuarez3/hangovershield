@@ -211,6 +211,16 @@ export async function logOutRevenueCat(): Promise<void> {
   }
 
   try {
+    // Ensure SDK is configured before logout; if not, configure anonymously
+    if (!isInitialized) {
+      await initializeRevenueCat();
+      // If still not initialized, skip logout to avoid singleton errors
+      if (!isInitialized) {
+        console.warn('[RevenueCat] Skip logout: SDK not initialized');
+        return;
+      }
+    }
+
     await Purchases.logOut();
     if (SHOW_DEV_TOOLS) {
       console.log('[RevenueCat] User logged out');
