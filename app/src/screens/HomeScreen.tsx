@@ -33,6 +33,7 @@ import {
   getTodayHydrationLog,
   getHydrationGoal,
   addWaterEntry,
+  deleteTodayWaterLog,
 } from '../services/hydrationService';
 import { createWaterEntry } from '../features/water/waterUtils';
 import {
@@ -44,6 +45,7 @@ import {
   DailyCheckInSummary,
 } from '../services/dailyCheckIn';
 import { getLocalDailyCheckIn, deleteLocalDailyCheckIn, hasCompletedEveningCheckInToday, clearFirstLoginOnboardingForDev } from '../services/dailyCheckInStorage';
+import { saveLocalHydrationEntries } from '../services/hydrationStorage';
 import { getTodayId, getDateId } from '../utils/dateUtils';
 import { typography } from '../design-system/typography';
 import { generatePlan } from '../domain/recovery/planGenerator';
@@ -708,10 +710,15 @@ export const HomeScreen: React.FC = () => {
     try {
       // Clear local storage (this also clears plan completion)
       await deleteLocalDailyCheckIn();
+      const todayId = getTodayId();
+      // Clear hydration local cache and store (single source of truth)
+      await saveLocalHydrationEntries(todayId, []);
+      setHydrationLogs({ [todayId]: [] });
 
       // Clear Firestore if logged in
       if (user?.uid) {
         await deleteTodayDailyCheckIn(user.uid);
+        await deleteTodayWaterLog(user.uid);
       }
 
       // Refresh both check-in and plan completion status

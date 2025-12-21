@@ -15,6 +15,7 @@ import {
   orderBy,
   limit as firestoreLimit,
   runTransaction,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { WaterEntry } from '../features/water/waterTypes';
@@ -172,6 +173,16 @@ export const deleteWaterEntry = async (
   } catch (error) {
     console.error('[HydrationService] Error deleting water entry:', error);
     throw error;
+  }
+};
+
+export const deleteTodayWaterLog = async (userId: string): Promise<void> => {
+  try {
+    const todayId = getTodayId();
+    const docRef = doc(db, 'users', userId, 'waterLogs', todayId);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.error('[HydrationService] Error deleting today water log:', error);
   }
 };
 
