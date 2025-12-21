@@ -16,7 +16,13 @@
       "env": {
         "EXPO_PUBLIC_SHOW_DEV_TOOLS": "false",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_DUWvCsBbLXFfbPMvhusEFMHDPBV",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "251175596798-i2k3l2od98f1rucpuuvgcple05t4cv13.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "251175596798-i2k3l2od98f1rucpuuvgcple05t4cv13.apps.googleusercontent.com",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBhx-k9zkZLJfkYBtw7YEhQa3Nm9BYcMqs",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "xxx-test-f2f64.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "xxx-test-f2f64",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "xxx-test-f2f64.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "251175596798",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:251175596798:ios:6c21f371ade723e2342baf"
       },
       "ios": {
         "simulator": false
@@ -29,7 +35,13 @@
       "env": {
         "EXPO_PUBLIC_SHOW_DEV_TOOLS": "false",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_DUWvCsBbLXFfbPMvhusEFMHDPBV",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "251175596798-i2k3l2od98f1rucpuuvgcple05t4cv13.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "251175596798-i2k3l2od98f1rucpuuvgcple05t4cv13.apps.googleusercontent.com",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBhx-k9zkZLJfkYBtw7YEhQa3Nm9BYcMqs",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "xxx-test-f2f64.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "xxx-test-f2f64",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "xxx-test-f2f64.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "251175596798",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:251175596798:ios:6c21f371ade723e2342baf"
       },
       "ios": {
         "simulator": false
