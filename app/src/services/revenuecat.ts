@@ -172,6 +172,14 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
     // If we have a user ID (Firebase UID), identify them
     if (userId) {
       const { customerInfo } = await Purchases.logIn(userId);
+      try {
+        const info = await Purchases.getCustomerInfo();
+        if (SHOW_DEV_TOOLS) {
+          console.log('[RevenueCat] Refreshed after login:', info?.entitlements?.active);
+        }
+      } catch {
+        // Swallow in production
+      }
       if (SHOW_DEV_TOOLS) {
         console.log('[RevenueCat] Logged in user:', userId, customerInfo?.entitlements?.active);
       }
@@ -206,6 +214,14 @@ export async function identifyUser(userId: string): Promise<any> {
 
   try {
     const { customerInfo } = await Purchases.logIn(userId);
+    try {
+      const info = await Purchases.getCustomerInfo();
+      if (SHOW_DEV_TOOLS) {
+        console.log('[RevenueCat] Refreshed after identify:', info?.entitlements?.active);
+      }
+    } catch {
+      // ignore in prod
+    }
     if (SHOW_DEV_TOOLS) {
       console.log('[RevenueCat] User identified:', userId);
     }
@@ -258,6 +274,9 @@ export async function getCustomerInfo(): Promise<any> {
   if (!Purchases) {
     return null;
   }
+  if (!isInitialized) {
+    return null;
+  }
 
   try {
     const customerInfo = await Purchases.getCustomerInfo();
@@ -275,6 +294,9 @@ export async function checkPremiumStatus(): Promise<boolean> {
   const Purchases = getPurchases();
   
   if (!Purchases) {
+    return false;
+  }
+  if (!isInitialized) {
     return false;
   }
 

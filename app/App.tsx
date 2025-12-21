@@ -25,9 +25,10 @@ import { SplashScreen } from './src/screens/SplashScreen';
 import { AlertManager } from './src/utils/alert';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { getTodayDailyCheckIn } from './src/services/dailyCheckIn';
-import { initializeRevenueCat, identifyUser } from './src/services/revenuecat';
+import { initializeRevenueCat, identifyUser, getCustomerInfo, isRevenueCatInitialized } from './src/services/revenuecat';
 import Constants from 'expo-constants';
 import { SHOW_DEV_TOOLS } from './src/config/flags';
+import NetInfo from '@react-native-community/netinfo';
 
 // Debug: Verify RevenueCat exports are available
 console.log('RC exports check:', {
@@ -86,13 +87,43 @@ function AppContent() {
     initRC();
   }, [user?.uid, isRealDevice]);
 
+  // Refresh RevenueCat on reconnect (prod builds only)
+  React.useEffect(() => {
+    if (!user?.uid || !isRealDevice) return;
+    let timeout: NodeJS.Timeout | null = null;
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (state.isConnected && isRevenueCatInitialized()) {
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(async () => {
+          try {
+            await getCustomerInfo();
+            if (SHOW_DEV_TOOLS) {
+              console.log('[App] RC refreshed on reconnect');
+            }
+          } catch (error) {
+            // Silent in prod; dev-only log
+            if (SHOW_DEV_TOOLS) {
+              console.warn('[App] RC refresh on reconnect failed:', error);
+            }
+          }
+        }, 3000); // debounce ~3s
+      }
+    });
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      unsubscribe();
+    };
+  }, [user?.uid, isRealDevice]);
+
   // Identify user to RevenueCat when authenticated (after initialization)
   React.useEffect(() => {
     const identifyToRevenueCat = async () => {
       if (user?.uid && isRealDevice) {
         try {
           await identifyUser(user.uid);
-          console.log('[AppContent] User identified to RevenueCat:', user.uid);
+          if (SHOW_DEV_TOOLS) {
+            console.log('[AppContent] User identified to RevenueCat:', user.uid);
+          }
         } catch (error) {
           console.error('[AppContent] Error identifying user to RevenueCat:', error);
         }
