@@ -22,7 +22,7 @@ export const REVENUECAT_CONFIG = {
   ANDROID_API_KEY: 'test_jhvVKNubAfntmhKiCaOISDpoFrJ',
   
   // Entitlement identifier (must match RevenueCat dashboard)
-  ENTITLEMENT_ID: 'Hangover Shield Pro',
+  ENTITLEMENT_ID: 'pro',
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -135,7 +135,9 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
   }
 
   if (isInitialized) {
-    console.log('[RevenueCat] Already initialized');
+    if (SHOW_DEV_TOOLS) {
+      console.log('[RevenueCat] Already initialized');
+    }
     return;
   }
 
@@ -155,12 +157,16 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
 
     // If we have a user ID (Firebase UID), identify them
     if (userId) {
-      await Purchases.logIn(userId);
-      console.log('[RevenueCat] Logged in user:', userId);
+      const { customerInfo } = await Purchases.logIn(userId);
+      if (SHOW_DEV_TOOLS) {
+        console.log('[RevenueCat] Logged in user:', userId, customerInfo?.entitlements?.active);
+      }
     }
 
     isInitialized = true;
-    console.log('[RevenueCat] Initialized successfully');
+    if (SHOW_DEV_TOOLS) {
+      console.log('[RevenueCat] Initialized successfully');
+    }
   } catch (error) {
     console.error('[RevenueCat] Initialization error:', error);
     // Don't throw - let the app continue without subscriptions
@@ -184,7 +190,9 @@ export async function identifyUser(userId: string): Promise<any> {
 
   try {
     const { customerInfo } = await Purchases.logIn(userId);
-    console.log('[RevenueCat] User identified:', userId);
+    if (SHOW_DEV_TOOLS) {
+      console.log('[RevenueCat] User identified:', userId);
+    }
     return customerInfo;
   } catch (error) {
     console.error('[RevenueCat] Error identifying user:', error);
@@ -204,7 +212,9 @@ export async function logOutRevenueCat(): Promise<void> {
 
   try {
     await Purchases.logOut();
-    console.log('[RevenueCat] User logged out');
+    if (SHOW_DEV_TOOLS) {
+      console.log('[RevenueCat] User logged out');
+    }
   } catch (error) {
     console.error('[RevenueCat] Error logging out:', error);
     // Don't throw - logout should be best-effort
