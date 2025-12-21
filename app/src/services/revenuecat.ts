@@ -57,6 +57,7 @@ export interface AvailablePackage {
 
 let isInitialized = false;
 let sdkAvailable: boolean | null = null;
+let isInitializing = false;
 
 /**
  * Check if RevenueCat SDK is available (lazy check)
@@ -134,14 +135,25 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
     return;
   }
 
-  if (isInitialized) {
+  if (isInitialized || isInitializing) {
     if (SHOW_DEV_TOOLS) {
-      console.log('[RevenueCat] Already initialized');
+      console.log('[RevenueCat] Already initialized or initializing');
     }
     return;
   }
 
+  const apiKey = Platform.OS === 'ios' 
+    ? REVENUECAT_CONFIG.IOS_API_KEY 
+    : REVENUECAT_CONFIG.ANDROID_API_KEY;
+
+  // Guard missing keys or missing configure
+  if (!apiKey || typeof Purchases.configure !== 'function') {
+    console.warn('[RevenueCat] Missing apiKey or configure(), skipping init');
+    return;
+  }
+
   try {
+    isInitializing = true;
     // Set log level
     const LOG_LEVEL = getLogLevel();
     if (LOG_LEVEL && SHOW_DEV_TOOLS) {
@@ -149,10 +161,6 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
     }
 
     // Configure with platform-specific API key
-    const apiKey = Platform.OS === 'ios' 
-      ? REVENUECAT_CONFIG.IOS_API_KEY 
-      : REVENUECAT_CONFIG.ANDROID_API_KEY;
-
     await Purchases.configure({ apiKey });
 
     // If we have a user ID (Firebase UID), identify them
@@ -170,6 +178,8 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
   } catch (error) {
     console.error('[RevenueCat] Initialization error:', error);
     // Don't throw - let the app continue without subscriptions
+  } finally {
+    isInitializing = false;
   }
 }
 
@@ -211,14 +221,12 @@ export async function logOutRevenueCat(): Promise<void> {
   }
 
   try {
-    // Ensure SDK is configured before logout; if not, configure anonymously
+    // Ensure SDK is configured before logout; if not, skip to avoid singleton errors
     if (!isInitialized) {
-      await initializeRevenueCat();
-      // If still not initialized, skip logout to avoid singleton errors
-      if (!isInitialized) {
+      if (SHOW_DEV_TOOLS) {
         console.warn('[RevenueCat] Skip logout: SDK not initialized');
-        return;
       }
+      return;
     }
 
     await Purchases.logOut();
