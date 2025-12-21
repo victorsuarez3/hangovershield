@@ -357,7 +357,7 @@ const RhythmTile: React.FC<RhythmTileProps> = ({ item, size, todayId }) => {
           <Ionicons
             name="wine"
             size={17}
-            color="rgba(196,137,61,0.95)"
+            color="rgba(148, 37, 54, 0.95)"
           />
         </View>
       )}
