@@ -795,6 +795,7 @@ export const HomeScreen: React.FC = () => {
   }, [hydrationLogged, hydrationGoal]);
 
   const hydrationPercent = hydrationGoal > 0 ? (hydrationLogged / hydrationGoal) * 100 : 0;
+  const hydrationGoalReached = hydrationGoal > 0 && hydrationLogged >= hydrationGoal;
 
   // Rotating motivational messages (fixed list, not random)
   const motivationalMessages = [
@@ -1189,13 +1190,22 @@ export const HomeScreen: React.FC = () => {
 
           {/* Progress */}
           <View style={styles.waterLogProgress}>
-            <Text style={styles.waterLogProgressText}>
-              Logged: <Text style={styles.waterLogBold}>{hydrationLogged}ml</Text> of {hydrationGoal}ml
+            <View style={styles.waterLogProgressHeader}>
+              <Text style={styles.waterLogProgressText}>
+                Logged: <Text style={styles.waterLogBold}>{hydrationLogged}ml</Text> of {hydrationGoal}ml
               </Text>
-            <View style={styles.waterLogProgressBar}>
+              {hydrationGoalReached && (
+                <View style={styles.waterLogBadge}>
+                  <Ionicons name="checkmark" size={12} color="#0F4C44" />
+                  <Text style={styles.waterLogBadgeText}>Goal hit</Text>
+                </View>
+              )}
+            </View>
+            <View style={[styles.waterLogProgressBar, hydrationGoalReached && styles.waterLogProgressBarDone]}>
               <View 
                 style={[
                   styles.waterLogProgressFill,
+                  hydrationGoalReached && styles.waterLogProgressFillDone,
                   { width: `${Math.min(hydrationPercent, 100)}%` }
                 ]} 
               />
@@ -1222,8 +1232,10 @@ export const HomeScreen: React.FC = () => {
 
           {/* Goal Info */}
           <Text style={styles.waterLogGoalText}>
-            ~{Math.max(0, hydrationGoal - hydrationLogged)}ml left to reach today's goal
-              </Text>
+            {hydrationGoalReached
+              ? 'Hydration goal reached — nice job!'
+              : `~${Math.max(0, hydrationGoal - hydrationLogged)}ml left to reach today's goal`}
+          </Text>
 
           {/* View Full Log Link */}
           <TouchableOpacity
@@ -1579,11 +1591,17 @@ const styles = StyleSheet.create({
   waterLogProgress: {
     marginBottom: 16,
   },
+  waterLogProgressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 8,
+  },
   waterLogProgressText: {
     fontFamily: 'Inter_400Regular',
     fontSize: 14,
     color: '#0F3D3E',
-    marginBottom: 8,
   },
   waterLogBold: {
     fontFamily: 'Inter_600SemiBold',
@@ -1594,10 +1612,30 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: 'hidden',
   },
+  waterLogProgressBarDone: {
+    backgroundColor: 'rgba(15, 76, 68, 0.18)',
+  },
   waterLogProgressFill: {
     height: '100%',
     backgroundColor: '#0F4C44',
     borderRadius: 4,
+  },
+  waterLogProgressFillDone: {
+    backgroundColor: '#0F4C44',
+  },
+  waterLogBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(15, 76, 68, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  waterLogBadgeText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: '#0F4C44',
   },
   waterLogQuickAdd: {
     flexDirection: 'row',
