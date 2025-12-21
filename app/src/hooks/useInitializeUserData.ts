@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { useUserDataStore } from '../stores/useUserDataStore';
 import {
   getHydrationGoal,
-  getHydrationLogs,
+  getRecentWaterLogs,
   initializeHydrationData,
 } from '../services/hydrationService';
 import { doc, getDoc } from 'firebase/firestore';
@@ -138,7 +138,7 @@ export const useInitializeUserData = (
         console.log('[useInitializeUserData] Loaded hydration goal:', goal);
 
         // Load hydration logs
-        const logs = await getHydrationLogs(userId);
+        const logs = await getRecentWaterLogs(userId);
         setHydrationLogs(logs);
         console.log('[useInitializeUserData] Loaded hydration logs');
 
