@@ -37,6 +37,7 @@ import { RhythmLegendModal } from '../components/RhythmLegendModal';
 import { getTodayId, formatDateForDisplay } from '../utils/dateUtils';
 import { getRecentCheckIns, DailyCheckInSummary } from '../services/dailyCheckIn';
 import { typography } from '../design-system/typography';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -224,6 +225,38 @@ const generateMockCalendarData = (count: number): CalendarDay[] => {
   return days;
 };
 
+const buildCalendarFromCheckIns = (checkIns: DailyCheckInSummary[], count: number): CalendarDay[] => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const map = new Map(checkIns.map((c) => [c.date, c]));
+  const days: CalendarDay[] = [];
+
+  for (let i = count - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateId = date.toISOString().split('T')[0];
+    const summary = map.get(dateId);
+    const hasCheckIn = Boolean(summary);
+    const planCompleted = summary?.planCompleted === true;
+
+    let recoveryScore = 0;
+    if (hasCheckIn) {
+      recoveryScore = planCompleted ? 85 : 65;
+    }
+
+    days.push({
+      date: dateId,
+      hasCheckIn,
+      hasEveningCheckIn: false, // not tracked yet
+      hasAlcohol: false, // not tracked yet
+      hasHydrationGoal: false, // future: wire real hydration goal data
+      recoveryScore,
+    });
+  }
+
+  return days;
+};
+
 // Generate mock reflection memory
 const MOCK_REFLECTIONS = [
   { day: 'Tue', text: 'Took a walk instead of drinking tonight. Feeling proud.' },
@@ -354,14 +387,23 @@ export const ProgressInsightsScreen: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('30d');
   const [gridWidth, setGridWidth] = useState<number>(0);
 
-  // Mock data for demo
-  const trendData = useMemo(() => generateMockTrendData(), []);
-  const trendInterpretation = useMemo(() => generateTrendInterpretation(trendData), [trendData]);
-  const todayInsight = useMemo(() => getTodayInsight(), []);
+  // Mock data for demo (only in dev). In prod, these sections can stay empty/future real data.
+  const useMockData = SHOW_DEV_TOOLS;
+  const trendData = useMemo(() => (useMockData ? generateMockTrendData() : []), [useMockData]);
+  const trendInterpretation = useMemo(
+    () => (useMockData ? generateTrendInterpretation(trendData) : null),
+    [useMockData, trendData]
+  );
+  const todayInsight = useMemo(() => (useMockData ? getTodayInsight() : null), [useMockData]);
   
   // Generate calendar data based on selected period
   const periodCount = selectedPeriod === '7d' ? 7 : selectedPeriod === '30d' ? 30 : 90;
-  const calendarData = useMemo(() => generateMockCalendarData(periodCount), [selectedPeriod]);
+  const calendarData = useMemo(() => {
+    if (useMockData) {
+      return generateMockCalendarData(periodCount);
+    }
+    return buildCalendarFromCheckIns(checkIns, periodCount);
+  }, [useMockData, periodCount, checkIns, selectedPeriod]);
   
   // Build calendar cells (days + empties to fill full weeks)
   const calendarCells = useMemo(() => {
