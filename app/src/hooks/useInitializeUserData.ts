@@ -139,7 +139,7 @@ export const useInitializeUserData = (
 
         // Load hydration logs
         // Note: limitDays default = 30; paginate if UI needs more history.
-        const logs = await getRecentWaterLogs(userId);
+        const logs = await getRecentWaterLogs(userId, 30);
         setHydrationLogs(logs);
         console.log('[useInitializeUserData] Loaded hydration logs');
 

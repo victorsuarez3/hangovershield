@@ -2,6 +2,7 @@
  * Progress & Insights Screen - Hangover Shield
  * Premium wellness dashboard - emotional core of the product
  * Makes users feel understood, not analyzed
+ * Note: Hydration is intentionally not displayed here in the current MVP.
  */
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';

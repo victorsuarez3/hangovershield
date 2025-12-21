@@ -28,7 +28,7 @@ import {
   formatTime,
   createWaterEntry,
 } from '../features/water/waterUtils';
-import { addWaterEntry, deleteWaterEntry, setHydrationGoal as saveHydrationGoal } from '../services/hydrationService';
+import { addWaterEntry, deleteWaterEntry, setHydrationGoal as saveHydrationGoal, getTodayHydrationLog } from '../services/hydrationService';
 import { WaterEntry } from '../features/water/waterTypes';
 import { getTodayId } from '../utils/dateUtils';
 import { addLocalHydrationEntry, getLocalHydrationEntries, saveLocalHydrationEntries, getLocalHydrationGoal, saveLocalHydrationGoal } from '../services/hydrationStorage';
@@ -76,17 +76,21 @@ export const DailyWaterLogScreen: React.FC = () => {
 
   // Celebration animation when goal is reached
   useEffect(() => {
-    // Load local hydration goal & log if no user (offline/onboarding)
-    if (user?.uid) return;
-    const loadLocal = async () => {
-      const entries = await getLocalHydrationEntries(todayId);
-      setHydrationLogs({ [todayId]: entries });
-      const cachedGoal = await getLocalHydrationGoal();
-      if (cachedGoal && cachedGoal > 0) {
-        setHydrationGoal(cachedGoal);
+    // Load hydration data for today from the single source of truth
+    const loadToday = async () => {
+      if (user?.uid) {
+        const entries = await getTodayHydrationLog(user.uid);
+        setHydrationLogs({ [todayId]: entries });
+      } else {
+        const entries = await getLocalHydrationEntries(todayId);
+        setHydrationLogs({ [todayId]: entries });
+        const cachedGoal = await getLocalHydrationGoal();
+        if (cachedGoal && cachedGoal > 0) {
+          setHydrationGoal(cachedGoal);
+        }
       }
     };
-    loadLocal();
+    loadToday();
   }, [user?.uid, todayId, setHydrationLogs, setHydrationGoal]);
 
   useEffect(() => {
@@ -107,7 +111,6 @@ export const DailyWaterLogScreen: React.FC = () => {
   }, [todayHydrationTotal >= hydrationGoal]);
 
   const handleAddWater = async (amountMl: number) => {
-    console.log(`[DailyWaterLog] Adding ${amountMl}ml`);
     const newEntry = createWaterEntry(amountMl);
 
     // Add to store
@@ -138,15 +141,17 @@ export const DailyWaterLogScreen: React.FC = () => {
   };
 
   const handleDeleteEntry = async (entryId: string) => {
-    console.log(`[DailyWaterLog] Deleting entry ${entryId}`);
+    // Optimistically update store and local cache
+    const updatedEntries = (hydrationLogs[todayId] || []).filter((e) => e.id !== entryId);
+    setHydrationLogs({ ...hydrationLogs, [todayId]: updatedEntries });
+    await saveLocalHydrationEntries(todayId, updatedEntries);
 
-    // TODO: Remove from store (need to add action to store)
-    // For now, only delete from Firebase
     if (user?.uid) {
       try {
         await deleteWaterEntry(user.uid, todayId, entryId);
       } catch (error) {
         console.error('[DailyWaterLog] Error deleting entry:', error);
+        // Optionally reload on failure
       }
     }
   };
