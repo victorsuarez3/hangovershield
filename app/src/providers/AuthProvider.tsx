@@ -241,6 +241,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await firebaseSignOut(auth);
       setUser(null);
       setUserDoc(null);
+      setSkipAuthMode?.(false);
 
       // Navigation reset is optional; only do it if the Auth route exists in the current navigator
       try {
@@ -252,6 +253,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               index: 0,
               routes: [{ name: 'Auth' as never }],
             });
+          } else {
+            // Fallback: navigate if reset target isn't present
+            navigationRef.navigate('Auth' as never);
           }
         }
       } catch (navError) {
