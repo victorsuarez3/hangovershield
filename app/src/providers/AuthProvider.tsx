@@ -241,6 +241,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await firebaseSignOut(auth);
       setUser(null);
       setUserDoc(null);
+
+      // Navigate explicitly to auth flow after logout (for skip-auth/dev it will reset UI)
+      try {
+        const { navigationRef } = require('../../App');
+        if (navigationRef?.isReady()) {
+          navigationRef.reset({
+            index: 0,
+            routes: [{ name: 'Auth' as never }],
+          });
+        }
+      } catch (navError) {
+        console.warn('Navigation reset after logout failed (non-fatal):', navError);
+      }
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
