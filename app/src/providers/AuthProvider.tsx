@@ -242,14 +242,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
       setUserDoc(null);
 
-      // Navigate explicitly to auth flow after logout (for skip-auth/dev it will reset UI)
+      // Navigation reset is optional; only do it if the Auth route exists in the current navigator
       try {
         const { navigationRef } = require('../../App');
         if (navigationRef?.isReady()) {
-          navigationRef.reset({
-            index: 0,
-            routes: [{ name: 'Auth' as never }],
-          });
+          const routeNames = navigationRef.getRootState()?.routeNames ?? [];
+          if (routeNames.includes('Auth')) {
+            navigationRef.reset({
+              index: 0,
+              routes: [{ name: 'Auth' as never }],
+            });
+          }
         }
       } catch (navError) {
         console.warn('Navigation reset after logout failed (non-fatal):', navError);
