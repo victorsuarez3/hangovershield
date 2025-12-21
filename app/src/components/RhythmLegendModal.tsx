@@ -107,7 +107,7 @@ export const RhythmLegendModal: React.FC<RhythmLegendModalProps> = ({
 
                 <View style={styles.legendRow}>
                   <View style={styles.iconContainer}>
-                    <Ionicons name="wine" size={20} color="#C4893D" />
+                  <Ionicons name="wine" size={20} color="rgba(148, 37, 54, 0.95)" />
                   </View>
                   <View style={styles.iconTextContainer}>
                     <Text style={styles.legendText}>
@@ -135,16 +135,12 @@ export const RhythmLegendModal: React.FC<RhythmLegendModalProps> = ({
               </View>
 
               {/* Section 3 - Behavior */}
-              <View style={styles.section}>
-                <Text style={styles.legendText}>
-                  Tap any day to reflect and adjust tomorrow.
-                </Text>
-              </View>
+              <View style={{ height: 0 }} />
             </View>
           </ScrollView>
 
           {/* Footer Button */}
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 8) }]}>
             <TouchableOpacity
               style={styles.modalButton}
               onPress={onClose}
