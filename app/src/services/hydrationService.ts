@@ -3,7 +3,15 @@
  * Firebase operations for hydration tracking
  */
 
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { WaterEntry } from '../features/water/waterTypes';
 import { HydrationLog } from '../stores/useUserDataStore';
@@ -51,18 +59,18 @@ export const setHydrationGoal = async (userId: string, goalMl: number): Promise<
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Get all hydration logs for a user
- * TODO(P0): migrate hydration.logs (embedded) to subcollection /users/{uid}/waterLogs/{dayId}
- * to avoid user doc size growth and 1MB limits. Keep cache/local logic intact.
+ * Get all hydration logs for a user (subcollection /users/{uid}/waterLogs/{dayId})
  */
 export const getHydrationLogs = async (userId: string): Promise<HydrationLog> => {
   try {
-    const userDoc = await getDoc(doc(db, 'users', userId));
-    if (userDoc.exists()) {
-      const data = userDoc.data();
-      return data.hydration?.logs || {};
-    }
-    return {};
+    const colRef = collection(db, 'users', userId, 'waterLogs');
+    const snap = await getDocs(colRef);
+    const logs: HydrationLog = {};
+    snap.forEach((docSnap) => {
+      const data = docSnap.data() as { entries?: WaterEntry[] };
+      logs[docSnap.id] = data.entries || [];
+    });
+    return logs;
   } catch (error) {
     console.error('[HydrationService] Error getting hydration logs:', error);
     return {};
@@ -75,11 +83,10 @@ export const getHydrationLogs = async (userId: string): Promise<HydrationLog> =>
 export const getTodayHydrationLog = async (userId: string): Promise<WaterEntry[]> => {
   try {
     const todayId = getTodayId();
-    const userDoc = await getDoc(doc(db, 'users', userId));
-    if (userDoc.exists()) {
-      const data = userDoc.data();
-      const logs = data.hydration?.logs || {};
-      return logs[todayId] || [];
+    const docSnap = await getDoc(doc(db, 'users', userId, 'waterLogs', todayId));
+    if (docSnap.exists()) {
+      const data = docSnap.data() as { entries?: WaterEntry[] };
+      return data.entries || [];
     }
     return [];
   } catch (error) {
@@ -97,25 +104,12 @@ export const addWaterEntry = async (
 ): Promise<void> => {
   try {
     const todayId = getTodayId();
-    const userDocRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userDocRef);
+    const docRef = doc(db, 'users', userId, 'waterLogs', todayId);
+    const docSnap = await getDoc(docRef);
+    const existing = docSnap.exists() ? (docSnap.data().entries as WaterEntry[] | undefined) : [];
+    const nextEntries = [...(existing || []), entry];
 
-    let logs: HydrationLog = {};
-    if (userDoc.exists()) {
-      const data = userDoc.data();
-      logs = data.hydration?.logs || {};
-    }
-
-    // Add entry to today's log
-    if (!logs[todayId]) {
-      logs[todayId] = [];
-    }
-    logs[todayId].push(entry);
-
-    // Update Firebase
-    await updateDoc(userDocRef, {
-      'hydration.logs': logs,
-    });
+    await setDoc(docRef, { entries: nextEntries, updatedAt: serverTimestamp() }, { merge: true });
 
     console.log('[HydrationService] Water entry added:', entry.amountMl, 'ml');
   } catch (error) {
@@ -133,23 +127,14 @@ export const deleteWaterEntry = async (
   entryId: string
 ): Promise<void> => {
   try {
-    const userDocRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userDocRef);
-
-    if (!userDoc.exists()) {
-      throw new Error('User document not found');
+    const docRef = doc(db, 'users', userId, 'waterLogs', dateId);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      return;
     }
-
-    const data = userDoc.data();
-    const logs: HydrationLog = data.hydration?.logs || {};
-
-    if (logs[dateId]) {
-      logs[dateId] = logs[dateId].filter((entry) => entry.id !== entryId);
-    }
-
-    await updateDoc(userDocRef, {
-      'hydration.logs': logs,
-    });
+    const data = docSnap.data() as { entries?: WaterEntry[] };
+    const filtered = (data.entries || []).filter((entry) => entry.id !== entryId);
+    await setDoc(docRef, { entries: filtered, updatedAt: serverTimestamp() }, { merge: true });
 
     console.log('[HydrationService] Water entry deleted:', entryId);
   } catch (error) {
@@ -174,7 +159,6 @@ export const initializeHydrationData = async (userId: string): Promise<void> => 
       await setDoc(userDocRef, {
         hydration: {
           dailyGoal: 1500,
-          logs: {},
         },
       });
     } else {
@@ -183,7 +167,6 @@ export const initializeHydrationData = async (userId: string): Promise<void> => 
         await updateDoc(userDocRef, {
           hydration: {
             dailyGoal: 1500,
-            logs: {},
           },
         });
       }
