@@ -90,10 +90,27 @@ export const loadTodayState = async (uid?: string): Promise<LoadedTodayState | n
     if (uid) {
       const remote = await getTodayDailyCheckIn(uid);
       if (remote && remote.generatedPlan) {
+        // Repair invariant: ensure stored date matches docId
+        if (remote.date !== dateId) {
+          try {
+            const { doc, setDoc } = await import('firebase/firestore');
+            const { db } = await import('../firebase/config');
+            const docRef = doc(db, 'users', uid, 'dailyCheckIns', dateId);
+            await setDoc(docRef, { date: dateId }, { merge: true });
+            remote.date = dateId;
+            if (SHOW_DEV_TOOLS) {
+              console.log('[todayState] Repaired date mismatch', { dateId, stored: remote.date });
+            }
+          } catch (error) {
+            console.error('[todayState] Failed to repair date mismatch:', error);
+          }
+        }
+
         const actions = remote.generatedPlan.steps as RecoveryAction[];
         const totalSteps = actions.length;
         const planCompleted =
-          remote.planCompleted === true || remote.planCompletedAt !== undefined;
+          remote.planCompletedAt !== undefined ||
+          remote.planCompleted === true;
         const stepsCompleted =
           remote.stepsCompleted ?? (planCompleted ? totalSteps : 0);
 

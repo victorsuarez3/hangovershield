@@ -208,13 +208,16 @@ export const createOrUpdateTodayCheckIn = async (
     const todayId = getTodayId();
     const docRef = doc(db, 'users', uid, 'dailyCheckIns', todayId);
 
+    const completionTimestamp = serverTimestamp();
     const data: Omit<DailyCheckInData, 'createdAt' | 'completedAt'> & { 
       createdAt: ReturnType<typeof serverTimestamp>;
       completedAt: ReturnType<typeof serverTimestamp>;
+      checkInCompletedAt: ReturnType<typeof serverTimestamp>;
     } = {
-      date: todayId,
-      createdAt: serverTimestamp(),
-      completedAt: serverTimestamp(), // Mark as completed when saved
+      date: todayId, // invariant: date matches docId
+      createdAt: completionTimestamp,
+      completedAt: completionTimestamp, // legacy field
+      checkInCompletedAt: completionTimestamp, // source of truth for check-in completion
       severity: input.severity,
       severityLabel: input.severityLabel,
       symptoms: input.symptoms,

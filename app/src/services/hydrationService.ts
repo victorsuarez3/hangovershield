@@ -52,6 +52,8 @@ export const setHydrationGoal = async (userId: string, goalMl: number): Promise<
 
 /**
  * Get all hydration logs for a user
+ * TODO(P0): migrate hydration.logs (embedded) to subcollection /users/{uid}/waterLogs/{dayId}
+ * to avoid user doc size growth and 1MB limits. Keep cache/local logic intact.
  */
 export const getHydrationLogs = async (userId: string): Promise<HydrationLog> => {
   try {

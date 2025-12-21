@@ -1,105 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ═══════════════════════════════════════════════════════════════
-    // HELPER FUNCTIONS
-    // ═══════════════════════════════════════════════════════════════
-
-    // Check if user is signed in
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Check if user is the owner of the document
     function isOwner(uid) {
-      return isSignedIn() && request.auth.uid == uid;
+      return request.auth != null && request.auth.uid == uid;
     }
 
-    // Check if this is a test/skip-auth user (for development only)
-    // IMPORTANT: This function is only active in development
-    // In production, Firebase Emulator should be used for testing instead
-    function isTestUser(uid) {
-      // Disabled in production - only works with Firebase Emulator
-      return false;
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // USERS COLLECTION
-    // ═══════════════════════════════════════════════════════════════
+    // Users root doc (profile/meta)
     match /users/{uid} {
-      // Users can read their own document
-      allow read: if isOwner(uid) || isTestUser(uid);
+      allow read, write: if isOwner(uid);
 
-      // Users can create/update their own document
-      // This allows: signup, onboarding data, profile updates
-      allow create, update: if isOwner(uid) || isTestUser(uid);
-
-      // Users can delete their own document (account deletion)
-      allow delete: if isOwner(uid);
-
-      // ═══════════════════════════════════════════════════════════════
-      // DAILY CHECK-INS SUBCOLLECTION
-      // ═══════════════════════════════════════════════════════════════
-      match /dailyCheckIns/{checkInId} {
-        // Users can read their own check-ins
-        allow read: if isOwner(uid) || isTestUser(uid);
-
-        // Users can create their own check-ins
-        // Validate that userId matches the auth user and the parent document
-        allow create: if (isOwner(uid) || isTestUser(uid))
-          && request.resource.data.userId == uid;
-
-        // Users cannot update or delete check-ins (immutable records)
-        allow update, delete: if false;
+      // Meta / profile-like docs (non-date keyed)
+      match /meta/{docId} {
+        allow read, write: if isOwner(uid);
       }
 
-      // ═══════════════════════════════════════════════════════════════
-      // HABIT STATS SUBCOLLECTION
-      // ═══════════════════════════════════════════════════════════════
-      match /habitStats/{statsId} {
-        // Users can read their own habit stats
-        allow read: if isOwner(uid) || isTestUser(uid);
-
-        // Users can create/update their own habit stats
-        // Validate that userId matches the auth user
-        allow create, update: if (isOwner(uid) || isTestUser(uid))
-          && request.resource.data.userId == uid;
-
-        // Users cannot delete habit stats
-        allow delete: if false;
+      // Daily Check-Ins (date-keyed)
+      match /dailyCheckIns/{dayId} {
+        allow read, write: if isOwner(uid) && dayId.matches('^\\d{4}-\\d{2}-\\d{2}$');
       }
 
-      // ═══════════════════════════════════════════════════════════════
-      // RECOVERY PLANS SUBCOLLECTION
-      // ═══════════════════════════════════════════════════════════════
-      match /recoveryPlans/{planId} {
-        // Users can read their own recovery plans
-        allow read: if isOwner(uid) || isTestUser(uid);
-
-        // Users can create/update their own recovery plans
-        allow create, update: if isOwner(uid) || isTestUser(uid);
-
-        // Users can delete their own recovery plans
-        allow delete: if isOwner(uid) || isTestUser(uid);
+      // Water Logs (date-keyed)
+      match /waterLogs/{dayId} {
+        allow read, write: if isOwner(uid) && dayId.matches('^\\d{4}-\\d{2}-\\d{2}$');
       }
 
-      // ═══════════════════════════════════════════════════════════════
-      // ONBOARDING DATA SUBCOLLECTION
-      // ═══════════════════════════════════════════════════════════════
-      match /onboarding/{docId} {
-        // Users can read/write their own onboarding data
-        allow read, write: if isOwner(uid) || isTestUser(uid);
+      // Evening Check-Ins (date-keyed)
+      match /eveningCheckIns/{dayId} {
+        allow read, write: if isOwner(uid) && dayId.matches('^\\d{4}-\\d{2}-\\d{2}$');
       }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // DEBUG COLLECTION - DISABLED IN PRODUCTION
-    // Use Firebase Emulator for testing instead
-    // ═══════════════════════════════════════════════════════════════
-    match /debug/{docId} {
-      // Completely disabled - no access in production
-      allow read, write: if false;
     }
   }
 }
