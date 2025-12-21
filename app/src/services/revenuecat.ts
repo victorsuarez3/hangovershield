@@ -161,7 +161,13 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
     }
 
     // Configure with platform-specific API key
-    await Purchases.configure({ apiKey });
+    try {
+      await Purchases.configure({ apiKey });
+    } catch (cfgError) {
+      console.error('[RevenueCat] Configure error:', cfgError);
+      isInitializing = false;
+      return;
+    }
 
     // If we have a user ID (Firebase UID), identify them
     if (userId) {
