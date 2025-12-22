@@ -20,6 +20,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { AppHeader } from '../components/AppHeader';
@@ -68,7 +70,7 @@ const ALCOHOL_OPTIONS: Array<{ value: AlcoholToday; label: string }> = [
 
 export const EveningCheckInScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
 
   const [eveningReflection, setEveningReflection] = useState('');
@@ -142,7 +144,7 @@ export const EveningCheckInScreen: React.FC = () => {
 
       // Navigate to closure screen after brief delay to show success feedback
       setTimeout(() => {
-        navigation.navigate('EveningCheckInComplete' as any);
+        navigation.navigate('EveningCheckInComplete');
       }, 1200);
     } catch (error) {
       console.error('[EveningCheckIn] Error saving:', error);
@@ -150,7 +152,7 @@ export const EveningCheckInScreen: React.FC = () => {
       setIsCompleted(true);
       setTimeout(() => {
         // Navigate to closure screen instead of HomeMain
-        navigation.navigate('EveningCheckInComplete' as any);
+        navigation.navigate('EveningCheckInComplete');
       }, 1200);
     } finally {
       setIsSaving(false);

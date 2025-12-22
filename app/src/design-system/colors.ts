@@ -18,6 +18,7 @@ export const colors = {
     richBlack: '#0B0B0B',
     pureWhite: 'rgba(255, 255, 255, 0.95)',
     softWhite: '#F3F1EC',
+    softCream: '#F5EFE6',
     
     // Status Colors
     errorRed: '#CC5C6C',
@@ -61,6 +62,7 @@ export const colors = {
     richBlack: '#0B0B0B',
     pureWhite: '#FFFFFF',
     softWhite: '#F3F1EC',
+    softCream: '#F5EFE6',
     
     // Status Colors
     errorRed: '#CC5C6C',

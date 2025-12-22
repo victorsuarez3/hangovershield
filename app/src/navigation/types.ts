@@ -26,6 +26,9 @@ export type RootStackParamList = {
   EveningCheckInLocked: undefined;
   EveningCheckInComplete: undefined;
   DailyWaterLog: undefined;
+  EventDetails: {
+    eventId: string;
+  };
 };
 
 // TabParamList removed - we use Stack Navigator only now
@@ -36,4 +39,5 @@ export type CheckInScreenProps = NativeStackScreenProps<RootStackParamList, 'Che
 export type SmartPlanScreenProps = NativeStackScreenProps<RootStackParamList, 'SmartPlan'>;
 export type ToolsScreenProps = NativeStackScreenProps<RootStackParamList, 'Tools'>;
 export type ProgressScreenProps = NativeStackScreenProps<RootStackParamList, 'Progress'>;
+export type EventDetailsScreenProps = NativeStackScreenProps<RootStackParamList, 'EventDetails'>;
 

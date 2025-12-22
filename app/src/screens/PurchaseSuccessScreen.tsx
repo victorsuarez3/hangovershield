@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,13 +29,12 @@ interface PurchaseSuccessScreenProps {
 
 export const PurchaseSuccessScreen: React.FC<PurchaseSuccessScreenProps> = ({ route }) => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const plan = route.params?.plan || 'monthly';
 
   const handleStartRecovery = () => {
-    // Navigate back to home and trigger navigation to recovery plan
-    navigation.navigate('Home', { screen: 'HomeMain' });
-    // TODO: Add navigation to recovery plan after home loads
+    // Navigate back to home
+    navigation.navigate('HomeMain');
   };
 
   return (

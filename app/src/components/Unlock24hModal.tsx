@@ -153,7 +153,7 @@ export const Unlock24hModal: React.FC<Unlock24hModalProps> = ({
           <View style={styles.content}>
             {/* Icon */}
             <View style={styles.iconContainer}>
-              <Ionicons name="unlock" size={48} color="#0F4C44" />
+              <Ionicons name="lock-open-outline" size={48} color="#0F4C44" />
             </View>
 
             {/* Title */}

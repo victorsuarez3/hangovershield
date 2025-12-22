@@ -17,6 +17,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 import { Ionicons } from '@expo/vector-icons';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { PaywallSource } from '../constants/paywallSources';
@@ -29,7 +31,7 @@ import { AppHeader } from '../components/AppHeader';
 
 export const EveningCheckInLockedScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const handleUpgrade = () => {
     logAnalyticsEvent('premium_feature_locked_tapped', {
@@ -38,7 +40,7 @@ export const EveningCheckInLockedScreen: React.FC = () => {
       contextScreen: 'EveningCheckIn',
     });
 
-    navigation.navigate('Paywall' as any, {
+    navigation.navigate('Paywall', {
       source: PaywallSource.EVENING_CHECKIN_LOCKED,
       contextScreen: 'EveningCheckIn',
     });
@@ -50,7 +52,7 @@ export const EveningCheckInLockedScreen: React.FC = () => {
 
   const handleSkip = () => {
     // Dev skip: navigate directly to Evening Check-In flow
-    navigation.navigate('EveningCheckIn' as any);
+    navigation.navigate('EveningCheckIn');
   };
 
   return (

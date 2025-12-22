@@ -12,19 +12,22 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
+import { PaywallSource } from '../constants/paywallSources';
 import { useAccessStatus } from '../hooks/useAccessStatus';
 import { formatWelcomeUnlockTimeRemaining } from '../services/welcomeUnlock';
 import { Analytics } from '../utils/analytics';
 
 export const WelcomeCountdownBanner: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const accessInfo = useAccessStatus();
 
   const handleUpgradeTap = () => {
-    const source = accessInfo.isWelcome ? 'welcome_banner' : 'home_banner';
+    const source = accessInfo.isWelcome ? PaywallSource.WELCOME_BANNER : PaywallSource.HOME_UPGRADE_BANNER;
     Analytics.paywallCTAClicked(source, 'upgrade', 'HomeScreen');
 
-    navigation.navigate('Paywall' as any, {
+    navigation.navigate('Paywall', {
       source,
       contextScreen: 'HomeScreen',
     });
