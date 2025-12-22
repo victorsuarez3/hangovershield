@@ -11,10 +11,12 @@
  */
 
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, initializeAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getReactNativePersistence } from 'firebase/auth/react-native';
 
 // Get Firebase config from app.config.ts via Expo Constants
 const extra = Constants.expoConfig?.extra || {};
@@ -43,10 +45,19 @@ if (!getApps().length) {
 
 export const firebaseApp = app;
 
-// Initialize Auth
-// Note: Auth persistence will use default behavior (memory for React Native)
-// For production, consider adding AsyncStorage persistence if needed
-export const auth = getAuth(app);
+// Initialize Auth with persistent storage (AsyncStorage) for React Native.
+// This ensures Google/Apple sessions survive app restarts.
+let authInstance;
+try {
+  authInstance = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch (err) {
+  // If already initialized (e.g., in web or hot reload), fall back to default getter.
+  authInstance = getAuth(app);
+}
+
+export const auth = authInstance;
 
 // Initialize Firestore with default database (Native Mode)
 export const db = getFirestore(app);
