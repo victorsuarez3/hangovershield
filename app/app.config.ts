@@ -3,7 +3,7 @@ import { ExpoConfig } from '@expo/config';
 const config: ExpoConfig = {
   name: 'Hangover Shield',
   slug: 'hangover-shield',
-  version: '1.0.0',
+  version: '1.0.1',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'light',
@@ -43,6 +43,9 @@ const config: ExpoConfig = {
     googleIosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     googleAndroidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    eas: {
+      projectId: '76f792a4-fbf7-4106-88c3-7581d6b8adc8',
+    },
   },
 };
 
