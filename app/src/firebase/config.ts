@@ -16,7 +16,6 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getReactNativePersistence } from 'firebase/auth/react-native';
 
 // Get Firebase config from app.config.ts via Expo Constants
 const extra = Constants.expoConfig?.extra || {};
@@ -46,14 +45,15 @@ if (!getApps().length) {
 export const firebaseApp = app;
 
 // Initialize Auth with persistent storage (AsyncStorage) for React Native.
-// This ensures Google/Apple sessions survive app restarts.
+// Use dynamic require to avoid bundler issues if react-native build of firebase/auth is missing.
 let authInstance;
 try {
+  const { getReactNativePersistence } = require('firebase/auth/react-native');
   authInstance = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage),
   });
 } catch (err) {
-  // If already initialized (e.g., in web or hot reload), fall back to default getter.
+  // If module not available or already initialized, fall back.
   authInstance = getAuth(app);
 }
 
