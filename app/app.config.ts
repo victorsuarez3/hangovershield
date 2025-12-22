@@ -15,14 +15,14 @@ const config: ExpoConfig = {
   assetBundlePatterns: ['**/*'],
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.hangovershield.app',
+    bundleIdentifier: 'com.versaluna.hangovershield',
   },
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/icadaptive-icon.png',
       backgroundColor: '#DFF4F1', // Matches splash background
     },
-    package: 'com.hangovershield.app',
+    package: 'com.versaluna.hangovershield',
   },
   web: {
     favicon: './assets/favicon.png',
