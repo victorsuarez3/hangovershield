@@ -258,7 +258,6 @@ const DailyRecoveryPlanWrapper: React.FC<DailyRecoveryPlanWrapperProps> = ({ use
   return (
     <TodayRecoveryPlanScreen
       mode="app"
-      mode="app"
       date={planData.date}
       recoveryWindowLabel={planData.recoveryWindowLabel}
       symptomLabels={planData.symptomLabels}

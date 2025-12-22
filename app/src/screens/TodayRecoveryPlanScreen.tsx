@@ -210,20 +210,14 @@ const GlanceCard: React.FC<GlanceCardProps> = ({
   hydrationLogged,
   onHydrationPress,
 }) => {
-  // Calculate hydration progress (capped at 1.0 for progress bar)
-  const hydrationProgress = Math.min(hydrationLogged / hydrationGoal, 1);
+  const safeGoal = hydrationGoal > 0 ? hydrationGoal : 1;
+  const displayHydration = Math.min(hydrationLogged, safeGoal);
+  const hydrationProgress = Math.min(displayHydration / safeGoal, 1);
   const percentage = hydrationProgress * 100;
-  
-  // Check if goal is reached
-  const goalReached = hydrationLogged >= hydrationGoal;
-
-  // Dynamic label text - format: "X.XL logged of Y.YL"
-  const hydrationLabelText = goalReached
-    ? `${hydrationLogged.toFixed(1)}L logged of ${hydrationGoal.toFixed(1)}L`
-    : `${hydrationLogged.toFixed(1)}L logged of ${hydrationGoal.toFixed(1)}L`;
+  const goalReached = hydrationLogged >= safeGoal;
 
   // Relief milestone text (single source of truth, ml units)
-  const hydrationMilestone = getHydrationMilestone(hydrationLogged * 1000, hydrationGoal * 1000);
+  const hydrationMilestone = getHydrationMilestone(hydrationLogged * 1000, safeGoal * 1000);
   const hydrationHintText = hydrationMilestone;
 
   return (
@@ -311,6 +305,11 @@ const GlanceCard: React.FC<GlanceCardProps> = ({
             ]}
           />
         </View>
+        <Text style={[styles.hydrationLogged, goalReached && styles.hydrationLoggedSuccess]}>
+          {goalReached
+            ? 'Hydration goal reached'
+            : `You’ve supported your body with ${displayHydration.toFixed(1)}L`}
+        </Text>
         <Text style={styles.hydrationTapHint}>Tap to log water</Text>
       </TouchableOpacity>
 
@@ -555,7 +554,7 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
           setHydrationGoalLitersState(cachedGoal / 1000);
           setHydrationGoal(cachedGoal);
         } else {
-          setHydrationGoalLitersState(hydrationGoalLiters);
+        setHydrationGoalLitersState(hydrationGoalLiters);
         }
         return;
       }
@@ -608,6 +607,7 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
 
   // Calculate hydration logged in liters from store (real-time updates)
   const hydrationLoggedLiters = (todayHydrationTotal || 0) / 1000; // Convert ml to liters
+  const displayHydrationLiters = Math.min(hydrationLoggedLiters, hydrationGoalLitersState);
 
   // Handler to navigate to DailyWaterLog screen
   const handleHydrationPress = useCallback(() => {
@@ -879,7 +879,7 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {
-              appNav.goToDailyCheckIn();
+          appNav.goToDailyCheckIn();
             }
           }, 60);
         }}

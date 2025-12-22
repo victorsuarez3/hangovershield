@@ -25,7 +25,7 @@ import {
   markCheckInCompleteShown,
   getLocalDayId,
 } from '../services/dailyCheckInStorage';
-import { SEVERITY_LABELS, SYMPTOM_OPTIONS } from '../services/dailyCheckIn';
+import { SEVERITY_LABELS, SYMPTOM_OPTIONS, DailyCheckInSeverity } from '../services/dailyCheckIn';
 import { generatePlan } from '../domain/recovery/planGenerator';
 import { FeelingOption, SymptomKey } from './FirstLogin/FirstLoginCheckInScreen';
 import { getTodayId } from '../utils/dateUtils';
@@ -227,7 +227,7 @@ export const CheckInCompleteScreen: React.FC = () => {
     );
   }
 
-  const severityLabel = SEVERITY_LABELS[checkIn.level];
+  const severityLabel = SEVERITY_LABELS[checkIn.level as DailyCheckInSeverity];
   const symptomsCount = checkIn.symptoms.filter((s: string) => s !== 'noSymptoms').length;
   const displayedSymptoms = checkIn.symptoms
     .filter((s: string) => s !== 'noSymptoms')
@@ -298,7 +298,7 @@ export const CheckInCompleteScreen: React.FC = () => {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Symptoms</Text>
               <View style={styles.symptomsChips}>
-                {symptomDisplayLabels.map((label, idx) => (
+                {symptomDisplayLabels.map((label: string, idx: number) => (
                   <View key={idx} style={styles.symptomChip}>
                     <Text style={styles.symptomChipText}>{label}</Text>
                   </View>

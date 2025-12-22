@@ -44,8 +44,8 @@ import {
   deleteTodayDailyCheckIn,
   DailyCheckInSummary,
 } from '../services/dailyCheckIn';
-import { getLocalDailyCheckIn, deleteLocalDailyCheckIn, hasCompletedEveningCheckInToday, clearFirstLoginOnboardingForDev } from '../services/dailyCheckInStorage';
-import { saveLocalHydrationEntries, addLocalHydrationEntry } from '../services/hydrationStorage';
+import { getLocalDailyCheckIn, deleteLocalDailyCheckIn, hasCompletedEveningCheckInToday, clearFirstLoginOnboardingForDev, getLocalDayId } from '../services/dailyCheckInStorage';
+import { saveLocalHydrationEntries, addLocalHydrationEntry, getLocalHydrationEntries, getLocalHydrationGoal } from '../services/hydrationStorage';
 import { getTodayId, getDateId } from '../utils/dateUtils';
 import { typography } from '../design-system/typography';
 import { generatePlan } from '../domain/recovery/planGenerator';
@@ -106,7 +106,7 @@ export const HomeScreen: React.FC = () => {
   const planCompletion = usePlanCompletion(user?.uid || null);
 
   // Hydration state - use store as single source of truth
-  const { hydrationGoal: storeHydrationGoal, todayHydrationTotal, addHydrationEntry: addToStore, setHydrationLogs } = useUserDataStore();
+  const { hydrationGoal: storeHydrationGoal, todayHydrationTotal, addHydrationEntry: addToStore, setHydrationLogs, setHydrationGoal } = useUserDataStore();
   const hydrationGoal = storeHydrationGoal;
   const hydrationLogged = todayHydrationTotal;
 
@@ -303,27 +303,34 @@ export const HomeScreen: React.FC = () => {
   // Load hydration data from service and sync to store (single source of truth)
   useEffect(() => {
     const loadHydrationData = async () => {
-      if (!user?.uid) return;
-
       try {
-        // Load from service
-        const goal = await getHydrationGoal(user.uid);
-        const logs = await getTodayHydrationLog(user.uid);
-        
-        // Update store (single source of truth)
-        const todayId = getTodayId();
-        const hydrationLogs: { [key: string]: any[] } = {};
-        hydrationLogs[todayId] = logs;
-        setHydrationLogs(hydrationLogs);
-        
-        // Store will automatically calculate todayHydrationTotal
+        const todayId = user?.uid ? getTodayId() : getLocalDayId();
+
+        if (user?.uid) {
+          // Remote source
+          const goal = await getHydrationGoal(user.uid);
+          const logs = await getTodayHydrationLog(user.uid);
+
+          const hydrationLogs: { [key: string]: any[] } = { [todayId]: logs };
+          setHydrationLogs(hydrationLogs);
+          if (goal) setHydrationGoal(goal);
+        } else {
+          // Local cache (dev/skip-auth/offline)
+          const logs = await getLocalHydrationEntries(todayId);
+          const cachedGoal = await getLocalHydrationGoal();
+          const hydrationLogs: { [key: string]: any[] } = { [todayId]: logs };
+          setHydrationLogs(hydrationLogs);
+          if (cachedGoal && cachedGoal > 0) {
+            setHydrationGoal(cachedGoal);
+          }
+        }
       } catch (error) {
         console.error('[HomeScreen] Error loading hydration data:', error);
       }
     };
 
     loadHydrationData();
-  }, [user?.uid, setHydrationLogs]);
+  }, [user?.uid, setHydrationLogs, setHydrationGoal]);
 
   // Daily check-in status (computed early for use in effects)
   const isCheckInCompleted = dailyCheckIn.status === 'completed_today';

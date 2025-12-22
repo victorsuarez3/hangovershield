@@ -169,7 +169,7 @@ export const CheckInScreen: React.FC = () => {
   }, [appNav, navigation]);
 
   useEffect(() => {
-    const sub = navigation.addListener('beforeRemove', (event) => {
+    const sub = navigation.addListener('beforeRemove', (event: any) => {
       if (event.data.action.type === 'GO_BACK' || event.data.action.type === 'POP') {
         event.preventDefault();
         handleBack();

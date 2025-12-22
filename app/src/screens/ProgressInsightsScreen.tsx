@@ -582,7 +582,7 @@ export const ProgressInsightsScreen: React.FC = () => {
           </View>
           <RecoveryTrendLineChart
             data={trendData}
-            interpretation={trendInterpretation}
+            interpretation={trendInterpretation ?? undefined}
           />
         </View>
 
