@@ -27,6 +27,7 @@ import { getLocalDailyCheckIn } from '../services/dailyCheckInStorage';
 import { generatePlan } from '../domain/recovery/planGenerator';
 import {
   FirstLoginCheckInData,
+  SymptomKey,
 } from '../screens/FirstLogin/FirstLoginCheckInScreen';
 import {
   FirstLoginAnalysisParams,
@@ -90,7 +91,7 @@ const TodayRecoveryPlanWrapper: React.FC = () => {
             // Generate plan from local check-in
             const plan = generatePlan({
               level: localCheckIn.level,
-              symptoms: localCheckIn.symptoms,
+              symptoms: localCheckIn.symptoms as SymptomKey[],
             });
             
             const today = new Date();
@@ -136,7 +137,7 @@ const TodayRecoveryPlanWrapper: React.FC = () => {
           if (localCheckIn) {
             const plan = generatePlan({
               level: localCheckIn.level,
-              symptoms: localCheckIn.symptoms,
+              symptoms: localCheckIn.symptoms as SymptomKey[],
             });
             
             const today = new Date();

@@ -4,7 +4,7 @@
  * Reuses same visual style as onboarding
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,10 +14,12 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
+import { useAppNavigation } from '../contexts/AppNavigationContext';
 import {
   DailyCheckInSeverity,
   SEVERITY_LABELS,
@@ -35,6 +37,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 interface DailyCheckInScreenProps {
   userId: string;
   onComplete: (severity: DailyCheckInSeverity, symptoms: string[]) => void;
+  onCancel?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -115,12 +118,40 @@ const SymptomChip: React.FC<SymptomChipProps> = ({ label, isSelected, onToggle }
 export const DailyCheckInScreen: React.FC<DailyCheckInScreenProps> = ({
   userId,
   onComplete,
+  onCancel,
 }) => {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+  const appNav = useAppNavigation();
   
   const [selectedSeverity, setSelectedSeverity] = useState<DailyCheckInSeverity | null>(null);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCancel = useCallback(() => {
+    if (onCancel) {
+      onCancel();
+      return;
+    }
+    // Fallback: go home
+    if (appNav?.goToHome) {
+      appNav.goToHome();
+    } else if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [onCancel, appNav, navigation]);
+
+  // Intercept gesture/back to avoid blank screen
+  useEffect(() => {
+    if (!onCancel) return;
+    const sub = navigation.addListener('beforeRemove', (event) => {
+      if (event.data.action.type === 'GO_BACK' || event.data.action.type === 'POP') {
+        event.preventDefault();
+        handleCancel();
+      }
+    });
+    return sub;
+  }, [navigation, onCancel, handleCancel]);
 
   // Severity options with icons
   const severityOptions: Array<{
@@ -214,6 +245,16 @@ export const DailyCheckInScreen: React.FC<DailyCheckInScreenProps> = ({
         ]}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleCancel}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="chevron-back" size={22} color="#0F4C44" />
+          </TouchableOpacity>
+        </View>
+
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>How are you feeling today?</Text>
@@ -290,6 +331,24 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
+  },
+  topBar: {
+    width: '100%',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#0F4C44',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
 
   // Header

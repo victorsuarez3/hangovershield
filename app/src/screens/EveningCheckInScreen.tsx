@@ -41,6 +41,7 @@ interface EveningCheckInData {
   eveningReflection?: string;
   eveningMood?: EveningMood;
   alcoholToday?: AlcoholToday;
+  eveningCheckInCompletedAt?: any; // Firestore Timestamp
   completedAt: any; // Firestore Timestamp
 }
 
@@ -388,6 +389,14 @@ const styles = StyleSheet.create({
     color: 'rgba(15, 61, 62, 0.5)',
     textAlign: 'right',
     marginTop: 8,
+  },
+  reflectionHelper: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(15, 61, 62, 0.6)',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: 12,
   },
 
   // Options Container

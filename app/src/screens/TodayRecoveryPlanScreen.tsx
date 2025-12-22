@@ -30,6 +30,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { useUserDataStore } from '../stores/useUserDataStore';
 import { getTodayHydrationLog, getHydrationGoal } from '../services/hydrationService';
 import { getLocalHydrationEntries, getLocalHydrationGoal } from '../services/hydrationStorage';
+import { getHydrationMilestone } from '../features/water/waterUtils';
 import { RECOVERY_PLAN_COPY } from '../constants/recoveryPlanCopy';
 import {
   updateLocalPlanStepState,
@@ -75,7 +76,8 @@ export type TodayRecoveryPlanScreenProps = {
 // Mock Data
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DEFAULT_MOCK_DATA: Required<Omit<TodayRecoveryPlanScreenProps, 'onToggleAction'>> = {
+const DEFAULT_MOCK_DATA: Required<Omit<TodayRecoveryPlanScreenProps, 'onToggleAction' | 'onCompletePlan'>> = {
+  mode: 'app' as 'app' | 'onboarding',
   date: 'Wed, Dec 10',
   recoveryWindowLabel: '6–12 hours',
   symptomLabels: ['Fatigue', 'Dry mouth'],
@@ -220,10 +222,9 @@ const GlanceCard: React.FC<GlanceCardProps> = ({
     ? `${hydrationLogged.toFixed(1)}L logged of ${hydrationGoal.toFixed(1)}L`
     : `${hydrationLogged.toFixed(1)}L logged of ${hydrationGoal.toFixed(1)}L`;
 
-  // Dynamic hint text
-  const hydrationHintText = goalReached
-    ? 'Hydration goal reached — your body is rebalancing.'
-    : 'Logging your water helps your body recover within this window.';
+  // Relief milestone text (single source of truth, ml units)
+  const hydrationMilestone = getHydrationMilestone(hydrationLogged * 1000, hydrationGoal * 1000);
+  const hydrationHintText = hydrationMilestone;
 
   return (
     <View style={styles.glanceCard}>
@@ -310,9 +311,6 @@ const GlanceCard: React.FC<GlanceCardProps> = ({
             ]}
           />
         </View>
-        <Text style={[styles.hydrationLogged, goalReached && styles.hydrationLoggedSuccess]}>
-          {hydrationLabelText}
-        </Text>
         <Text style={styles.hydrationTapHint}>Tap to log water</Text>
       </TouchableOpacity>
 
@@ -1052,9 +1050,16 @@ const styles = StyleSheet.create({
     color: '#1A6B5C',
     fontFamily: 'Inter_500Medium',
   },
+  hydrationMilestone: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    color: 'rgba(15,76,68,0.55)',
+    marginTop: 4,
+    marginLeft: 44,
+  },
   hydrationTapHint: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 10,
+    fontSize: 13,
     color: 'rgba(15,76,68,0.3)',
     marginTop: 4,
     marginLeft: 44,
@@ -1101,10 +1106,10 @@ const styles = StyleSheet.create({
   },
   glanceHintText: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 12,
-    color: 'rgba(15,76,68,0.45)',
+    fontSize: 16,
+    color: '#0F4C44',
     flex: 1,
-    lineHeight: 17,
+    lineHeight: 22,
   },
 
   // Timeline Section

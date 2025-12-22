@@ -20,6 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
 import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { AppHeader } from '../components/AppHeader';
+import { useAppNavigation } from '../contexts/AppNavigationContext';
 import {
   DailyCheckInSeverity,
   SEVERITY_LABELS,
@@ -137,6 +138,7 @@ export const CheckInScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { user } = useAuth();
+  const appNav = useAppNavigation();
   
   const [selectedSeverity, setSelectedSeverity] = useState<DailyCheckInSeverity | null>(null);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
@@ -156,6 +158,25 @@ export const CheckInScreen: React.FC = () => {
     { severity: 'severe', icon: 'thunderstorm-outline' },
     { severity: 'none', icon: 'sunny-outline' },
   ];
+
+  const handleBack = useCallback(() => {
+    // Always exit to Home to avoid blank intermediate screens when coming from SmartPlan
+    if (appNav?.goToHome) {
+      appNav.goToHome();
+      return;
+    }
+    navigation.navigate('HomeMain');
+  }, [appNav, navigation]);
+
+  useEffect(() => {
+    const sub = navigation.addListener('beforeRemove', (event) => {
+      if (event.data.action.type === 'GO_BACK' || event.data.action.type === 'POP') {
+        event.preventDefault();
+        handleBack();
+      }
+    });
+    return sub;
+  }, [navigation, handleBack]);
 
   // Check if user has already checked in today
   // If yes, redirect to CheckInCompleteScreen instead of showing duplicate state
@@ -326,7 +347,7 @@ export const CheckInScreen: React.FC = () => {
       <AppHeader
         title="Daily Check-In"
         showBackButton
-        onBackPress={() => navigation.goBack()}
+        onBackPress={handleBack}
       />
       <ScrollView
         style={styles.scrollView}

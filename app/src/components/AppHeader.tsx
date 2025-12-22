@@ -75,12 +75,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       {/* Center - Title and Subtitle */}
       <View style={styles.centerContainer}>
         {title && (
-          <Text style={[styles.title, titleSize && { fontSize: titleSize }]}>
+          <Text style={[styles.title, titleSize !== undefined && { fontSize: titleSize }]}>
             {title}
           </Text>
         )}
         {subtitle && (
-          <Text style={[styles.subtitle, subtitleSize && { fontSize: subtitleSize }]}>
+          <Text style={[styles.subtitle, subtitleSize !== undefined && { fontSize: subtitleSize }]}>
             {subtitle}
           </Text>
         )}

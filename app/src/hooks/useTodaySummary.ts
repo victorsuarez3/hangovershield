@@ -97,7 +97,7 @@ export const useTodaySummary = (): UseTodaySummaryReturn => {
       } catch (error) {
         console.error('[useTodaySummary] Error loading user name:', error);
         // Fallback to email if error
-        if (user.email) {
+        if (user?.email) {
           setUserName(user.email.split('@')[0]);
         }
       }

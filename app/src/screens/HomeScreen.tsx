@@ -35,7 +35,7 @@ import {
   addWaterEntry,
   deleteTodayWaterLog,
 } from '../services/hydrationService';
-import { createWaterEntry } from '../features/water/waterUtils';
+import { createWaterEntry, getHydrationMilestone } from '../features/water/waterUtils';
 import {
   getRecentCheckIns,
   calculateStreak,
@@ -45,7 +45,7 @@ import {
   DailyCheckInSummary,
 } from '../services/dailyCheckIn';
 import { getLocalDailyCheckIn, deleteLocalDailyCheckIn, hasCompletedEveningCheckInToday, clearFirstLoginOnboardingForDev } from '../services/dailyCheckInStorage';
-import { saveLocalHydrationEntries } from '../services/hydrationStorage';
+import { saveLocalHydrationEntries, addLocalHydrationEntry } from '../services/hydrationStorage';
 import { getTodayId, getDateId } from '../utils/dateUtils';
 import { typography } from '../design-system/typography';
 import { generatePlan } from '../domain/recovery/planGenerator';
@@ -674,6 +674,9 @@ export const HomeScreen: React.FC = () => {
       // Update store immediately (single source of truth)
       // This works even without user authentication
       addToStore(todayId, newEntry);
+
+      // Persist locally to keep Home / Water Log / Today Plan in sync
+      await addLocalHydrationEntry(todayId, newEntry);
       
       // Save to Firebase if user is authenticated (best-effort, don't block)
       if (user?.uid) {
@@ -795,14 +798,20 @@ export const HomeScreen: React.FC = () => {
   // Computed Values
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const hydrationProgressText = useMemo(() => {
-    const liters = (hydrationLogged / 1000).toFixed(1);
-    const goalLiters = (hydrationGoal / 1000).toFixed(1);
-    return `${liters}L / ${goalLiters}L`;
-  }, [hydrationLogged, hydrationGoal]);
-
+  const displayHydration = Math.min(hydrationLogged, hydrationGoal);
   const hydrationPercent = hydrationGoal > 0 ? (hydrationLogged / hydrationGoal) * 100 : 0;
   const hydrationGoalReached = hydrationGoal > 0 && hydrationLogged >= hydrationGoal;
+  const hydrationMilestone = useMemo(
+    () => getHydrationMilestone(hydrationLogged, hydrationGoal),
+    [hydrationLogged, hydrationGoal]
+  );
+  const hydrationProgressText = useMemo(
+    () =>
+      hydrationGoalReached
+        ? 'Hydration goal reached'
+        : `${Math.round(Math.min(hydrationPercent, 100))}% hydrated`,
+    [hydrationGoalReached, hydrationPercent]
+  );
 
   // Rotating motivational messages (fixed list, not random)
   const motivationalMessages = [
@@ -1199,7 +1208,9 @@ export const HomeScreen: React.FC = () => {
           <View style={styles.waterLogProgress}>
             <View style={styles.waterLogProgressHeader}>
               <Text style={styles.waterLogProgressText}>
-                Logged: <Text style={styles.waterLogBold}>{hydrationLogged}ml</Text> of {hydrationGoal}ml
+                {hydrationGoalReached
+                  ? 'Hydration goal reached'
+                  : `You’ve supported your body with ${displayHydration}ml`}
               </Text>
               {hydrationGoalReached && (
                 <View style={styles.waterLogBadge}>
@@ -1208,15 +1219,15 @@ export const HomeScreen: React.FC = () => {
                 </View>
               )}
             </View>
-            <View style={[styles.waterLogProgressBar, hydrationGoalReached && styles.waterLogProgressBarDone]}>
-              <View 
-                style={[
-                  styles.waterLogProgressFill,
-                  hydrationGoalReached && styles.waterLogProgressFillDone,
-                  { width: `${Math.min(hydrationPercent, 100)}%` }
-                ]} 
-              />
-            </View>
+          <View style={[styles.waterLogProgressBar, hydrationGoalReached && styles.waterLogProgressBarDone]}>
+            <View 
+              style={[
+                styles.waterLogProgressFill,
+                hydrationGoalReached && styles.waterLogProgressFillDone,
+                { width: `${Math.min(hydrationPercent, 100)}%` }
+              ]} 
+            />
+          </View>
           </View>
 
           {/* Quick Add Buttons */}
@@ -1240,8 +1251,8 @@ export const HomeScreen: React.FC = () => {
           {/* Goal Info */}
           <Text style={styles.waterLogGoalText}>
             {hydrationGoalReached
-              ? 'Hydration goal reached — nice job!'
-              : `~${Math.max(0, hydrationGoal - hydrationLogged)}ml left to reach today's goal`}
+              ? "You’re giving your body what it needs."
+              : hydrationMilestone}
           </Text>
 
           {/* View Full Log Link */}
@@ -1663,9 +1674,15 @@ const styles = StyleSheet.create({
     color: '#0F4C44',
   },
   waterLogGoalText: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Inter_500Medium',
     fontSize: 13,
-    color: '#0F3D3E',
+    color: 'rgba(15, 61, 62, 0.78)',
+    marginBottom: 12,
+  },
+  waterLogMilestone: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    color: 'rgba(15, 61, 62, 0.65)',
     marginBottom: 12,
   },
   waterLogViewLink: {

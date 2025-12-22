@@ -190,7 +190,7 @@ export const ApplicationFormScreen: React.FC<ApplicationFormScreenProps> = ({
               </View>
 
               <Button
-                label="Submit Application"
+                title="Submit Application"
                 onPress={handleSubmit}
                 loading={loading}
                 style={styles.button}

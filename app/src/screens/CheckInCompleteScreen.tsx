@@ -27,7 +27,7 @@ import {
 } from '../services/dailyCheckInStorage';
 import { SEVERITY_LABELS, SYMPTOM_OPTIONS } from '../services/dailyCheckIn';
 import { generatePlan } from '../domain/recovery/planGenerator';
-import { FeelingOption, SymptomKey } from '../navigation/OnboardingNavigator';
+import { FeelingOption, SymptomKey } from './FirstLogin/FirstLoginCheckInScreen';
 import { getTodayId } from '../utils/dateUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

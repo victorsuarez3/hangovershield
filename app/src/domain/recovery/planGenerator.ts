@@ -4,7 +4,7 @@
  * Generates micro-action, recovery window, hydration goal, and steps
  */
 
-import { FeelingOption, SymptomKey } from '../../navigation/OnboardingNavigator';
+import { FeelingOption, SymptomKey } from '../../screens/FirstLogin/FirstLoginCheckInScreen';
 import { getRecoveryAnalysis, getKeySymptomLabels } from '../../utils/recoveryAnalysis';
 import { RecoveryAction } from '../../screens/TodayRecoveryPlanScreen';
 

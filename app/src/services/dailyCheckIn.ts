@@ -47,6 +47,7 @@ export interface DailyCheckInData {
     hydrationGoalLiters: number;
     steps: RecoveryAction[];
     symptomLabels: string[];
+    levelLabel?: string;
   };
   microStep?: MicroAction;
   recoveryScore?: number; // Inputs for recovery score calculation
@@ -55,6 +56,11 @@ export interface DailyCheckInData {
   planCompletedAt?: Timestamp | null;
   stepsCompleted?: number;
   totalSteps?: number;
+  // Evening check-in fields
+  eveningCheckInCompletedAt?: Timestamp | null;
+  eveningReflection?: string;
+  eveningMood?: 'calm' | 'okay' | 'tired' | 'not_great';
+  alcoholToday?: 'no' | 'a_little' | 'yes';
 }
 
 export interface DailyCheckInInput {

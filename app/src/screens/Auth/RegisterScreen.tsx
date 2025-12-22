@@ -114,7 +114,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           </View>
 
           <Button
-            label="Create Account"
+            title="Create Account"
             onPress={handleRegister}
             loading={loading}
             style={styles.button}

@@ -19,7 +19,7 @@ const config: ExpoConfig = {
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: './assets/adaptive-icon.png',
+      foregroundImage: './assets/icadaptive-icon.png',
       backgroundColor: '#DFF4F1', // Matches splash background
     },
     package: 'com.hangovershield.app',

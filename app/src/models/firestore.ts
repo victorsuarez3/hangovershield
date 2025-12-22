@@ -20,6 +20,32 @@ export interface UserDoc {
   photoUrl?: string | null;
   createdAt: any; // Firestore Timestamp
   updatedAt?: any;
+  // User profile
+  fullName?: string;
+  role?: UserRole;
+  membershipStatus?: MembershipStatus;
+  // Profile details
+  positionTitle?: string;
+  company?: string;
+  bio?: string;
+  instagramHandle?: string;
+  hobbies?: string;
+  favoriteMovie?: string;
+  favoriteRestaurant?: string;
+  favoriteCoffeeSpot?: string;
+  city?: string;
+  industry?: string;
+  educationLevel?: string;
+  university?: string;
+  annualIncomeRange?: string;
+  age?: number;
+  heardAboutUs?: string;
+  inviteCode?: string;
+  // Welcome unlock tracking
+  welcomeUnlock?: {
+    granted: boolean;
+    expiresAt?: any; // Firestore Timestamp
+  };
   // First-login onboarding tracking
   onboarding?: {
     firstLoginCompleted: boolean;

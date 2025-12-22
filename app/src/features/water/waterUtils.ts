@@ -53,6 +53,19 @@ export const getRemainingMl = (totalMl: number, goalMl: number): number => {
   return Math.max(goalMl - totalMl, 0);
 };
 
+/**
+ * Hydration relief milestone copy based on progress
+ */
+export const getHydrationMilestone = (totalMl: number, goalMl: number): string => {
+  if (goalMl <= 0) return 'Start with a small sip.';
+  const pct = totalMl / goalMl;
+  if (pct <= 0) return 'Start with a small sip.';
+  if (pct < 0.25) return 'Let’s bring some calm back in.';
+  if (pct < 0.6) return 'Your system is starting to settle.';
+  if (pct < 1) return 'You’re giving your body what it needs.';
+  return "Nice. Your body's supported.";
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock Data (TODO: Remove when Firestore is fully integrated)
 // ─────────────────────────────────────────────────────────────────────────────

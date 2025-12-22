@@ -27,6 +27,7 @@ import {
   getRemainingMl,
   formatTime,
   createWaterEntry,
+  getHydrationMilestone,
 } from '../features/water/waterUtils';
 import { addWaterEntry, deleteWaterEntry, setHydrationGoal as saveHydrationGoal, getTodayHydrationLog } from '../services/hydrationService';
 import { WaterEntry } from '../features/water/waterTypes';
@@ -63,6 +64,7 @@ export const DailyWaterLogScreen: React.FC = () => {
 
   const todayId = getTodayId();
   const todayEntries = hydrationLogs[todayId] || [];
+  const displayTotal = Math.min(todayHydrationTotal, hydrationGoal);
 
   const progress = useMemo(
     () => calculateProgress(todayHydrationTotal, hydrationGoal),
@@ -71,6 +73,11 @@ export const DailyWaterLogScreen: React.FC = () => {
 
   const remainingMl = useMemo(
     () => getRemainingMl(todayHydrationTotal, hydrationGoal),
+    [todayHydrationTotal, hydrationGoal]
+  );
+
+  const milestoneCopy = useMemo(
+    () => getHydrationMilestone(todayHydrationTotal, hydrationGoal),
     [todayHydrationTotal, hydrationGoal]
   );
 
@@ -214,7 +221,7 @@ export const DailyWaterLogScreen: React.FC = () => {
           <Text style={styles.greeting}>Today</Text>
           <Text style={styles.title}>Hydration Tracker</Text>
           <Text style={styles.subtitle}>
-            Stay hydrated to support your recovery.
+            Each sip helps your body find balance again.
           </Text>
         </View>
 
@@ -229,7 +236,7 @@ export const DailyWaterLogScreen: React.FC = () => {
           <View style={styles.circularProgressContainer}>
             <View style={styles.circularProgressOuter}>
               <View style={styles.circularProgressInner}>
-                <Text style={styles.totalValue}>{todayHydrationTotal}</Text>
+                <Text style={styles.totalValue}>{displayTotal}</Text>
                 <Text style={styles.totalUnit}>ml</Text>
               </View>
             </View>
@@ -265,13 +272,11 @@ export const DailyWaterLogScreen: React.FC = () => {
               <Text style={styles.progressPercent}>{Math.round(progress)}%</Text>
             </View>
 
-            {remainingMl > 0 ? (
+            <Text style={styles.milestoneText}>{milestoneCopy}</Text>
+
+            {remainingMl > 0 && (
               <Text style={styles.remainingText}>
-                {remainingMl}ml remaining to reach your goal
-              </Text>
-            ) : (
-              <Text style={styles.goalReachedText}>
-                Goal reached — excellent work!
+                {remainingMl}ml left — one sip at a time.
               </Text>
             )}
           </View>
@@ -602,6 +607,13 @@ const styles = StyleSheet.create({
     color: '#0A3D33',
     minWidth: 42,
     textAlign: 'right',
+  },
+  milestoneText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: 'rgba(10, 61, 51, 0.7)',
+    textAlign: 'center',
+    marginTop: 6,
   },
   remainingText: {
     fontFamily: 'Inter_400Regular',

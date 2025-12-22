@@ -25,7 +25,7 @@ import { SplashScreen } from './src/screens/SplashScreen';
 import { AlertManager } from './src/utils/alert';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { getTodayDailyCheckIn } from './src/services/dailyCheckIn';
-import { initializeRevenueCat, identifyUser, getCustomerInfo, isRevenueCatInitialized } from './src/services/revenuecat';
+import { initializeRevenueCat, identifyUser, getCustomerInfo, isRevenueCatInitialized, logOutRevenueCat } from './src/services/revenuecat';
 import Constants from 'expo-constants';
 import { SHOW_DEV_TOOLS } from './src/config/flags';
 
@@ -102,7 +102,7 @@ function AppContent() {
     const NetInfo = getNetInfo();
     if (!NetInfo?.addEventListener) return;
     let timeout: NodeJS.Timeout | null = null;
-    const unsubscribe = NetInfo.addEventListener((state) => {
+    const unsubscribe = NetInfo.addEventListener((state: { isConnected: boolean | null }) => {
       if (state.isConnected && isRevenueCatInitialized()) {
         if (timeout) clearTimeout(timeout);
         timeout = setTimeout(async () => {
@@ -471,6 +471,11 @@ function AppContent() {
           userId={user.uid}
           onComplete={() => {
             setDailyCheckInStatus('completed');
+          }}
+          onCancel={() => {
+            setCheckingDailyStatus(false);
+            setDailyCheckInStatus('completed');
+            setPendingNav({ kind: 'screen', screen: 'HomeMain' });
           }}
         />
       </AppNavigationProvider>

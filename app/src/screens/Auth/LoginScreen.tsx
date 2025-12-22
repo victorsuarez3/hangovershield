@@ -156,7 +156,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   <AppleSignInButton
                     onSuccess={onAppleSignIn}
                     onError={(error) => {
-                      console.error('Apple sign-in error:', error);
+                      const code = (error as { code?: string; message?: string })?.code ?? '';
+                      const message = (error as { message?: string })?.message ?? '';
+                      const lowerMsg = message.toLowerCase();
+                      const isCancel =
+                        code === 'ERR_REQUEST_CANCELED' ||
+                        code === 'ERR_CANCELED' ||
+                        lowerMsg.includes('canceled') ||
+                        lowerMsg.includes('cancelled');
+                      if (isCancel) return; // user dismissed — ignore
+                      if (SHOW_DEV_TOOLS) {
+                        console.warn('[AppleSignIn] non-cancel error:', error);
+                      }
                     }}
                   />
                 )}

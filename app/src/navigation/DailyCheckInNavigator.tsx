@@ -62,6 +62,7 @@ export type DailyCheckInStackParamList = {
 interface DailyCheckInNavigatorProps {
   userId: string;
   onComplete?: () => void;
+  onCancel?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -81,10 +82,23 @@ const FEELING_DISPLAY_LABELS: Record<FeelingOption, string> = {
 
 interface DailyCheckInScreenWrapperProps {
   userId: string;
+  onCancel?: () => void;
 }
 
-const DailyCheckInScreenWrapper: React.FC<DailyCheckInScreenWrapperProps> = ({ userId }) => {
+const DailyCheckInScreenWrapper: React.FC<DailyCheckInScreenWrapperProps> = ({ userId, onCancel }) => {
   const navigation = useNavigation<NativeStackNavigationProp<DailyCheckInStackParamList>>();
+
+  // Ensure back/gesture exits to home (via onCancel)
+  React.useEffect(() => {
+    if (!onCancel) return;
+    const sub = navigation.addListener('beforeRemove', (event) => {
+      if (event.data.action.type === 'GO_BACK' || event.data.action.type === 'POP') {
+        event.preventDefault();
+        onCancel();
+      }
+    });
+    return sub;
+  }, [navigation, onCancel]);
 
   const handleComplete = useCallback((
     severity: DailyCheckInSeverity,
@@ -268,6 +282,7 @@ const Stack = createNativeStackNavigator<DailyCheckInStackParamList>();
 
 export const DailyCheckInNavigator: React.FC<DailyCheckInNavigatorProps> = ({
   userId,
+  onCancel,
 }) => {
   return (
     <Stack.Navigator
@@ -277,7 +292,7 @@ export const DailyCheckInNavigator: React.FC<DailyCheckInNavigatorProps> = ({
       }}
     >
       <Stack.Screen name="DailyCheckIn">
-        {() => <DailyCheckInScreenWrapper userId={userId} />}
+        {() => <DailyCheckInScreenWrapper userId={userId} onCancel={onCancel} />}
       </Stack.Screen>
       <Stack.Screen
         name="DailyPlanLoading"

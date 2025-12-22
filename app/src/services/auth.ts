@@ -115,7 +115,6 @@ export const signInWithApple = async (): Promise<FirebaseUser> => {
     const provider = new OAuthProvider('apple.com');
     const firebaseCredential = provider.credential({
       idToken: credential.identityToken,
-      rawNonce: credential.nonce || undefined,
     });
 
     const userCredential = await signInWithCredential(auth, firebaseCredential);

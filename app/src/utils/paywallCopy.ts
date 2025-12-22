@@ -39,6 +39,21 @@ const COPY_MAP: Record<PaywallSourceType | 'default', PaywallCopy> = {
     subheadline: 'Long-term insight creates better decisions.',
     urgencyLine: 'Trends only appear over time.',
   },
+  progress_rhythm_soft_gate: {
+    headline: 'Understand your recovery patterns',
+    subheadline: 'Long-term insight creates better decisions.',
+    urgencyLine: 'Trends only appear over time.',
+  },
+  progress_reflection_soft_gate: {
+    headline: 'Understand your recovery patterns',
+    subheadline: 'Long-term insight creates better decisions.',
+    urgencyLine: 'Trends only appear over time.',
+  },
+  progress_insights_cta: {
+    headline: 'Recover properly. Every time.',
+    subheadline: 'The difference between getting through it and actually recovering.',
+    urgencyLine: 'Unlock the full recovery system.',
+  },
   menu_subscription: {
     headline: 'Recover properly. Every time.',
     subheadline: 'The difference between getting through it and actually recovering.',

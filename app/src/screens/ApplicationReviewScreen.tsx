@@ -67,7 +67,7 @@ export const ApplicationReviewScreen: React.FC = () => {
 
             {/* Sign Out Button */}
             <Button
-              label="Sign Out"
+              title="Sign Out"
               onPress={handleSignOut}
               style={styles.button}
               variant="secondary"

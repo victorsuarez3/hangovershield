@@ -80,7 +80,7 @@ export const ApplicationStartScreen: React.FC = () => {
 
             {/* CTA Button */}
             <Button
-              label="Start Application"
+              title="Start Application"
               onPress={handleStartApplication}
               style={styles.button}
             />

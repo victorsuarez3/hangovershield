@@ -3,7 +3,7 @@
  * Generates personalized recovery insights based on symptoms and feeling
  */
 
-import { FeelingOption, SymptomKey } from '../navigation/OnboardingNavigator';
+import { FeelingOption, SymptomKey } from '../screens/FirstLogin/FirstLoginCheckInScreen';
 
 export type RecoveryAnalysis = {
   headerTitle: string;
@@ -28,7 +28,8 @@ const SYMPTOM_LABELS: Record<SymptomKey, string> = {
 };
 
 // Priority order for selecting which symptoms to show as pills (most impactful first)
-const SYMPTOM_PRIORITY: SymptomKey[] = [
+// Note: 'noSymptoms' is excluded from priority list since it's filtered out before sorting
+const SYMPTOM_PRIORITY: Exclude<SymptomKey, 'noSymptoms'>[] = [
   'poorSleep',
   'fatigue',
   'nausea',
@@ -43,7 +44,7 @@ const SYMPTOM_PRIORITY: SymptomKey[] = [
  * Get the prioritized symptom labels (all selected, ordered by impact)
  */
 export function getKeySymptomLabels(symptoms: SymptomKey[]): string[] {
-  const filtered = symptoms.filter((s) => s !== 'noSymptoms');
+  const filtered = symptoms.filter((s): s is Exclude<SymptomKey, 'noSymptoms'> => s !== 'noSymptoms');
   const prioritized = SYMPTOM_PRIORITY.filter((key) => filtered.includes(key));
   const remaining = filtered.filter((s) => !SYMPTOM_PRIORITY.includes(s));
   const ordered = [...prioritized, ...remaining];
