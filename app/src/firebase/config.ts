@@ -15,6 +15,7 @@ import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/storage';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEBUG_PERSISTENCE } from '../config/flags';
 
 // Get Firebase config from app.config.ts via Expo Constants
@@ -54,5 +55,10 @@ export const auth = firebase.auth();
 export const db = firebase.firestore();
 export const storage = firebase.storage();
 
-// Note: Firebase Compat API on React Native automatically uses AsyncStorage for persistence
-// No need to call setPersistence() explicitly - it's enabled by default
+// Configure Firebase Auth to use AsyncStorage for persistence in React Native
+// CRITICAL: This must be set explicitly in production builds for persistence to work
+(firebase.auth as any).setPersistenceProvider(AsyncStorage);
+
+if (__DEV__ || DEBUG_PERSISTENCE) {
+  console.log('[firebase/config] ✅ AsyncStorage persistence provider configured');
+}

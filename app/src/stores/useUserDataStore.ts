@@ -46,6 +46,7 @@ export interface UserDataState {
   setHydrationGoal: (goal: number) => void;
   addHydrationEntry: (dateId: string, entry: WaterEntry) => void;
   setHydrationLogs: (logs: HydrationLog) => void;
+  updateHydrationDay: (dateId: string, entries: WaterEntry[]) => void;
   setCheckInToday: (checkIn: CheckInData | null) => void;
   setCheckInYesterday: (checkIn: CheckInData | null) => void;
   setStreak: (streak: number) => void;
@@ -129,6 +130,17 @@ export const useUserDataStore = create<UserDataState>((set, get) => ({
 
   setHydrationLogs: (logs: HydrationLog) => {
     set({ hydrationLogs: logs });
+    get().calculateTodayTotal();
+    get().calculateYesterdayTotal();
+  },
+
+  updateHydrationDay: (dateId: string, entries: WaterEntry[]) => {
+    set((state) => ({
+      hydrationLogs: {
+        ...state.hydrationLogs,
+        [dateId]: entries,
+      },
+    }));
     get().calculateTodayTotal();
     get().calculateYesterdayTotal();
   },

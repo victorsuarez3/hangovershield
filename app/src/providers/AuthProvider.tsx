@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Subscribe to real-time updates with metadata changes
     unsubscribeRef.current = userRef.onSnapshot(
       { includeMetadataChanges: true },
-      (snapshot) => {
+      async (snapshot) => {
         if (snapshot.exists) {
           const data = snapshot.data() as UserDoc;
           setUserDoc(data);
@@ -60,15 +60,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error('[AuthProvider] Error setting up notifications:', error);
           });
         } else {
-          // Document doesn't exist - create default
-          createDefaultUserDoc(firebaseUser).catch((error: any) => {
-            console.error('Error creating user document:', error?.message);
-            setLoading(false);
-          });
+          // Document doesn't exist - create default and wait for next snapshot
+          try {
+            await createDefaultUserDoc(firebaseUser);
+            // Don't call setLoading(false) here - wait for next snapshot with the new document
+            console.log('[AuthProvider] User document created, waiting for snapshot update...');
+          } catch (error: any) {
+            console.error('[AuthProvider] Error creating user document:', error?.message);
+            setLoading(false); // Only set loading false on error
+          }
         }
       },
       (error) => {
-        console.error('Snapshot error:', error?.code, error?.message);
+        console.error('[AuthProvider] Snapshot error:', error?.code, error?.message);
         setLoading(false);
       }
     );

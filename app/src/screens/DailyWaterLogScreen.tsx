@@ -52,7 +52,7 @@ export const DailyWaterLogScreen: React.FC = () => {
     todayHydrationTotal,
     setHydrationGoal,
     addHydrationEntry: addToStore,
-    setHydrationLogs,
+    updateHydrationDay,
   } = useUserDataStore();
 
   // Local state
@@ -88,10 +88,10 @@ export const DailyWaterLogScreen: React.FC = () => {
       const loadToday = async () => {
         if (user?.uid) {
           const entries = await getTodayHydrationLog(user.uid);
-          setHydrationLogs({ [todayId]: entries });
+          updateHydrationDay(todayId, entries);
         } else {
           const entries = await getLocalHydrationEntries(todayId);
-          setHydrationLogs({ [todayId]: entries });
+          updateHydrationDay(todayId, entries);
           const cachedGoal = await getLocalHydrationGoal();
           if (cachedGoal && cachedGoal > 0) {
             setHydrationGoal(cachedGoal);
@@ -99,7 +99,7 @@ export const DailyWaterLogScreen: React.FC = () => {
         }
       };
       loadToday();
-    }, [user?.uid, todayId, setHydrationLogs, setHydrationGoal])
+    }, [user?.uid, todayId, updateHydrationDay, setHydrationGoal])
   );
 
   // Celebration animation when goal is reached
@@ -154,7 +154,7 @@ export const DailyWaterLogScreen: React.FC = () => {
   const handleDeleteEntry = async (entryId: string) => {
     // Optimistically update store and local cache
     const updatedEntries = (hydrationLogs[todayId] || []).filter((e) => e.id !== entryId);
-    setHydrationLogs({ ...hydrationLogs, [todayId]: updatedEntries });
+    updateHydrationDay(todayId, updatedEntries);
     await saveLocalHydrationEntries(todayId, updatedEntries);
 
     if (user?.uid) {
