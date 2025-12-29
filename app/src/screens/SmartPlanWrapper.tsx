@@ -6,11 +6,14 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
 import { TodayRecoveryPlanScreen, RecoveryAction } from './TodayRecoveryPlanScreen';
 import { getTodayId } from '../utils/dateUtils';
 import { SHOW_DEV_TOOLS } from '../config/flags';
+import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { updateLocalPlanStepState, saveLocalPlanStepsState } from '../services/dailyCheckInStorage';
 import { loadTodayState, markTodayPlanCompleted } from '../services/todayState';
 
@@ -136,7 +139,17 @@ export const SmartPlanWrapper: React.FC = () => {
   );
 
   if (isLoading || !planData) {
-    return null;
+    return (
+      <View style={styles.loadingContainer}>
+        <LinearGradient
+          colors={HANGOVER_GRADIENT}
+          locations={[0, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <ActivityIndicator size="large" color="#0F4C44" />
+        <Text style={styles.loadingText}>Loading your plan...</Text>
+      </View>
+    );
   }
 
   return (
@@ -154,3 +167,18 @@ export const SmartPlanWrapper: React.FC = () => {
     />
   );
 };
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 16,
+    color: '#0F3D3E',
+    marginTop: 12,
+  },
+});

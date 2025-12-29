@@ -3,7 +3,7 @@
  * Full water logging interface with goal customization and entry history
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../providers/AuthProvider';
 import { useUserDataStore } from '../stores/useUserDataStore';
@@ -81,24 +81,28 @@ export const DailyWaterLogScreen: React.FC = () => {
     [todayHydrationTotal, hydrationGoal]
   );
 
-  // Celebration animation when goal is reached
-  useEffect(() => {
-    // Load hydration data for today from the single source of truth
-    const loadToday = async () => {
-      if (user?.uid) {
-        const entries = await getTodayHydrationLog(user.uid);
-        setHydrationLogs({ [todayId]: entries });
-      } else {
-        const entries = await getLocalHydrationEntries(todayId);
-        setHydrationLogs({ [todayId]: entries });
-        const cachedGoal = await getLocalHydrationGoal();
-        if (cachedGoal && cachedGoal > 0) {
-          setHydrationGoal(cachedGoal);
+  // Load hydration data when screen focuses
+  // Use useFocusEffect instead of useEffect to refresh data when navigating back
+  useFocusEffect(
+    useCallback(() => {
+      const loadToday = async () => {
+        if (user?.uid) {
+          const entries = await getTodayHydrationLog(user.uid);
+          setHydrationLogs({ [todayId]: entries });
+        } else {
+          const entries = await getLocalHydrationEntries(todayId);
+          setHydrationLogs({ [todayId]: entries });
+          const cachedGoal = await getLocalHydrationGoal();
+          if (cachedGoal && cachedGoal > 0) {
+            setHydrationGoal(cachedGoal);
+          }
         }
-      }
-    };
-    loadToday();
-  }, [user?.uid, todayId, setHydrationLogs, setHydrationGoal]);
+      };
+      loadToday();
+    }, [user?.uid, todayId, setHydrationLogs, setHydrationGoal])
+  );
+
+  // Celebration animation when goal is reached
 
   useEffect(() => {
     if (todayHydrationTotal >= hydrationGoal && todayHydrationTotal > 0) {

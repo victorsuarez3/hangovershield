@@ -24,6 +24,7 @@ import { HANGOVER_GRADIENT } from '../theme/gradients';
 import { PaywallSource } from '../constants/paywallSources';
 import { logAnalyticsEvent } from '../utils/analytics';
 import { AppHeader } from '../components/AppHeader';
+import { SHOW_DEV_TOOLS } from '../config/flags';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -119,14 +120,15 @@ export const EveningCheckInLockedScreen: React.FC = () => {
           </TouchableOpacity>
 
           {/* Dev Skip Button */}
-          <TouchableOpacity
-            style={styles.skipButton}
-            onPress={handleSkip}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.skipButtonText}>Skip (Dev)</Text>
-          </TouchableOpacity>
-
+          {SHOW_DEV_TOOLS && (
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={handleSkip}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.skipButtonText}>Skip (Dev)</Text>
+            </TouchableOpacity>
+          )}
           {/* Explanation Text */}
           <Text style={styles.explanationText}>
             Evening check-ins help you reflect on your recovery, track improvements, and prepare for optimal rest and recovery.

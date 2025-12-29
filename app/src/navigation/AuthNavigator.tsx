@@ -32,6 +32,7 @@ const LoginScreenContainer: React.FC<{
       setLoading(true);
       await signInWithApple();
       onAuthSuccess();
+      setLoading(false);
     } catch (error: any) {
       setLoading(false);
       if (error.message !== 'Apple sign-in was cancelled') {
