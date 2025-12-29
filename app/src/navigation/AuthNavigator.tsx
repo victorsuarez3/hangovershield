@@ -31,8 +31,9 @@ const LoginScreenContainer: React.FC<{
     try {
       setLoading(true);
       await signInWithApple();
-      onAuthSuccess();
-      setLoading(false);
+      // Don't call setLoading(false) here - let AuthProvider handle loading state
+      // AuthProvider will detect the auth state change and load userDoc
+      // Once userDoc is loaded, App.tsx will navigate to the correct screen
     } catch (error: any) {
       setLoading(false);
       if (error.message !== 'Apple sign-in was cancelled') {
