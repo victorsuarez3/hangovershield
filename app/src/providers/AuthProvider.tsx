@@ -99,11 +99,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
    */
   const createDefaultUserDoc = async (firebaseUser: FirebaseUser): Promise<void> => {
     const defaultUserDoc = {
-      fullName: '',
-      email: firebaseUser.email || '',
+      displayName: firebaseUser.displayName || null,
+      email: firebaseUser.email || null,
+      photoUrl: firebaseUser.photoURL || null,
       membershipStatus: 'not_applied' as MembershipStatus,
       role: 'member' as const,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      // Initialize first-login onboarding state (default: not completed)
+      onboarding: {
+        firstLoginCompleted: false,
+        firstLoginVersion: 1,
+      },
     };
 
     const userRef = db.collection('users').doc(firebaseUser.uid);

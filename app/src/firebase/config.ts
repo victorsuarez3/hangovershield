@@ -54,12 +54,5 @@ export const auth = firebase.auth();
 export const db = firebase.firestore();
 export const storage = firebase.storage();
 
-// Configure Firebase Auth persistence for React Native
-// This ensures auth state persists across app restarts
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(() => {
-  if (__DEV__ || DEBUG_PERSISTENCE) {
-    console.log('[firebase/config] ✅ Firebase Auth persistence configured (LOCAL)');
-  }
-}).catch((error) => {
-  console.error('[firebase/config] ❌ Failed to set auth persistence:', error);
-});
+// Note: Firebase Compat API on React Native automatically uses AsyncStorage for persistence
+// No need to call setPersistence() explicitly - it's enabled by default

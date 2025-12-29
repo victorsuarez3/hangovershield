@@ -87,9 +87,8 @@ export const signInWithGoogleCredential = async (idToken: string): Promise<Fireb
       throw new Error('Failed to sign in with Google');
     }
 
-    // Create or update Firestore user document
-    await createOrUpdateUserDoc(userCredential.user);
-
+    // AuthProvider will create the Firestore user document via onSnapshot
+    // This avoids race conditions between auth state change and document creation
     return userCredential.user;
   } catch (error: any) {
     console.error('Error signing in with Google:', error);
@@ -130,14 +129,22 @@ export const signInWithApple = async (): Promise<FirebaseUser> => {
       throw new Error('Failed to sign in with Apple');
     }
 
-    // Create or update Firestore user document
-    await createOrUpdateUserDoc(userCredential.user, {
-      displayName: credential.fullName
-        ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim()
-        : undefined,
-      email: credential.email || undefined,
-    });
+    // Update Firebase Auth profile with Apple displayName if available
+    // This ensures the displayName is available in AuthProvider.onAuthStateChanged
+    if (credential.fullName) {
+      const displayName = `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim();
+      if (displayName) {
+        try {
+          await userCredential.user.updateProfile({ displayName });
+        } catch (error) {
+          console.error('Failed to update Firebase Auth profile:', error);
+          // Continue anyway - not critical
+        }
+      }
+    }
 
+    // AuthProvider will create the Firestore user document via onSnapshot
+    // This avoids race conditions between auth state change and document creation
     return userCredential.user;
   } catch (error: any) {
     if (error.code === 'ERR_CANCELED') {
@@ -145,53 +152,6 @@ export const signInWithApple = async (): Promise<FirebaseUser> => {
     }
     console.error('Error signing in with Apple:', error);
     throw error;
-  }
-};
-
-/**
- * Helper function to create or update user document in Firestore
- */
-const createOrUpdateUserDoc = async (
-  firebaseUser: FirebaseUser,
-  additionalData?: { displayName?: string; email?: string }
-): Promise<void> => {
-  try {
-    const userRef = db.collection('users').doc(firebaseUser.uid);
-    const userSnap = await userRef.get();
-
-    if (!userSnap.exists) {
-      // Create new user document
-      const userDoc: Omit<UserDoc, 'createdAt'> & { createdAt: any } = {
-        displayName: additionalData?.displayName || firebaseUser.displayName || null,
-        email: additionalData?.email || firebaseUser.email || null,
-        photoUrl: firebaseUser.photoURL || null,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        // Initialize first-login onboarding state (default: not completed)
-        onboarding: {
-          firstLoginCompleted: false,
-          firstLoginVersion: 1,
-        },
-      };
-      await userRef.set(userDoc);
-    } else {
-      // Update existing user document if needed
-      const updates: Partial<UserDoc> = {};
-      if (additionalData?.displayName && !userSnap.data()?.displayName) {
-        updates.displayName = additionalData.displayName;
-      }
-      if (additionalData?.email && !userSnap.data()?.email) {
-        updates.email = additionalData.email;
-      }
-      if (firebaseUser.photoURL && !userSnap.data()?.photoUrl) {
-        updates.photoUrl = firebaseUser.photoURL;
-      }
-      if (Object.keys(updates).length > 0) {
-        await userRef.set(updates, { merge: true });
-      }
-    }
-  } catch (error) {
-    console.error('Error creating/updating user document:', error);
-    // Don't throw - auth succeeded even if Firestore update fails
   }
 };
 
