@@ -22,7 +22,7 @@ import { setFirstLoginOnboardingCompleted } from '../../services/dailyCheckInSto
 import { markFirstLoginOnboardingCompleted } from '../../services/auth';
 import { FirstLoginCheckInData } from './FirstLoginCheckInScreen';
 import { getLocalDayId, saveLocalDailyCheckIn, LocalDailyCheckIn } from '../../services/dailyCheckInStorage';
-import { saveTodayDailyCheckIn, SEVERITY_LABELS } from '../../services/dailyCheckIn';
+import { ensureTodayPlan, SEVERITY_LABELS } from '../../services/dailyCheckIn';
 
 export interface FirstLoginPlanReadyParams {
   checkInData: FirstLoginCheckInData;
@@ -159,13 +159,15 @@ export const FirstLoginPlanReadyScreen: React.FC = () => {
       };
       await saveLocalDailyCheckIn(localCheckIn);
 
+      // Save check-in WITH generated plan to Firestore
       if (user?.uid) {
         try {
-          await saveTodayDailyCheckIn(user.uid, {
+          await ensureTodayPlan(user.uid, {
             severity: checkInData.severity,
             severityLabel: SEVERITY_LABELS[checkInData.severity],
             symptoms: checkInData.symptoms,
           });
+          console.log('[FirstLoginPlanReady] ✅ Check-in with plan saved to Firestore');
         } catch (err) {
           console.error('[FirstLoginPlanReady] Firestore save error:', err);
         }
