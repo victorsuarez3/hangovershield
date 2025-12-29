@@ -394,7 +394,8 @@ export const ProgressInsightsScreen: React.FC = () => {
     () => (useMockData ? generateTrendInterpretation(trendData) : null),
     [useMockData, trendData]
   );
-  const todayInsight = useMemo(() => (useMockData ? getTodayInsight() : null), [useMockData]);
+  // Insights should ALWAYS show - they're generic wisdom, not user data
+  const todayInsight = useMemo(() => getTodayInsight(), []);
   
   // Generate calendar data based on selected period
   const periodCount = selectedPeriod === '7d' ? 7 : selectedPeriod === '30d' ? 30 : 90;

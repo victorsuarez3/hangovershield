@@ -50,6 +50,13 @@ const SOURCES: { topic: string; items: { title: string; url: string }[] }[] = [
       { title: 'Mayo Clinic – Hangovers', url: 'https://www.mayoclinic.org/diseases-conditions/hangovers/symptoms-causes/syc-20373012' },
     ],
   },
+  {
+    topic: 'Stress & recovery',
+    items: [
+      { title: 'Harvard Business Review – The science of stress', url: 'https://hbr.org/2016/05/the-science-of-stress' },
+      { title: 'HBR – Recovering from burnout', url: 'https://hbr.org/2016/06/beating-burnout' },
+    ],
+  },
 ];
 
 export const SourcesScreen: React.FC = () => {

@@ -36,8 +36,34 @@ export const RecoveryTrendLineChart: React.FC<RecoveryTrendLineChartProps> = ({
   data,
   interpretation,
 }) => {
+  // Show empty state with placeholder chart when no data
   if (!data || data.length === 0) {
-    return null;
+    return (
+      <View style={styles.container}>
+        <View style={styles.chartContainer}>
+          <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
+            {/* Grid lines for empty chart */}
+            {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+              const y = CHART_PADDING + ratio * (CHART_HEIGHT - CHART_PADDING * 2);
+              return (
+                <Line
+                  key={`grid-${ratio}`}
+                  x1={CHART_PADDING}
+                  y1={y}
+                  x2={CHART_WIDTH - CHART_PADDING}
+                  y2={y}
+                  stroke="rgba(15, 76, 68, 0.05)"
+                  strokeWidth={1}
+                />
+              );
+            })}
+          </Svg>
+        </View>
+        <Text style={styles.emptyStateText}>
+          Complete daily check-ins to see your recovery trend
+        </Text>
+      </View>
+    );
   }
 
   // Calculate chart dimensions
@@ -160,6 +186,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     lineHeight: 22,
     paddingHorizontal: 8,
+  },
+  emptyStateText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: 'rgba(15, 61, 62, 0.5)',
+    textAlign: 'center',
+    marginTop: 12,
+    fontStyle: 'italic',
   },
 });
 
