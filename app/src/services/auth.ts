@@ -1,24 +1,20 @@
 /**
  * Authentication Service - Hangover Shield
  * Firebase Auth operations for Google, Apple, and email/password authentication
+ * Uses Firebase Compat API for React Native compatibility
  */
 
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithCredential,
-  GoogleAuthProvider,
-  OAuthProvider,
-  deleteUser as firebaseDeleteUser,
-  User as FirebaseUser,
-} from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, deleteDoc, getDoc } from 'firebase/firestore';
-import { ref, listAll, deleteObject } from 'firebase/storage';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
+import 'firebase/compat/storage';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import Constants from 'expo-constants';
 import { auth, db, storage } from '../firebase/config';
 import { UserDoc } from '../models/firestore';
 import { SHOW_DEV_TOOLS } from '../config/flags';
+
+type FirebaseUser = firebase.User;
 
 /**
  * Sign up a new user with email and password
@@ -31,14 +27,18 @@ export const signUp = async (
 ): Promise<FirebaseUser> => {
   try {
     // Create Firebase Auth user
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
     const firebaseUser = userCredential.user;
+
+    if (!firebaseUser) {
+      throw new Error('Failed to create user');
+    }
 
     // Create Firestore user document
     const userDoc: Omit<UserDoc, 'createdAt'> & { createdAt: any } = {
       displayName: fullName,
       email,
-      createdAt: serverTimestamp(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       // Initialize first-login onboarding state (default: not completed)
       onboarding: {
         firstLoginCompleted: false,
@@ -46,8 +46,8 @@ export const signUp = async (
       },
     };
 
-    const userRef = doc(db, 'users', firebaseUser.uid);
-    await setDoc(userRef, userDoc);
+    const userRef = db.collection('users').doc(firebaseUser.uid);
+    await userRef.set(userDoc);
 
     return firebaseUser;
   } catch (error: any) {
@@ -61,7 +61,10 @@ export const signUp = async (
  */
 export const signIn = async (email: string, password: string): Promise<FirebaseUser> => {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+    if (!userCredential.user) {
+      throw new Error('Failed to sign in');
+    }
     return userCredential.user;
   } catch (error: any) {
     console.error('Error signing in:', error);
@@ -77,8 +80,12 @@ export const signIn = async (email: string, password: string): Promise<FirebaseU
 export const signInWithGoogleCredential = async (idToken: string): Promise<FirebaseUser> => {
   try {
     // Create Firebase credential
-    const credential = GoogleAuthProvider.credential(idToken);
-    const userCredential = await signInWithCredential(auth, credential);
+    const credential = firebase.auth.GoogleAuthProvider.credential(idToken);
+    const userCredential = await auth.signInWithCredential(credential);
+
+    if (!userCredential.user) {
+      throw new Error('Failed to sign in with Google');
+    }
 
     // Create or update Firestore user document
     await createOrUpdateUserDoc(userCredential.user);
@@ -111,13 +118,17 @@ export const signInWithApple = async (): Promise<FirebaseUser> => {
       throw new Error('No identity token received from Apple');
     }
 
-    // Create Firebase credential
-    const provider = new OAuthProvider('apple.com');
+    // Create Firebase credential using Compat API
+    const provider = new firebase.auth.OAuthProvider('apple.com');
     const firebaseCredential = provider.credential({
       idToken: credential.identityToken,
     });
 
-    const userCredential = await signInWithCredential(auth, firebaseCredential);
+    const userCredential = await auth.signInWithCredential(firebaseCredential);
+
+    if (!userCredential.user) {
+      throw new Error('Failed to sign in with Apple');
+    }
 
     // Create or update Firestore user document
     await createOrUpdateUserDoc(userCredential.user, {
@@ -145,23 +156,23 @@ const createOrUpdateUserDoc = async (
   additionalData?: { displayName?: string; email?: string }
 ): Promise<void> => {
   try {
-    const userRef = doc(db, 'users', firebaseUser.uid);
-    const userSnap = await getDoc(userRef);
+    const userRef = db.collection('users').doc(firebaseUser.uid);
+    const userSnap = await userRef.get();
 
-    if (!userSnap.exists()) {
+    if (!userSnap.exists) {
       // Create new user document
       const userDoc: Omit<UserDoc, 'createdAt'> & { createdAt: any } = {
         displayName: additionalData?.displayName || firebaseUser.displayName || null,
         email: additionalData?.email || firebaseUser.email || null,
         photoUrl: firebaseUser.photoURL || null,
-        createdAt: serverTimestamp(),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         // Initialize first-login onboarding state (default: not completed)
         onboarding: {
           firstLoginCompleted: false,
           firstLoginVersion: 1,
         },
       };
-      await setDoc(userRef, userDoc);
+      await userRef.set(userDoc);
     } else {
       // Update existing user document if needed
       const updates: Partial<UserDoc> = {};
@@ -175,7 +186,7 @@ const createOrUpdateUserDoc = async (
         updates.photoUrl = firebaseUser.photoURL;
       }
       if (Object.keys(updates).length > 0) {
-        await setDoc(userRef, updates, { merge: true });
+        await userRef.set(updates, { merge: true });
       }
     }
   } catch (error) {
@@ -190,13 +201,12 @@ const createOrUpdateUserDoc = async (
  */
 export const markFirstLoginOnboardingCompleted = async (userId: string): Promise<void> => {
   try {
-    const userRef = doc(db, 'users', userId);
-    await setDoc(
-      userRef,
+    const userRef = db.collection('users').doc(userId);
+    await userRef.set(
       {
         onboarding: {
           firstLoginCompleted: true,
-          firstLoginCompletedAt: serverTimestamp(),
+          firstLoginCompletedAt: firebase.firestore.FieldValue.serverTimestamp(),
           firstLoginVersion: 1,
         },
       },
@@ -230,11 +240,11 @@ export const deleteAccount = async (user: FirebaseUser): Promise<void> => {
 
     // 1. Delete all user photos from Storage
     try {
-      const userPhotosRef = ref(storage, `profiles/${userId}`);
-      const photosList = await listAll(userPhotosRef);
+      const userPhotosRef = storage.ref(`profiles/${userId}`);
+      const photosList = await userPhotosRef.listAll();
 
       // Delete all files in the user's profile folder
-      const deletePromises = photosList.items.map(item => deleteObject(item));
+      const deletePromises = photosList.items.map(item => item.delete());
       await Promise.all(deletePromises);
     } catch (storageError: any) {
       // Continue even if storage deletion fails (folder might not exist)
@@ -244,11 +254,11 @@ export const deleteAccount = async (user: FirebaseUser): Promise<void> => {
     }
 
     // 2. Delete Firestore user document
-    const userDocRef = doc(db, 'users', userId);
-    await deleteDoc(userDocRef);
+    const userDocRef = db.collection('users').doc(userId);
+    await userDocRef.delete();
 
     // 3. Delete Firebase Auth account (must be last)
-    await firebaseDeleteUser(user);
+    await user.delete();
 
   } catch (error: any) {
     console.error('Error deleting account:', error);
