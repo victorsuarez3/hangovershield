@@ -16,7 +16,7 @@ import {
   TextInput,
   Linking,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -340,7 +340,7 @@ If symptoms are severe, persistent, or concerning, seek professional medical hel
           </View>
 
           <TouchableOpacity
-            style={styles.modalSingleButton}
+            style={[styles.modalSingleButton, { marginBottom: 12 }]}
             onPress={onOpenSources}
             activeOpacity={0.8}
             accessibilityLabel="View sources"
@@ -381,10 +381,12 @@ export const AccountScreen: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
-  // Load notification status on mount
-  React.useEffect(() => {
-    checkNotificationStatus();
-  }, []);
+  // Load notification status on mount and when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      checkNotificationStatus();
+    }, [])
+  );
 
   const checkNotificationStatus = async () => {
     const enabled = await areNotificationsEnabled();
