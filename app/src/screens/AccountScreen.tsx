@@ -30,6 +30,13 @@ import { useAuth } from '../providers/AuthProvider';
 import { AppHeader } from '../components/AppHeader';
 import { APP_LINKS } from '../config/links';
 import { deleteAccountAndData } from '../services/accountDeletion';
+import {
+  areNotificationsEnabled,
+  updateNotificationSettings,
+  cancelAllNotifications,
+  scheduleAllNotifications,
+  NotificationSettings,
+} from '../services/notificationService';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -372,6 +379,17 @@ export const AccountScreen: React.FC = () => {
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [medicalDisclaimerModalVisible, setMedicalDisclaimerModalVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  // Load notification status on mount
+  React.useEffect(() => {
+    checkNotificationStatus();
+  }, []);
+
+  const checkNotificationStatus = async () => {
+    const enabled = await areNotificationsEnabled();
+    setNotificationsEnabled(enabled);
+  };
 
   // Subscription Management
   const handleManageSubscription = async () => {
@@ -519,6 +537,48 @@ export const AccountScreen: React.FC = () => {
     }
   };
 
+  // Notifications Management
+  const handleManageNotifications = () => {
+    Alert.alert(
+      'Notification Settings',
+      notificationsEnabled
+        ? 'Manage notifications from your device settings or disable them below.'
+        : 'Enable notifications to receive reminders for hydration, recovery steps, and evening check-ins.',
+      notificationsEnabled
+        ? [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Disable Notifications',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await cancelAllNotifications();
+                  Alert.alert('Notifications Disabled', 'All notifications have been cancelled.');
+                  checkNotificationStatus();
+                } catch (error) {
+                  console.error('Error disabling notifications:', error);
+                  Alert.alert('Error', 'Failed to disable notifications. Please try again.');
+                }
+              },
+            },
+          ]
+        : [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: async () => {
+                try {
+                  await Linking.openSettings();
+                } catch (error) {
+                  console.error('Error opening settings:', error);
+                  Alert.alert('Error', 'Unable to open settings. Please open Settings app manually.');
+                }
+              },
+            },
+          ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
@@ -561,6 +621,21 @@ export const AccountScreen: React.FC = () => {
             label="What's included in Premium"
             onPress={handlePremiumFeatures}
             showChevron={false}
+          />
+        </AccountSection>
+
+        {/* Notifications Section */}
+        <AccountSection title="Notifications">
+          <AccountRow
+            icon={notificationsEnabled ? 'notifications' : 'notifications-off-outline'}
+            label="Push Notifications"
+            subtitle={
+              notificationsEnabled
+                ? 'Hydration, recovery & evening reminders'
+                : 'Enable to receive helpful reminders'
+            }
+            onPress={handleManageNotifications}
+            badge={notificationsEnabled ? 'ON' : undefined}
           />
         </AccountSection>
 

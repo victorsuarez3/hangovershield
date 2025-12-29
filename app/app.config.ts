@@ -3,7 +3,7 @@ import { ExpoConfig } from '@expo/config';
 const config: ExpoConfig = {
   name: 'Hangover Shield',
   slug: 'hangover-shield',
-  version: '1.0.3',
+  version: '1.0.4',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'light',
@@ -34,6 +34,14 @@ const config: ExpoConfig = {
     'expo-font',
     '@react-native-community/datetimepicker',
     'expo-web-browser',
+    [
+      'expo-notifications',
+      {
+        icon: './assets/icon.png',
+        color: '#0F4C44',
+        sounds: [],
+      },
+    ],
   ],
   extra: {
     // Firebase & Auth (must be provided via env at build time)

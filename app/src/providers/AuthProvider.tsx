@@ -6,11 +6,14 @@
  */
 
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
-import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, setDoc, updateDoc, serverTimestamp, onSnapshot, Unsubscribe, waitForPendingWrites } from 'firebase/firestore';
+import firebase from 'firebase/compat/app';
 import { auth, db } from '../firebase/config';
 import { UserDoc, MembershipStatus } from '../models/firestore';
 import { logOutRevenueCat } from '../services/revenuecat';
+import { registerForPushNotificationsAsync, scheduleAllNotifications } from '../services/notificationService';
+
+type FirebaseUser = firebase.User;
+type Unsubscribe = () => void;
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -41,17 +44,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       unsubscribeRef.current = null;
     }
 
-    const userRef = doc(db, 'users', uid);
+    const userRef = db.collection('users').doc(uid);
 
     // Subscribe to real-time updates with metadata changes
-    unsubscribeRef.current = onSnapshot(
-      userRef,
+    unsubscribeRef.current = userRef.onSnapshot(
       { includeMetadataChanges: true },
       (snapshot) => {
-        if (snapshot.exists()) {
+        if (snapshot.exists) {
           const data = snapshot.data() as UserDoc;
           setUserDoc(data);
           setLoading(false);
+
+          // Setup notifications for authenticated user
+          setupNotifications().catch((error) => {
+            console.error('[AuthProvider] Error setting up notifications:', error);
+          });
         } else {
           // Document doesn't exist - create default
           createDefaultUserDoc(firebaseUser).catch((error: any) => {
@@ -68,6 +75,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   /**
+   * Setup push notifications for authenticated user
+   * Called after successful login
+   */
+  const setupNotifications = async (): Promise<void> => {
+    try {
+      // Register for push notifications and get token
+      const token = await registerForPushNotificationsAsync();
+
+      if (token) {
+        // Successfully got permission and token, schedule all notifications
+        await scheduleAllNotifications();
+        console.log('[AuthProvider] ✅ Notifications setup complete');
+      }
+    } catch (error) {
+      console.error('[AuthProvider] Failed to setup notifications:', error);
+      // Don't throw - notifications are optional
+    }
+  };
+
+  /**
    * Create default user document if it doesn't exist
    */
   const createDefaultUserDoc = async (firebaseUser: FirebaseUser): Promise<void> => {
@@ -76,14 +103,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       email: firebaseUser.email || '',
       membershipStatus: 'not_applied' as MembershipStatus,
       role: 'member' as const,
-      createdAt: serverTimestamp(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
 
-    const userRef = doc(db, 'users', firebaseUser.uid);
-    
+    const userRef = db.collection('users').doc(firebaseUser.uid);
+
     try {
-      await setDoc(userRef, defaultUserDoc);
-      await waitForPendingWrites(db);
+      await userRef.set(defaultUserDoc);
+      await db.waitForPendingWrites();
     } catch (error: any) {
       console.error('Error creating default document:', error?.message);
       throw error;
@@ -116,7 +143,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     try {
-      const userRef = doc(db, 'users', user.uid);
+      const userRef = db.collection('users').doc(user.uid);
 
       // Remove undefined values
       const cleanUpdates: any = {};
@@ -130,7 +157,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Build update data with required fields
       const updateData: any = {
         ...cleanUpdates,
-        updatedAt: serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
 
       // Ensure required fields are present
@@ -144,21 +171,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         updateData.role = userDoc?.role || 'member';
       }
       if (!userDoc?.createdAt) {
-        updateData.createdAt = serverTimestamp();
+        updateData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
       }
 
       // Write to Firestore
       if (userDoc) {
-        await updateDoc(userRef, updateData);
+        await userRef.update(updateData);
       } else {
-        await setDoc(userRef, updateData);
+        await userRef.set(updateData);
       }
 
       // Wait for sync to server
-      await waitForPendingWrites(db);
+      await db.waitForPendingWrites();
     } catch (error: any) {
       console.error('Error saving user document:', error?.message);
-      
+
       if (error?.code === 'permission-denied') {
         throw new Error('Permission denied: Please contact support');
       }
@@ -179,12 +206,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
-      
+
       // Logout from RevenueCat
       await logOutRevenueCat();
-      
+
       // Logout from Firebase
-      await firebaseSignOut(auth);
+      await auth.signOut();
       setUser(null);
       setUserDoc(null);
     } catch (error) {
@@ -194,7 +221,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribeAuth = auth.onAuthStateChanged((firebaseUser) => {
       setUser(firebaseUser);
 
       if (firebaseUser) {

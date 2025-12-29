@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { HANGOVER_GRADIENT } from '../../theme/gradients';
+import { registerForPushNotificationsAsync, scheduleAllNotifications } from '../../services/notificationService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -25,18 +26,23 @@ export const NotificationPermissionScreen: React.FC<NotificationPermissionScreen
   const handleEnableNotifications = async () => {
     setIsRequesting(true);
     try {
-      // TODO: Implement actual notification permission request
-      // For now, we'll just simulate the request and continue
-      // When expo-notifications is installed, uncomment:
-      // const { status } = await Notifications.requestPermissionsAsync();
-      
-      // Simulate a brief delay for UX
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Continue regardless of permission status
+      // Request push notification permissions and get token
+      const token = await registerForPushNotificationsAsync();
+
+      if (token) {
+        // Successfully got permission and token, schedule all notifications
+        await scheduleAllNotifications();
+        console.log('[NotificationPermission] ✅ Notifications enabled and scheduled');
+      } else {
+        // User denied permissions or device doesn't support push
+        console.log('[NotificationPermission] ⚠️ Notifications not enabled');
+      }
+
+      // Continue to next screen regardless of permission status
       onComplete();
     } catch (error) {
-      console.error('Error requesting notification permissions:', error);
+      console.error('[NotificationPermission] Error requesting notifications:', error);
+      // Continue even if there's an error - don't block user flow
       onComplete();
     } finally {
       setIsRequesting(false);

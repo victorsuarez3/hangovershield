@@ -12,7 +12,7 @@ export const APP_LINKS = {
   TERMS_OF_SERVICE: 'https://hangovershield.co/terms',
 
   // Support
-  SUPPORT_URL: 'https://hangovershield.co/support',
+  SUPPORT_URL: 'https://hangovershield.co/contact',
   SUPPORT_EMAIL: 'mailto:support@hangovershield.co',
 } as const;
 
