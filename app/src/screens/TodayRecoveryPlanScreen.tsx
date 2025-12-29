@@ -836,6 +836,15 @@ export const TodayRecoveryPlanScreen: React.FC<TodayRecoveryPlanScreenProps> = (
 
         {/* Progress */}
         <ProgressSection completed={completedActions} total={totalActions} />
+
+        <TouchableOpacity
+          style={styles.sourcesLink}
+          onPress={() => navigation.navigate('Sources' as never)}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.sourcesLinkText}>Why these steps? Sources</Text>
+          <Ionicons name="open-outline" size={16} color="#0F4C44" />
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Sticky CTA */}
@@ -1378,6 +1387,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     paddingHorizontal: 24,
+  },
+
+  sourcesLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+  },
+  sourcesLinkText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 14,
+    color: '#0F4C44',
   },
 
   // CTA

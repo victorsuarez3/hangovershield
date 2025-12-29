@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '../providers/AuthProvider';
 import { AuthNavigator } from '../navigation/AuthNavigator';
 
@@ -32,7 +33,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Show loading while checking auth
   if (loading) {
-    return null;
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F7F6' }}>
+        <ActivityIndicator size="large" color="#0F4C44" />
+      </View>
+    );
   }
 
   // Guest mode: allow navigation without authentication (for development/testing)

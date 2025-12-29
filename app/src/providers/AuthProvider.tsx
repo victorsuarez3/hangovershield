@@ -29,7 +29,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [userDoc, setUserDoc] = useState<UserDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const unsubscribeRef = useRef<Unsubscribe | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
    * Subscribe to user document changes in real-time
@@ -42,27 +41,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       unsubscribeRef.current = null;
     }
 
-    // Clear any existing timeout
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-      loadingTimeoutRef.current = null;
-    }
-
-    // Safety timeout: if loading takes more than 10 seconds, show default state
-    loadingTimeoutRef.current = setTimeout(() => {
-      console.warn('Loading timeout - creating fallback user document');
-      if (loading) {
-        setUserDoc({
-          fullName: '',
-          email: firebaseUser.email || '',
-          membershipStatus: 'not_applied' as MembershipStatus,
-          role: 'member' as const,
-          createdAt: new Date(),
-        } as UserDoc);
-        setLoading(false);
-      }
-    }, 10000);
-
     const userRef = doc(db, 'users', uid);
 
     // Subscribe to real-time updates with metadata changes
@@ -70,12 +48,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       userRef,
       { includeMetadataChanges: true },
       (snapshot) => {
-        // Clear timeout on successful load
-        if (loadingTimeoutRef.current) {
-          clearTimeout(loadingTimeoutRef.current);
-          loadingTimeoutRef.current = null;
-        }
-
         if (snapshot.exists()) {
           const data = snapshot.data() as UserDoc;
           setUserDoc(data);
@@ -84,34 +56,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           // Document doesn't exist - create default
           createDefaultUserDoc(firebaseUser).catch((error: any) => {
             console.error('Error creating user document:', error?.message);
-            // Set temporary default to unblock UI
-            setUserDoc({
-              fullName: '',
-              email: firebaseUser.email || '',
-              membershipStatus: 'not_applied' as MembershipStatus,
-              role: 'member' as const,
-              createdAt: new Date(),
-            } as UserDoc);
             setLoading(false);
           });
         }
       },
       (error) => {
-        // Clear timeout on error
-        if (loadingTimeoutRef.current) {
-          clearTimeout(loadingTimeoutRef.current);
-          loadingTimeoutRef.current = null;
-        }
-
         console.error('Snapshot error:', error?.code, error?.message);
-        // Set temporary default to unblock UI
-        setUserDoc({
-          fullName: '',
-          email: firebaseUser.email || '',
-          membershipStatus: 'not_applied' as MembershipStatus,
-          role: 'member' as const,
-          createdAt: new Date(),
-        } as UserDoc);
         setLoading(false);
       }
     );
@@ -229,10 +179,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
       
       // Logout from RevenueCat
       await logOutRevenueCat();
@@ -252,15 +198,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(firebaseUser);
 
       if (firebaseUser) {
+        setLoading(true);
         subscribeToUserDoc(firebaseUser.uid, firebaseUser);
       } else {
         if (unsubscribeRef.current) {
           unsubscribeRef.current();
           unsubscribeRef.current = null;
-        }
-        if (loadingTimeoutRef.current) {
-          clearTimeout(loadingTimeoutRef.current);
-          loadingTimeoutRef.current = null;
         }
         setUserDoc(null);
         setLoading(false);
@@ -272,10 +215,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
-      }
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
       }
     };
   }, []);

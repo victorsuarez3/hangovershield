@@ -22,6 +22,7 @@ export type RootStackParamList = {
     contextScreen?: string;
   };
   PurchaseSuccess: undefined;
+  Sources: undefined;
   EveningCheckIn: undefined;
   EveningCheckInLocked: undefined;
   EveningCheckInComplete: undefined;

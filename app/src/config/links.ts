@@ -8,11 +8,12 @@ export const APP_LINKS = {
   APPLE_SUBSCRIPTION_MANAGEMENT: 'https://apps.apple.com/account/subscriptions',
 
   // Legal
-  PRIVACY_POLICY: 'https://hangovershield.com/privacy',
-  TERMS_OF_SERVICE: 'https://hangovershield.com/terms',
+  PRIVACY_POLICY: 'https://hangovershield.co/privacy',
+  TERMS_OF_SERVICE: 'https://hangovershield.co/terms',
 
   // Support
-  SUPPORT_EMAIL: 'mailto:support@hangovershield.com',
+  SUPPORT_URL: 'https://hangovershield.co/support',
+  SUPPORT_EMAIL: 'mailto:support@hangovershield.co',
 } as const;
 
 

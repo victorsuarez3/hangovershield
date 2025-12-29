@@ -20,6 +20,7 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,6 +36,7 @@ import { Analytics } from '../utils/analytics';
 import { PAYWALL_FEATURES, getCTAText } from '../utils/paywallCopy';
 import { PaywallSourceType } from '../constants/paywallSources';
 import { SHOW_DEV_TOOLS } from '../config/flags';
+import { APP_LINKS } from '../config/links';
 
 // Includes section items (grouped)
 const PAYWALL_INCLUDES = {
@@ -101,6 +103,7 @@ export const PaywallScreen: React.FC = () => {
   const [includesExpanded, setIncludesExpanded] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
   
   const offeringsLoaded = packages.length > 0;
   // Allow purchases if RevenueCat is available and packages are loaded
@@ -130,11 +133,32 @@ export const PaywallScreen: React.FC = () => {
     }
   }, [accessInfo.isPremium, navigation]);
 
+  const openSupport = async () => {
+    const target = APP_LINKS.SUPPORT_URL || APP_LINKS.SUPPORT_EMAIL;
+    try {
+      const supported = await Linking.canOpenURL(target);
+      if (supported) {
+        await Linking.openURL(target);
+      } else if (APP_LINKS.SUPPORT_EMAIL) {
+        await Linking.openURL(APP_LINKS.SUPPORT_EMAIL);
+      }
+    } catch (error) {
+      if (SHOW_DEV_TOOLS) {
+        console.error('[PaywallScreen] Support link error:', error);
+      }
+    }
+  };
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Handlers
   // ─────────────────────────────────────────────────────────────────────────────
 
   const handlePurchase = async () => {
+    setLastError(null);
+    if (SHOW_DEV_TOOLS) {
+      console.log('[PaywallScreen] CTA pressed');
+    }
+
     // In dev mode without RevenueCat, simulate success
     if (SHOW_DEV_TOOLS && !isRevenueCatAvailable) {
       Alert.alert(
@@ -145,11 +169,33 @@ export const PaywallScreen: React.FC = () => {
       return;
     }
 
+    if (!isRevenueCatAvailable) {
+      setLastError('RevenueCat unavailable');
+      Alert.alert(
+        'Purchases unavailable',
+        'We could not reach the App Store. Please try again or contact support.',
+        [
+          { text: 'Retry', onPress: handleRetry },
+          { text: 'Contact support', onPress: openSupport },
+          { text: 'Close', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
     const packageToPurchase = selectedPackage ?? yearlyPackage ?? monthlyPackage ?? null;
     
     if (!packageToPurchase) {
-      // Calm handling: if we cannot purchase, we keep UI usable and allow retry.
-      Alert.alert('Purchases temporarily unavailable', 'Please try again in a moment.');
+      setLastError('No package available');
+      Alert.alert(
+        'Purchases temporarily unavailable',
+        'We could not load the purchase options. Please try again.',
+        [
+          { text: 'Retry', onPress: handleRetry },
+          { text: 'Contact support', onPress: openSupport },
+          { text: 'Close', style: 'cancel' },
+        ]
+      );
       return;
     }
 
@@ -159,12 +205,36 @@ export const PaywallScreen: React.FC = () => {
       const success = await purchase(packageToPurchase, source);
       
       if (success) {
-        // Navigate to success screen or go back
         if (navigation.canGoBack()) {
           navigation.goBack();
         }
-        // The accessInfo will auto-update via RevenueCat listener
+      } else {
+        setLastError('Purchase did not complete');
+        Alert.alert(
+          'Purchase not completed',
+          'Please try again. If the issue persists, contact support.',
+          [
+            { text: 'Retry', onPress: handleRetry },
+            { text: 'Restore', onPress: handleRestore },
+            { text: 'Contact support', onPress: openSupport },
+            { text: 'Close', style: 'cancel' },
+          ]
+        );
       }
+    } catch (error: any) {
+      setLastError(error?.message || 'Purchase failed');
+      if (SHOW_DEV_TOOLS) {
+        console.error('[PaywallScreen] Purchase error:', error);
+      }
+      Alert.alert(
+        'Purchases unavailable',
+        'We had trouble reaching the store. Please retry or contact support.',
+        [
+          { text: 'Retry', onPress: handleRetry },
+          { text: 'Contact support', onPress: openSupport },
+          { text: 'Close', style: 'cancel' },
+        ]
+      );
     } finally {
       setIsPurchasing(false);
     }
@@ -182,6 +252,20 @@ export const PaywallScreen: React.FC = () => {
         ]);
       } else {
         Alert.alert('No Purchases Found', 'We couldn\'t find any previous purchases to restore.');
+      }
+    } catch (error: any) {
+      setLastError(error?.message || 'Restore failed');
+      Alert.alert(
+        'Restore failed',
+        'We could not restore purchases. Please try again or contact support.',
+        [
+          { text: 'Retry', onPress: handleRestore },
+          { text: 'Contact support', onPress: openSupport },
+          { text: 'Close', style: 'cancel' },
+        ]
+      );
+      if (SHOW_DEV_TOOLS) {
+        console.error('[PaywallScreen] Restore error:', error);
       }
     } finally {
       setIsRestoring(false);
@@ -211,7 +295,19 @@ export const PaywallScreen: React.FC = () => {
       try {
         await refreshOfferings();
       } catch (error) {
-        console.error('[PaywallScreen] Retry failed:', error);
+        if (SHOW_DEV_TOOLS) {
+          console.error('[PaywallScreen] Retry failed:', error);
+        }
+        const message = (error as any)?.message || 'Retry failed';
+        setLastError(message);
+        Alert.alert(
+          'Still unavailable',
+          'We could not refresh the store. Please try again later or contact support.',
+          [
+            { text: 'Contact support', onPress: openSupport },
+            { text: 'Close', style: 'cancel' },
+          ]
+        );
       }
     }
   };
@@ -243,6 +339,7 @@ export const PaywallScreen: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const isLoading = isLoadingPackages || isPurchasing || isRestoring;
+  const ctaDisabled = isPurchasing || isRestoring;
 
   // Debug logging
   if (SHOW_DEV_TOOLS) {
@@ -253,6 +350,8 @@ export const PaywallScreen: React.FC = () => {
       offeringsLoaded,
       packagesCount: packages.length,
       disabled: isLoading || !purchasesReady,
+      lastError,
+      packageIds: packages.map((p) => p?.identifier).filter(Boolean),
     });
   }
 
@@ -344,6 +443,9 @@ export const PaywallScreen: React.FC = () => {
             <Ionicons name="information-circle-outline" size={20} color="rgba(10, 47, 48, 0.55)" />
             <View style={styles.noticeTextContainer}>
               <Text style={styles.noticeText}>{purchasesNoticeText}</Text>
+              {lastError && SHOW_DEV_TOOLS && (
+                <Text style={styles.noticeDebugText}>Debug: {lastError}</Text>
+              )}
             </View>
             {isRevenueCatAvailable && (
               <TouchableOpacity
@@ -355,6 +457,15 @@ export const PaywallScreen: React.FC = () => {
                 <Text style={styles.noticeButtonText}>Try Again</Text>
               </TouchableOpacity>
             )}
+            {!isRevenueCatAvailable && (
+              <TouchableOpacity
+                style={styles.noticeButton}
+                onPress={openSupport}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.noticeButtonText}>Contact support</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -364,11 +475,11 @@ export const PaywallScreen: React.FC = () => {
           <TouchableOpacity
             style={[
               styles.ctaButton,
-              (!purchasesReady || isLoading) && styles.ctaButtonDisabled
+              (ctaDisabled || isLoading) && styles.ctaButtonDisabled
             ]}
-            onPress={purchasesReady ? handlePurchase : handleRetry}
+            onPress={handlePurchase}
             activeOpacity={0.8}
-            disabled={isLoading || !purchasesReady}
+            disabled={ctaDisabled}
           >
             {isPurchasing ? (
               <ActivityIndicator color="#FFFFFF" />
@@ -1022,6 +1133,12 @@ const styles = StyleSheet.create({
     color: 'rgba(0, 0, 0, 0.6)',
     flex: 1,
     lineHeight: 20,
+  },
+  noticeDebugText: {
+    ...typography.caption,
+    fontSize: 12,
+    color: 'rgba(0,0,0,0.5)',
+    marginTop: 4,
   },
   noticeButton: {
     paddingHorizontal: 12,

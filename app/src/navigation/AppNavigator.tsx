@@ -22,6 +22,7 @@ import { EveningCheckInScreen } from '../screens/EveningCheckInScreen';
 import { EveningCheckInLockedScreen } from '../screens/EveningCheckInLockedScreen';
 import { EveningCheckInCompleteScreen } from '../screens/EveningCheckInCompleteScreen';
 import { DailyWaterLogScreen } from '../screens/DailyWaterLogScreen';
+import { SourcesScreen } from '../screens/SourcesScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -61,6 +62,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({ allowGuestMode = fal
         <Stack.Screen name="EveningCheckInLocked" component={EveningCheckInLockedScreen} />
         <Stack.Screen name="EveningCheckInComplete" component={EveningCheckInCompleteScreen} />
         <Stack.Screen name="DailyWaterLog" component={DailyWaterLogScreen} />
+        <Stack.Screen name="Sources" component={SourcesScreen} />
       </Stack.Navigator>
     </ProtectedRoute>
   );

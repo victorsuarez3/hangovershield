@@ -28,6 +28,8 @@ import {
 } from '../components/LegalContent';
 import { useAuth } from '../providers/AuthProvider';
 import { AppHeader } from '../components/AppHeader';
+import { APP_LINKS } from '../config/links';
+import { deleteAccountAndData } from '../services/accountDeletion';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -56,6 +58,7 @@ interface DeleteAccountModalProps {
   visible: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  isLoading?: boolean;
 }
 
 interface PremiumFeaturesModalProps {
@@ -66,6 +69,7 @@ interface PremiumFeaturesModalProps {
 interface MedicalDisclaimerModalProps {
   visible: boolean;
   onClose: () => void;
+  onOpenSources: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,10 +152,14 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
   visible,
   onClose,
   onConfirm,
+  isLoading = false,
 }) => {
   const [confirmText, setConfirmText] = useState('');
 
   const handleConfirm = () => {
+    if (isLoading) {
+      return;
+    }
     if (confirmText.toUpperCase() === 'DELETE') {
       onConfirm();
       setConfirmText('');
@@ -213,13 +221,15 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
               style={[
                 styles.modalButton,
                 styles.modalButtonDestructive,
-                confirmText.toUpperCase() !== 'DELETE' && styles.modalButtonDisabled,
+                (confirmText.toUpperCase() !== 'DELETE' || isLoading) && styles.modalButtonDisabled,
               ]}
               onPress={handleConfirm}
-              disabled={confirmText.toUpperCase() !== 'DELETE'}
-              activeOpacity={0.8}
+              disabled={confirmText.toUpperCase() !== 'DELETE' || isLoading}
+              activeOpacity={confirmText.toUpperCase() === 'DELETE' && !isLoading ? 0.8 : 1}
             >
-              <Text style={styles.modalButtonDestructiveText}>Delete Account</Text>
+              <Text style={styles.modalButtonDestructiveText}>
+                {isLoading ? 'Deleting…' : 'Delete Account'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -286,6 +296,7 @@ const PremiumFeaturesModal: React.FC<PremiumFeaturesModalProps> = ({
 const MedicalDisclaimerModal: React.FC<MedicalDisclaimerModalProps> = ({
   visible,
   onClose,
+  onOpenSources,
 }) => {
   const disclaimerText = `Hangover Shield provides general wellness guidance and self-reflection tools.
 It is not intended to diagnose, treat, cure, or prevent any medical condition.
@@ -323,6 +334,16 @@ If symptoms are severe, persistent, or concerning, seek professional medical hel
 
           <TouchableOpacity
             style={styles.modalSingleButton}
+            onPress={onOpenSources}
+            activeOpacity={0.8}
+            accessibilityLabel="View sources"
+            accessibilityRole="button"
+          >
+            <Text style={styles.modalSingleButtonText}>Sources</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.modalSingleButton}
             onPress={onClose}
             activeOpacity={0.8}
             accessibilityLabel="Got it"
@@ -337,28 +358,20 @@ If symptoms are severe, persistent, or concerning, seek professional medical hel
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
-
-const APP_LINKS = {
-  APPLE_SUBSCRIPTION_MANAGEMENT: 'https://apps.apple.com/account/subscriptions',
-  SUPPORT_URL: 'https://hangovershield.co/contact',
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const AccountScreen: React.FC = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [premiumModalVisible, setPremiumModalVisible] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [medicalDisclaimerModalVisible, setMedicalDisclaimerModalVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Subscription Management
   const handleManageSubscription = async () => {
@@ -412,11 +425,55 @@ export const AccountScreen: React.FC = () => {
     setDeleteModalVisible(true);
   };
 
-  const handleDeleteAccountConfirm = () => {
-    setDeleteModalVisible(false);
-    // TODO: Implement actual account deletion logic
-    console.log('Delete account confirmed and executed');
-    Alert.alert('Account Deleted', 'Your account has been permanently deleted.');
+  const handleDeleteAccountConfirm = async () => {
+    if (!user?.uid) {
+      Alert.alert('Not signed in', 'Please sign in again to delete your account.');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const result = await deleteAccountAndData();
+      setDeleteModalVisible(false);
+
+      if (result === 'reauth-required') {
+        Alert.alert(
+          'Please sign in again',
+          'For security, please sign in again to delete your account.',
+          [
+            {
+              text: 'Go to login',
+              onPress: async () => {
+                try {
+                  await logout();
+                } catch (err) {
+                  console.error('[AccountScreen] Logout after reauth prompt failed:', err);
+                }
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      Alert.alert('Account deleted', 'Your account and data have been removed.', [
+        {
+          text: 'OK',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (err) {
+              console.error('[AccountScreen] Logout after deletion failed:', err);
+            }
+          },
+        },
+      ]);
+    } catch (error: any) {
+      console.error('[AccountScreen] Delete account error:', error);
+      Alert.alert('Error deleting account', 'Please try again or contact support.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Premium Features
@@ -443,9 +500,16 @@ export const AccountScreen: React.FC = () => {
   // Support
   const handleContactSupport = async () => {
     try {
-      const supported = await Linking.canOpenURL(APP_LINKS.SUPPORT_URL);
+      const target = APP_LINKS.SUPPORT_URL || APP_LINKS.SUPPORT_EMAIL;
+      if (!target) {
+        Alert.alert('Support unavailable', 'Support link is not configured yet.');
+        return;
+      }
+      const supported = await Linking.canOpenURL(target);
       if (supported) {
-        await Linking.openURL(APP_LINKS.SUPPORT_URL);
+        await Linking.openURL(target);
+      } else if (APP_LINKS.SUPPORT_EMAIL) {
+        await Linking.openURL(APP_LINKS.SUPPORT_EMAIL);
       } else {
         Alert.alert('Unable to open link', 'Please check your internet connection.');
       }
@@ -560,6 +624,7 @@ export const AccountScreen: React.FC = () => {
         visible={deleteModalVisible}
         onClose={() => setDeleteModalVisible(false)}
         onConfirm={handleDeleteAccountConfirm}
+        isLoading={isDeleting}
       />
 
       <PremiumFeaturesModal
@@ -585,6 +650,10 @@ export const AccountScreen: React.FC = () => {
       <MedicalDisclaimerModal
         visible={medicalDisclaimerModalVisible}
         onClose={() => setMedicalDisclaimerModalVisible(false)}
+        onOpenSources={() => {
+          setMedicalDisclaimerModalVisible(false);
+          navigation.navigate('Sources' as never);
+        }}
       />
     </SafeAreaView>
   );

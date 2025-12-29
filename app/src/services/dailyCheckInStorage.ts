@@ -7,7 +7,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getTodayId } from '../utils/dateUtils';
 import { DailyCheckInSeverity } from './dailyCheckIn';
-import { SHOW_DEV_TOOLS } from '../config/flags';
+import { SHOW_DEV_TOOLS, DEBUG_PERSISTENCE } from '../config/flags';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -67,6 +67,9 @@ export const saveLocalDailyCheckIn = async (
     };
 
     await AsyncStorage.setItem(storageKey, JSON.stringify(localCheckIn));
+    if (DEBUG_PERSISTENCE) {
+      console.log('[dailyCheckInStorage] save', { storageKey, source: checkIn.source });
+    }
     return true;
   } catch (error) {
     console.error('[dailyCheckInStorage] Error saving local check-in:', error);
@@ -86,9 +89,15 @@ export const getLocalDailyCheckIn = async (
     
     const stored = await AsyncStorage.getItem(storageKey);
     if (!stored) {
+      if (DEBUG_PERSISTENCE) {
+        console.log('[dailyCheckInStorage] load miss', { storageKey });
+      }
       return null;
     }
 
+    if (DEBUG_PERSISTENCE) {
+      console.log('[dailyCheckInStorage] load hit', { storageKey });
+    }
     return JSON.parse(stored) as LocalDailyCheckIn;
   } catch (error) {
     console.error('[dailyCheckInStorage] Error getting local check-in:', error);

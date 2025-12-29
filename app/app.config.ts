@@ -3,7 +3,7 @@ import { ExpoConfig } from '@expo/config';
 const config: ExpoConfig = {
   name: 'Hangover Shield',
   slug: 'hangover-shield',
-  version: '1.0.2',
+  version: '1.0.3',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'light',
@@ -14,8 +14,11 @@ const config: ExpoConfig = {
   },
   assetBundlePatterns: ['**/*'],
   ios: {
-    supportsTablet: true,
+    supportsTablet: false, // iPhone-only to avoid iPad review requirements
     bundleIdentifier: 'com.versaluna.hangovershield',
+    infoPlist: {
+      UIDeviceFamily: [1], // iPhone only
+    },
   },
   android: {
     adaptiveIcon: {
@@ -30,6 +33,7 @@ const config: ExpoConfig = {
   plugins: [
     'expo-font',
     '@react-native-community/datetimepicker',
+    'expo-web-browser',
   ],
   extra: {
     // Firebase & Auth (must be provided via env at build time)
