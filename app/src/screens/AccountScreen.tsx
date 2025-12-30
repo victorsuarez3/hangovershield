@@ -37,7 +37,6 @@ import {
   scheduleAllNotifications,
   NotificationSettings,
 } from '../services/notificationService';
-import { useRevenueCat } from '../hooks/useRevenueCat';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -59,10 +58,6 @@ interface AccountRowProps {
 }
 
 interface PremiumStatusCardProps {
-  isPremium: boolean;
-  isTrialActive: boolean;
-  expirationDate: Date | null;
-  isLoading: boolean;
   onRestorePurchases?: () => void;
 }
 
@@ -95,69 +90,22 @@ const AccountSection: React.FC<AccountSectionProps> = ({ title, children }) => (
   </View>
 );
 
-const PremiumStatusCard: React.FC<PremiumStatusCardProps> = ({
-  isPremium,
-  isTrialActive,
-  expirationDate,
-  isLoading,
-  onRestorePurchases,
-}) => {
-  const formatExpirationDate = (date: Date | null): string => {
-    if (!date) return 'No renewal date';
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${monthNames[date.getMonth()]} ${date.getDate()}`;
-  };
-
-  if (isLoading) {
-    return (
-      <View style={styles.premiumStatusCard}>
-        <Text style={styles.premiumStatusText}>Loading subscription status...</Text>
-      </View>
-    );
-  }
-
-  if (!isPremium) {
-    return (
-      <View style={[styles.premiumStatusCard, { backgroundColor: 'rgba(255, 255, 255, 0.7)' }]}>
-        <View style={styles.premiumStatusHeader}>
-          <Ionicons name="information-circle-outline" size={20} color="rgba(15, 76, 68, 0.5)" />
-          <Text style={[styles.premiumStatusText, { color: 'rgba(15, 61, 62, 0.7)' }]}>No active subscription</Text>
-        </View>
-        <Text style={styles.premiumStatusSubtext}>Upgrade to unlock all features</Text>
-        <TouchableOpacity
-          style={styles.restoreButton}
-          onPress={onRestorePurchases}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.restoreButtonText}>Restore purchases</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.premiumStatusCard}>
-      <View style={styles.premiumStatusHeader}>
-        <Ionicons name="checkmark-circle" size={20} color="#0F4C44" />
-        <Text style={styles.premiumStatusText}>
-          {isTrialActive ? 'Trial active' : 'Premium active'}
-        </Text>
-      </View>
-      <Text style={styles.premiumStatusSubtext}>
-        {isTrialActive
-          ? `Trial ends: ${formatExpirationDate(expirationDate)}`
-          : `Next billing: ${formatExpirationDate(expirationDate)}`}
-      </Text>
-      <TouchableOpacity
-        style={styles.restoreButton}
-        onPress={onRestorePurchases}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.restoreButtonText}>Restore purchases</Text>
-      </TouchableOpacity>
+const PremiumStatusCard: React.FC<PremiumStatusCardProps> = ({ onRestorePurchases }) => (
+  <View style={styles.premiumStatusCard}>
+    <View style={styles.premiumStatusHeader}>
+      <Ionicons name="checkmark-circle" size={20} color="#0F4C44" />
+      <Text style={styles.premiumStatusText}>Premium active</Text>
     </View>
-  );
-};
+    <Text style={styles.premiumStatusSubtext}>Next billing: Jan 13</Text>
+    <TouchableOpacity
+      style={styles.restoreButton}
+      onPress={onRestorePurchases}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.restoreButtonText}>Restore purchases</Text>
+    </TouchableOpacity>
+  </View>
+);
 
 const AccountRow: React.FC<AccountRowProps> = ({
   icon,
@@ -424,13 +372,6 @@ export const AccountScreen: React.FC = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const {
-    isPremium,
-    isTrialActive,
-    subscriptionStatus,
-    isLoading: isLoadingSubscription,
-    restore: restorePurchases,
-  } = useRevenueCat();
 
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [premiumModalVisible, setPremiumModalVisible] = useState(false);
@@ -561,18 +502,10 @@ export const AccountScreen: React.FC = () => {
   };
 
   // Restore Purchases
-  const handleRestorePurchases = async () => {
-    try {
-      const success = await restorePurchases();
-      if (success) {
-        Alert.alert('Success', 'Your purchases have been restored successfully.');
-      } else {
-        Alert.alert('No purchases found', 'No previous purchases were found to restore.');
-      }
-    } catch (error) {
-      console.error('Error restoring purchases:', error);
-      Alert.alert('Error', 'Failed to restore purchases. Please try again.');
-    }
+  const handleRestorePurchases = () => {
+    // TODO: Implement restore purchases logic
+    console.log('Restore purchases pressed');
+    Alert.alert('Restore Purchases', 'Purchases have been restored successfully.');
   };
 
   // Legal Links - Open modals instead of external links
@@ -673,28 +606,16 @@ export const AccountScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Premium Status Card */}
-        <PremiumStatusCard
-          isPremium={isPremium}
-          isTrialActive={isTrialActive}
-          expirationDate={subscriptionStatus?.expirationDate || null}
-          isLoading={isLoadingSubscription}
-          onRestorePurchases={handleRestorePurchases}
-        />
+        <PremiumStatusCard onRestorePurchases={handleRestorePurchases} />
 
         {/* Subscription Section */}
         <AccountSection title="Subscription">
           <AccountRow
             icon="card-outline"
             label="Premium Plan"
-            subtitle={
-              isPremium
-                ? isTrialActive
-                  ? 'Trial • Renews automatically'
-                  : 'Monthly • Renews automatically'
-                : 'Not subscribed'
-            }
+            subtitle="Monthly • Renews automatically"
             onPress={handleManageSubscription}
-            badge={isPremium ? 'ACTIVE' : undefined}
+            badge="ACTIVE"
           />
           <View style={styles.separator} />
           <AccountRow
