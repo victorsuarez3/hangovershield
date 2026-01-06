@@ -7,10 +7,14 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import firebase from 'firebase/compat/app';
+import Constants from 'expo-constants';
 import { auth, db } from '../firebase/config';
 import { UserDoc, MembershipStatus } from '../models/firestore';
 import { logOutRevenueCat } from '../services/revenuecat';
-import { registerForPushNotificationsAsync, scheduleAllNotifications } from '../services/notificationService';
+
+// Conditionally import notification service only in real builds (not Expo Go)
+const isExpoGo = Constants.appOwnership === 'expo';
+const notificationService = isExpoGo ? null : require('../services/notificationService');
 
 type FirebaseUser = firebase.User;
 type Unsubscribe = () => void;
@@ -83,13 +87,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
    * Called after successful login
    */
   const setupNotifications = async (): Promise<void> => {
+    // Skip notifications in Expo Go
+    if (isExpoGo || !notificationService) {
+      console.log('[AuthProvider] Skipping notifications (Expo Go)');
+      return;
+    }
+
     try {
       // Register for push notifications and get token
-      const token = await registerForPushNotificationsAsync();
+      const token = await notificationService.registerForPushNotificationsAsync();
 
       if (token) {
         // Successfully got permission and token, schedule all notifications
-        await scheduleAllNotifications();
+        await notificationService.scheduleAllNotifications();
         console.log('[AuthProvider] ✅ Notifications setup complete');
       }
     } catch (error) {
