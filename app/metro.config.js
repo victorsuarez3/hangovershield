@@ -1,14 +1,11 @@
-// Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config');
-const path = require('path');
 
-/** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Extend resolver to find @firebase packages in firebase/node_modules
-config.resolver.nodeModulesPaths = [
-  path.resolve(__dirname, 'node_modules'),
-  path.resolve(__dirname, 'node_modules/firebase/node_modules'),
-];
+// Mock expo-notifications in development/Expo Go to prevent native module errors
+config.resolver.extraNodeModules = {
+  ...config.resolver.extraNodeModules,
+  'expo-notifications': require.resolve('./src/mocks/expo-notifications-mock.js'),
+};
 
 module.exports = config;
