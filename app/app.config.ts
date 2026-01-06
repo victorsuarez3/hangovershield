@@ -3,7 +3,7 @@ import { ExpoConfig } from "@expo/config";
 const config: ExpoConfig = {
   name: "Hangover Shield",
   slug: "hangover-shield",
-  version: "1.0.12",
+  version: "1.0.13",
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "light",
