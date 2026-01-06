@@ -88,6 +88,17 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       return null;
     }
 
+    // Check if running in Expo Go - notifications don't work there
+    try {
+      const Constants = await import('expo-constants');
+      if (Constants.default.appOwnership === 'expo') {
+        console.warn('[notificationService] Notifications not available in Expo Go');
+        return null;
+      }
+    } catch {
+      // Ignore if we can't check
+    }
+
     // Get existing permissions
     const existingPermissions = await Notifications.getPermissionsAsync();
     let finalStatus = existingPermissions.granted;
@@ -103,10 +114,16 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       return null;
     }
 
-    // Get Expo push token
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: '76f792a4-fbf7-4106-88c3-7581d6b8adc8',
-    });
+    // Get Expo push token - wrapped in try-catch for Expo Go compatibility
+    let tokenData;
+    try {
+      tokenData = await Notifications.getExpoPushTokenAsync({
+        projectId: '76f792a4-fbf7-4106-88c3-7581d6b8adc8',
+      });
+    } catch (tokenError) {
+      console.warn('[notificationService] Could not get push token (likely Expo Go):', tokenError);
+      return null;
+    }
 
     if (DEBUG_PERSISTENCE) {
       console.log('[notificationService] ✅ Push token obtained:', tokenData.data);
