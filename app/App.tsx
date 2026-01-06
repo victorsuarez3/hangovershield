@@ -11,8 +11,11 @@ import { SkipAuthProvider } from './src/contexts/SkipAuthContext';
 import { AppNavigationProvider } from './src/contexts/AppNavigationContext';
 import { OnboardingCompletionProvider, useOnboardingCompletion } from './src/contexts/OnboardingCompletionContext';
 
+console.log('[App.tsx] 🚀 App module loaded');
+
 // Keep splash screen visible until fonts are loaded
 SplashScreenNative.preventAutoHideAsync();
+console.log('[App.tsx] ✅ Splash screen prevented auto-hide');
 
 import { ThemeProvider } from './src/hooks/useTheme';
 import { AuthProvider, useAuth } from './src/providers/AuthProvider';
