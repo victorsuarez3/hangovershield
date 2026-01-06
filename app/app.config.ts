@@ -34,14 +34,15 @@ const config: ExpoConfig = {
     "expo-font",
     "@react-native-community/datetimepicker",
     "expo-web-browser",
-    [
-      "expo-notifications",
-      {
-        icon: "./assets/icon.png",
-        color: "#0F4C44",
-        sounds: [],
-      },
-    ],
+    // Notifications disabled for Expo Go testing - re-enable for production builds
+    // [
+    //   "expo-notifications",
+    //   {
+    //     icon: "./assets/icon.png",
+    //     color: "#0F4C44",
+    //     sounds: [],
+    //   },
+    // ],
   ],
   extra: {
     // Firebase & Auth (must be provided via env at build time)
