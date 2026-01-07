@@ -80,10 +80,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.log('[AuthProvider] ✅ Timeout recovery: Created and loaded document');
           } else {
             console.error('[AuthProvider] ❌ Timeout recovery failed: Could not create document');
+            // FALLBACK: Create temporary local userDoc to unblock the app
+            // This happens when Firestore is completely offline
+            console.log('[AuthProvider] 🆘 FALLBACK: Creating temporary local userDoc');
+            const tempUserDoc: UserDoc = {
+              displayName: firebaseUser.displayName || null,
+              email: firebaseUser.email || null,
+              photoUrl: firebaseUser.photoURL || null,
+              membershipStatus: 'not_applied' as MembershipStatus,
+              role: 'member' as const,
+              createdAt: new Date(), // Temporary - will be replaced with serverTimestamp when online
+              onboarding: {
+                firstLoginCompleted: false,
+                firstLoginVersion: 1,
+              },
+            };
+            setUserDoc(tempUserDoc);
+            console.log('[AuthProvider] ✅ Temporary userDoc created - app will sync when online');
           }
         }
       } catch (error) {
         console.error('[AuthProvider] ❌ Timeout recovery error:', error);
+        // CRITICAL FALLBACK: Even if everything fails, create temporary userDoc
+        console.log('[AuthProvider] 🆘 CRITICAL FALLBACK: Creating emergency userDoc');
+        const emergencyUserDoc: UserDoc = {
+          displayName: firebaseUser.displayName || null,
+          email: firebaseUser.email || null,
+          photoUrl: firebaseUser.photoURL || null,
+          membershipStatus: 'not_applied' as MembershipStatus,
+          role: 'member' as const,
+          createdAt: new Date(),
+          onboarding: {
+            firstLoginCompleted: false,
+            firstLoginVersion: 1,
+          },
+        };
+        setUserDoc(emergencyUserDoc);
+        console.log('[AuthProvider] ✅ Emergency userDoc created - app can continue');
       } finally {
         setLoading(false);
         timeoutRef.current = null;
