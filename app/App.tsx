@@ -379,8 +379,14 @@ function AppContent() {
     );
   }
 
-  // Auth loading gate: Wait for userDoc to load when user exists
-  if (loading || (user && !userDoc)) {
+  // UNIFIED LOADING CHECK - Prevents splash screen loop
+  // Check both auth readiness AND daily check-in readiness together
+  const isAuthReady = !loading && (!user || userDoc !== null);
+  const isDailyCheckReady = !user || (!checkingDailyStatus && dailyCheckInStatus !== 'loading');
+  const isAppReady = isAuthReady && isDailyCheckReady && isHydrated;
+
+  // Show single splash screen for all loading states
+  if (!isAppReady) {
     return (
       <SplashScreen
         onFinish={() => {}}
@@ -416,17 +422,6 @@ function AppContent() {
     );
   }
 
-  // Wait for onboarding context hydration
-  if (!isHydrated) {
-    return (
-      <SplashScreen
-        onFinish={() => {}}
-        showContinueButton={false}
-        onContinue={() => {}}
-      />
-    );
-  }
-
   // Onboarding tunnel (no menu until completion) — use the new 3-screen flow
   if (!onboardingCompleted) {
     return (
@@ -443,17 +438,6 @@ function AppContent() {
       >
         <FirstLoginOnboardingNavigator />
       </AppNavigationProvider>
-    );
-  }
-
-  // Show loading while checking daily check-in status (authenticated only)
-  if (user && (checkingDailyStatus || dailyCheckInStatus === 'loading')) {
-    return (
-      <SplashScreen
-        onFinish={() => {}}
-        showContinueButton={false}
-        onContinue={() => {}}
-      />
     );
   }
 

@@ -36,6 +36,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [userDoc, setUserDoc] = useState<UserDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const unsubscribeRef = useRef<Unsubscribe | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
    * Subscribe to user document changes in real-time
@@ -48,12 +49,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       unsubscribeRef.current = null;
     }
 
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
     const userRef = db.collection('users').doc(uid);
+
+    // Safety timeout: Prevent infinite splash if snapshot never arrives
+    // This can happen if Firestore is offline or document creation fails silently
+    timeoutRef.current = setTimeout(() => {
+      console.error('[AuthProvider] Timeout waiting for user doc snapshot (10s) - forcing loading=false');
+      setLoading(false);
+      timeoutRef.current = null;
+    }, 10000);
 
     // Subscribe to real-time updates with metadata changes
     unsubscribeRef.current = userRef.onSnapshot(
       { includeMetadataChanges: true },
       async (snapshot) => {
+        // Clear timeout - snapshot arrived successfully
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+
         if (snapshot.exists) {
           const data = snapshot.data() as UserDoc;
           setUserDoc(data);
@@ -72,12 +93,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           } catch (error: any) {
             console.error('[AuthProvider] Error creating user document:', error?.message);
             setLoading(false); // Only set loading false on error
+            // Clear timeout on error
+            if (timeoutRef.current) {
+              clearTimeout(timeoutRef.current);
+              timeoutRef.current = null;
+            }
           }
         }
       },
       (error) => {
         console.error('[AuthProvider] Snapshot error:', error?.code, error?.message);
         setLoading(false);
+        // Clear timeout on error
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
       }
     );
   };
@@ -227,6 +258,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         unsubscribeRef.current = null;
       }
 
+      // Clear timeout if exists
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+
       // Logout from RevenueCat
       await logOutRevenueCat();
 
@@ -252,6 +289,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           unsubscribeRef.current();
           unsubscribeRef.current = null;
         }
+        // Clear timeout when user logs out
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
         setUserDoc(null);
         setLoading(false);
       }
@@ -262,6 +304,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
+      }
+      // Clear timeout on unmount
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
     };
   }, []);
