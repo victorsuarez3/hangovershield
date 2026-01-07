@@ -6,16 +6,15 @@
 import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { signInWithApple } from '../services/auth';
 
 interface AppleSignInButtonProps {
-  onSuccess?: () => void;
-  onError?: (error: Error) => void;
+  onPress?: () => void | Promise<void>;
+  disabled?: boolean;
 }
 
 export const AppleSignInButton: React.FC<AppleSignInButtonProps> = ({
-  onSuccess,
-  onError,
+  onPress,
+  disabled = false,
 }) => {
   const [isAvailable, setIsAvailable] = React.useState(false);
 
@@ -24,14 +23,10 @@ export const AppleSignInButton: React.FC<AppleSignInButtonProps> = ({
   }, []);
 
   const handlePress = async () => {
-    try {
-      await signInWithApple();
-      onSuccess?.();
-    } catch (error: any) {
-      if (error.message !== 'Apple sign-in was cancelled') {
-        onError?.(error);
-      }
-    }
+    if (disabled) return;
+    // Delegate to parent - don't execute auth here
+    // This prevents duplicate auth calls
+    await onPress?.();
   };
 
   // Only show on iOS

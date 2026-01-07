@@ -59,10 +59,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Safety timeout: Prevent infinite splash if snapshot never arrives
     // This can happen if Firestore is offline or document creation fails silently
-    timeoutRef.current = setTimeout(() => {
-      console.error('[AuthProvider] Timeout waiting for user doc snapshot (10s) - forcing loading=false');
-      setLoading(false);
-      timeoutRef.current = null;
+    timeoutRef.current = setTimeout(async () => {
+      console.error('[AuthProvider] Timeout waiting for user doc snapshot (10s)');
+
+      // Try to force-read the document one more time
+      try {
+        const snapshot = await userRef.get();
+        if (snapshot.exists) {
+          const data = snapshot.data() as UserDoc;
+          setUserDoc(data);
+          console.log('[AuthProvider] ✅ Timeout recovery: Found existing document');
+        } else {
+          // Document still doesn't exist - create default one
+          console.log('[AuthProvider] ⚠️ Timeout recovery: Creating default document');
+          await createDefaultUserDoc(firebaseUser);
+          // Try reading again after creation
+          const retrySnapshot = await userRef.get();
+          if (retrySnapshot.exists) {
+            setUserDoc(retrySnapshot.data() as UserDoc);
+            console.log('[AuthProvider] ✅ Timeout recovery: Created and loaded document');
+          } else {
+            console.error('[AuthProvider] ❌ Timeout recovery failed: Could not create document');
+          }
+        }
+      } catch (error) {
+        console.error('[AuthProvider] ❌ Timeout recovery error:', error);
+      } finally {
+        setLoading(false);
+        timeoutRef.current = null;
+      }
     }, 10000);
 
     // Subscribe to real-time updates with metadata changes
